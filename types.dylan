@@ -1,5 +1,8 @@
 Module: package-manager
 
+// Trying this on for size.
+define constant <int> = <integer>;
+
 // Package names are not case-sensitive.
 define constant <package-table> = <case-insensitive-string-table>;
 
@@ -8,14 +11,6 @@ define constant <string-list> = limited(<vector>, of: <string>);
 define constant <version-list> = limited(<vector>, of: <version>);
 define constant <dependency-list> = limited(<vector>, of: <dependency>);
 define constant <package-list> = limited(<vector>, of: <package>);
-
-
-// The thing that manages packages. Basically a place to put state
-// rather than using global variables.
-define class <manager> (<object>)
-  slot packages :: <package-table> = make(<package-table>);
-end class <manager>;
-
 
 define class <package-error> (<simple-error>)
 end;
@@ -49,22 +44,19 @@ end class <dependency>;
 // change when a new version of the package is released (which is most
 // things).
 define class <version> (<object>)
-  // Back pointer to the package containing this version.
-  slot package :: <package>, init-keyword: package:;
-
-  constant slot major :: <integer>, required-init-keyword: major:;
-  constant slot minor :: <integer>, required-init-keyword: minor:;
-  constant slot patch :: <integer>, required-init-keyword: patch:;
+  constant slot major :: <int>, required-init-keyword: major:;
+  constant slot minor :: <int>, required-init-keyword: minor:;
+  constant slot patch :: <int>, required-init-keyword: patch:;
   // Might consider adding a tag slot for "alpha-1" or "rc.3". I think
   // it would not be part of the equality comparisons and would be
   // solely for display purposes but I'm not sure.
 
   constant slot dependencies :: <dependency-list>, required-init-keyword: dependencies:;
 
-  // Some sort of URL that identifies where the package can be
-  // downloaded from. For example a git repo or URL pointing to a
-  // tarball. (Details TBD. Could be type <url>?)
-  constant slot location :: <string>, required-init-keyword: location:;
+  // Identifies where the package can be downloaded from. For example
+  // a git repo or URL pointing to a tarball. (Details TBD. Could be
+  // type <url>?)
+  constant slot source-url :: <string>, required-init-keyword: source-url:;
 end class <version>;
 
 /*
@@ -91,6 +83,16 @@ define sealed class <catalog> (<object>)
 end class <catalog>;
 
 // A place to store catalog data.
-define class <storage> (<object>)
-end class <storage>;
+define abstract class <storage> (<object>)
+end;
 
+// Something that knows how to grab a package off the net and unpack
+// it into a directory.
+define abstract class <transport> (<object>)
+end;
+
+// Install git packages.
+define class <git-transport> (<object>)
+end;
+
+// TODO: mercurial, tarballs, ...
