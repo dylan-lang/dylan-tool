@@ -63,13 +63,13 @@ define sealed generic find-package
 // for example on a network failure.  This is distinct from installing
 // the package.
 define sealed generic download-version
-    (mgr :: <manager>, pkg :: <package>, ver :: <version>, dest-dir :: <directory-locator>) => ();
+    (pkg :: <package>, ver :: <version>, dest-dir :: <directory-locator>) => ();
 
 // Download and install the given version of pkg into the standard
 // location and update the LATEST pointer if version is the latest
 // version. (What else?)
 define sealed generic install-version
-    (mgr :: <manager>, pkg :: <package>, ver :: <version>) => ();
+    (pkg :: <package>, ver :: <version>) => ();
 
 
 ///

@@ -41,9 +41,6 @@ define function json-to-package
                      license: json["license"],
                      keywords: element(json, "keywords", default: #f),
                      category: element(json, "category", default: #f));
-  for (version in package.versions)
-    version.package := package;
-  end;
   package
 end function json-to-package;
 
@@ -54,7 +51,7 @@ define function json-to-version
        minor: json["minor"],
        patch: json["patch"],
        dependencies: map(string-to-dependency, json["dependencies"]),
-       location: json["location"])
+       source-url: json["source-url"])
 end function json-to-version;
 
 define constant $package-name-regex :: <regex> = compile-regex("([a-zA-Z][a-zA-Z0-9-]*)");
@@ -109,7 +106,7 @@ define function version-to-json
         "minor" => ver.minor,
         "patch" => ver.patch,
         "dependencies" => map(dependency-to-json, ver.dependencies),
-        "location" => ver.location)
+        "source-url" => ver.source-url)
 end function version-to-json;
 
 define function dependency-to-json
