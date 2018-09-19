@@ -8,7 +8,13 @@ Synopsis: Package manager API
 // Return all of pkg's versions as a sequence. The sequence is sorted
 // from oldest version to latest version.
 define sealed generic all-versions
-    (pkg :: <package>) => (versions :: <sequence>);
+    (pkg :: <package>) => (versions :: <package-list>);
+
+// Return version's dependencies, a sequence of other package
+// versions, in the order they appear in the package definition, with
+// duplicates removed.
+define sealed generic transitive-dependencies
+    (pkg :: <package-version>) => (deps :: <dependency-list>);
 
 ///
 /// Catalog
@@ -30,54 +36,37 @@ define open generic store-catalog
 define sealed generic add-package
     (cat :: <catalog>, pkg :: <package>) => ();
 
-// Add a new version to an existing package or signal <package-error>,
-// for example if the given version already exists, or does not have
-// the highest version number.
-define sealed generic add-version
-    (cat :: <catalog>, pkg :: <package>, ver :: <version>) => ();
-
 // Remove a package (all versions) from the catalog if it is
 // present. Signal <package-error> if the package was present and
 // couldn't be removed, for example if there was a problem persisting
 // the modified catalog.
 define sealed generic remove-package
-    (cat :: <catalog>, pkg-name :: <string>) => (removed? :: <boolean>);
+    (cat :: <catalog>, pkg-name :: <str>) => (removed? :: <boolean>);
 
 // TODO:
 //   * verify-package[-version] ?
 
-// TODO: or define forward-iteration-protocol(<catalog>)
+// Return all packages in the catalog as a sequence.
 define sealed generic all-packages
     (cat :: <catalog>) => (pkgs :: <sequence>);
 
 // Find a package in the catalog that has the given name. Package
 // names are always compared ignoring case.
 define sealed generic find-package
-    (cat :: <catalog>, pkg-name :: <string>) => (pkg :: false-or(<package>));
+    (cat :: <catalog>, pkg-name :: <str>, ver :: <version>) => (pkg :: false-or(<package-version>));
 
 ///
 /// Installation
 ///
 
-// Download package's source into dest-dir or signal <package-error>,
+// Download package source into dest-dir or signal <package-error>,
 // for example on a network failure.  This is distinct from installing
 // the package.
-define sealed generic download-version
-    (pkg :: <package>, ver :: <version>, dest-dir :: <directory-locator>) => ();
+define sealed generic download-package
+    (pkg-name :: <str>, ver :: <version>, dest-dir :: <directory-locator>) => (pv :: <package-version>);
 
-// Download and install the given version of pkg into the standard
-// location and update the LATEST pointer if version is the latest
-// version. (What else?)
-define sealed generic install-version
-    (pkg :: <package>, ver :: <version>) => ();
-
-
-///
-/// Versions
-///
-
-// Return version's dependencies, a sequence of other package
-// versions.  If transitive? is true, expand transitive dependencies
-// and remove duplicates.
-define sealed generic transitive-dependencies
-    (version :: <version>) => (deps :: <dependency-list>);
+// Download and install the given version of pkg-name into the
+// standard location and update the LATEST pointer if version is the
+// latest version.
+define sealed generic install-package
+    (pkg-name :: <str>, ver :: <version>) => (pv :: <package-version>);

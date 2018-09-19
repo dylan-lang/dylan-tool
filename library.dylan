@@ -40,12 +40,17 @@ define module package-manager
   // Catalog
   export
     <catalog>,
-    <json-file-storage>,
+    add-package,
+    all-packages,
+    find-package,
     load-catalog,
+    remove-package,
     store-catalog;
 
   // Packages
   export
+    download-package,
+    install-package,
     <package>,
     <version>,
     major,
