@@ -156,39 +156,38 @@ end;
 
 define method store-catalog
     (catalog :: <catalog>, store :: <json-file-storage>)
-  let json = make(<str-map>);
-  for (desc in all-package-descriptors(catalog))
-    let versions = table(<str-map>,
-                         $package-key => package-descriptor-to-json(pkg));
-    for (pkg in desc.packages
-    json[desc.name] := versions
+  let packages = table(<istr-map>, $catalog-key => table(<str-map>, "unused" => "for now"));
+  for (pkg in all-packages(catalog))
+    let desc = pkg.descriptor;
+    let versions = element(packages, desc.name, default: #f);
+    if (~versions)
+      versions := table(<str-map>, $package-key => package-descriptor-to-json(desc));
+      packages[desc.name] := versions;
+    end;
+    versions[version-to-string(pkg.version)] := package-to-json(pkg);
   end;
   with-open-file(stream = store.pathname,
                  direction: #"output",
                  if-exists: #"overwrite")
-    encode-json(stream, json);
+    encode-json(stream, packages);
   end with-open-file;
 end;
 
-define function package-to-json
-    (pkg :: <package>) => (json :: <str-map>)
+define function package-descriptor-to-json
+    (desc :: <package-descriptor>) => (json :: <str-map>)
   table(<str-map>,
         "name" => pkg.name,
         "synopsis" => pkg.synopsis,
         "description" => pkg.description,
-        "versions" => map(version-to-json, pkg.versions),
         "contact" => pkg.contact,
         "license" => pkg.license,
         "keywords" => pkg.keywords,
         "category" => pkg.category)
 end;
 
-define function version-to-json
-    (ver :: <version>) => (json :: <str-map>)
+define function package-to-json
+    (pkg :: <pkg>) => (json :: <str-map>)
   table(<str-map>,
-        "major" => ver.major,
-        "minor" => ver.minor,
-        "patch" => ver.patch,
         "deps" => map(dependency-to-json, ver.dependencies),
         "source-url" => ver.source-url)
 end;
@@ -201,8 +200,8 @@ define function dependency-to-json
 end;
 
 define method all-packages
-    (cat :: <catalog>) => (pkgs :: <package-list>)
-  map-as(<package-list>, identity, cat.packages)
+    (cat :: <catalog>) => (pkgs :: <pkg-vec>)
+  map-as(<pkg-vec>, identity, cat.packages)
 end;
 
 define method add-package

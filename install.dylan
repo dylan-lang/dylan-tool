@@ -19,11 +19,6 @@ define method install-package
   download-package(pkg-name, version, installation-directory(pkg-name, version));
 end method install-package;
 
-define function version-string
-    (ver :: <version>) => (version :: <string>)
-  format-to-string("%d.%d.%d", ver.major, ver.minor, ver,patch)
-end;
-
 // Using this constant works around https://github.com/dylan-lang/dylan-mode/issues/27.
 define constant $github-url = "https://github.com";
 
