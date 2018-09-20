@@ -25,6 +25,16 @@ json catalog format
 define constant $catalog-key :: <str> = "__catalog";
 define constant $package-key :: <str> = "__package";
 
+define class <catalog-error> (<error>)
+end;
+
+define function invalid-catalog-data-error
+    (fmt :: <str>, #rest args) => ()
+  error(make(<catalog-error>,
+             format-string: fmt,
+             format-arguments: args));
+end;
+
 // A datastore backed by a json file on disk. The json encoding is a
 // top-level dictionary mapping package names to package objects,
 // which are themselves encoded as json dictionaries. Almost all
@@ -40,7 +50,8 @@ define constant $catalog-local-filename :: <str> = "catalog.json";
 
 define function catalog-storage
     () => (s :: <storage>)
-  let path = merge-locators($catalog-storage-filename, package-manager-directory());
+  let path = merge-locators(as(<physical-locator>, $catalog-local-filename),
+                            package-manager-directory());
   make(<json-file-storage>, pathname: path)
 end;
 
@@ -58,8 +69,8 @@ define method load-catalog
             num-pkgs, num-versions, store.pathname);
     cat
   else
-    message("No package catalog found in %s.", store.pathname);
-    make(<str-map>);
+    message("WARNING: No package catalog found in %s. Using empty catalog.", store.pathname);
+    make(<catalog>)
   end
 end;
 
@@ -71,12 +82,12 @@ define function json-to-catalog
   // TODO: let metadata = element(json, $catalog-key, default: #f);
   let catalog = make(<catalog>);
   let num-versions = 0;
-  for (version-map keyed-by pkg-name in json)
+  for (versions keyed-by pkg-name in json)
     if (pkg-name ~= $catalog-key)
-      let pkg-desc = json-to-package-descriptor(pkg-name, version-map[$package-key]);
-      for (attrs keyed-by version in version-map)
+      let pkg-desc = json-to-package-descriptor(pkg-name, versions[$package-key]);
+      for (attrs keyed-by version in versions)
         if (version ~= $package-key)
-          add-package(catalog, json-to-package(pkg-desc, version, pkg-dict));
+          add-package(catalog, json-to-package(pkg-desc, version, attrs));
           num-versions := num-versions + 1;
         end if;
       end for;
@@ -95,7 +106,7 @@ define function json-to-package-descriptor
        synopsis: pkg-attrs["synopsis"],
        description: pkg-attrs["description"],
        contact: pkg-attrs["contact"],
-       licence-type: pkg-attrs["license"],
+       licence-type: pkg-attrs["license-type"],
        keywords: element(pkg-attrs, "keywords", default: #f),
        category: element(pkg-attrs, "category", default: #f))
 end;
@@ -176,20 +187,20 @@ end;
 define function package-descriptor-to-json
     (desc :: <package-descriptor>) => (json :: <str-map>)
   table(<str-map>,
-        "name" => pkg.name,
-        "synopsis" => pkg.synopsis,
-        "description" => pkg.description,
-        "contact" => pkg.contact,
-        "license" => pkg.license,
-        "keywords" => pkg.keywords,
-        "category" => pkg.category)
+        "name" => desc.name,
+        "synopsis" => desc.synopsis,
+        "description" => desc.description,
+        "contact" => desc.contact,
+        "license-type" => desc.license-type,
+        "keywords" => desc.keywords,
+        "category" => desc.category)
 end;
 
 define function package-to-json
     (pkg :: <pkg>) => (json :: <str-map>)
   table(<str-map>,
-        "deps" => map(dependency-to-json, ver.dependencies),
-        "source-url" => ver.source-url)
+        "deps" => map(dependency-to-json, pkg.dependencies),
+        "source-url" => pkg.source-url)
 end;
 
 define function dependency-to-json
@@ -205,11 +216,11 @@ define method all-packages
 end;
 
 define method add-package
-    (cat :: <catalog>, pkg :: <package>) => ()
-  if (element(cat.packages, pkg.name, default: #f))
+    (cat :: <catalog>, pkg :: <pkg>) => ()
+  if (element(cat.packages, pkg.descriptor.name, default: #f))
     error(make(<package-error>,
                format-string: "Attempt to add package %=, which already exists in the catalog.",
-               format-arguments: list(pkg.name)));
+               format-arguments: list(pkg.descriptor.name)));
   end;
-  cat.packages[pkg.name] := pkg;
+  cat.packages[pkg.descriptor.name] := pkg;
 end;

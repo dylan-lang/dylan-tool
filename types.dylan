@@ -9,11 +9,11 @@ define constant <str> = <string>;
 define constant <str-map> = <string-table>;
 define constant <istr-map> = <case-insensitive-string-table>;
 
-define constant <int-vec> = limited(<vector>, of: <int>);
 define constant <str-vec> = limited(<vector>, of: <str>);
 define constant <dep-vec> = limited(<vector>, of: <dep>);
+define constant <pkg-vec> = limited(<vector>, of: <pkg>);
 
-define class <pkg-error> (<simple-error>)
+define class <package-error> (<simple-error>)
 end;
 
 // The name of the Dylan environment variable.
@@ -97,7 +97,7 @@ end;
 define class <latest> (<version>)
 end;
 
-define method make (class == <latest>, #key)
+define method make (class == <latest>, #key) => (v :: <latest>)
   next-method(class, major: -1, minor: -1, patch: -1)
 end;
 
@@ -129,4 +129,11 @@ end;
 define function package-manager-directory
     () => (dir :: <directory-locator>)
   subdirectory-locator(dylan-directory(), "pkg")
+end;
+
+// Display a message on stdout. Abstracted here so we can easily change all
+// output, or log it or whatever.
+define function message
+    (fmt :: <str>, #rest args) => ()
+  apply(format-out, fmt, args)
 end;

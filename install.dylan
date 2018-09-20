@@ -1,29 +1,36 @@
 Module: package-manager
 Synopsis: Package download and installation
 
+define function installation-directory
+    (pkg-name :: <str>, ver :: <version>) => (dir :: <directory-locator>)
+  subdirectory-locator(package-manager-directory(), as-lowercase(pkg-name), version-to-string(ver))
+end;
+
 define method download-package
-    (pkg-name :: <string>, ver :: <version>, dest-dir :: <directory-locator>)
- => (pv :: <package-version>)
-  let catalog = load-catalog();
-  let url = version.source-url;
-  let transport = transport-from-url(url);
+    (pkg-name :: <str>, ver :: <version>, dest-dir :: <directory-locator>) => (p :: <pkg>)
+  let catalog = load-catalog(...);
+  let pkg = find-package(catalog, pkg-name, ver);
+  if (~pkg)
+    package-not-found-error(pkg-name, ver);
+  end;
+  let url = pkg.source-url;
   // Dispatch based on the transport type: git, mercurial, tarball, ...
-  download(transport, url, dest-dir);
+  download(transport-from-url(url), url, dest-dir);
 end method download-package;
 
-// Download a package version and install it in the standard location
+// Download a package and install it in the standard location
 // based on the version number.
 // TODO: skip if already installed.
 define method install-package
-    (pkg-name :: <string>, version :: <version>) => (pkg :: <package>)
-  download-package(pkg-name, version, installation-directory(pkg-name, version));
+    (pkg-name :: <str>, ver :: <version>) => (p :: <pkg>)
+  download-package(pkg-name, ver, installation-directory(pkg-name, ver));
 end method install-package;
 
 // Using this constant works around https://github.com/dylan-lang/dylan-mode/issues/27.
 define constant $github-url = "https://github.com";
 
 define function transport-from-url
-    (url :: <string>) => (transport :: <transport>)
+    (url :: <str>) => (transport :: <transport>)
   // TODO: these shouldn't be github-specific.
   if (#t /* temp */ | starts-with?(url, $github-url))
     make(<git-transport>)
@@ -38,7 +45,7 @@ end function transport-from-url;
 //       development, e.g., into a workspace) just do a shallow clone
 //       of a specific branch.  #key shallow?
 define method download
-    (transport :: <git-transport>, url :: <string>, dest-dir :: <directory-locator>)
+    (transport :: <git-transport>, url :: <str>, dest-dir :: <directory-locator>)
  => ()
   // TODO: for git packages, how to handle branches? Require branch
   // "version-1.2.3" to exist?

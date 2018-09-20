@@ -8,13 +8,13 @@ Synopsis: Package manager API
 // Return all of pkg's versions as a sequence. The sequence is sorted
 // from oldest version to latest version.
 define sealed generic all-versions
-    (pkg :: <package>) => (versions :: <package-list>);
+    (pkg :: <pkg>) => (versions :: <pkg-vec>);
 
-// Return version's dependencies, a sequence of other package
+// Return pkg's dependencies, a sequence of other package
 // versions, in the order they appear in the package definition, with
 // duplicates removed.
 define sealed generic transitive-dependencies
-    (pkg :: <package-version>) => (deps :: <dependency-list>);
+    (pkg :: <pkg>) => (deps :: <dep-vec>);
 
 ///
 /// Catalog
@@ -34,7 +34,7 @@ define open generic store-catalog
 // if the package was already present.
 // TODO: should the package be allowed to have any versions?
 define sealed generic add-package
-    (cat :: <catalog>, pkg :: <package>) => ();
+    (cat :: <catalog>, pkg :: <pkg>) => ();
 
 // Remove a package (all versions) from the catalog if it is
 // present. Signal <package-error> if the package was present and
@@ -53,7 +53,7 @@ define sealed generic all-packages
 // Find a package in the catalog that has the given name. Package
 // names are always compared ignoring case.
 define sealed generic find-package
-    (cat :: <catalog>, pkg-name :: <str>, ver :: <version>) => (pkg :: false-or(<package-version>));
+    (cat :: <catalog>, pkg-name :: <str>, ver :: <version>) => (pkg :: false-or(<pkg>));
 
 ///
 /// Installation
@@ -63,10 +63,10 @@ define sealed generic find-package
 // for example on a network failure.  This is distinct from installing
 // the package.
 define sealed generic download-package
-    (pkg-name :: <str>, ver :: <version>, dest-dir :: <directory-locator>) => (pv :: <package-version>);
+    (pkg-name :: <str>, ver :: <version>, dest-dir :: <directory-locator>) => (p :: <pkg>);
 
 // Download and install the given version of pkg-name into the
 // standard location and update the LATEST pointer if version is the
 // latest version.
 define sealed generic install-package
-    (pkg-name :: <str>, ver :: <version>) => (pv :: <package-version>);
+    (pkg-name :: <str>, v :: <version>) => (p :: <pkg>);

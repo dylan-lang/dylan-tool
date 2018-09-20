@@ -2,7 +2,8 @@ Module: dylan-user
 Synopsis: Dylan package manager
 
 define library package-manager
-  use common-dylan;
+  use common-dylan,
+    import: { common-dylan, simple-format };
   use collections,
     import: { table-extensions };
   use system,
@@ -23,13 +24,13 @@ define module package-manager
   use json,
     import: { parse-json, encode-json };
   use locators,
-    import: { <directory-locator>, subdirectory-locator };
+    import: { <directory-locator>, <physical-locator>, merge-locators, subdirectory-locator };
   use operating-system,
     import: { environment-variable, run-application };
   use regular-expressions,
     import: { <regex>, compile-regex, regex-pattern, regex-search-strings };
   use simple-format,
-    import: { format-to-string };
+    import: { format-out, format-to-string };
   use streams,
     import: { read-to-end };
   use strings,
@@ -51,7 +52,7 @@ define module package-manager
   export
     download-package,
     install-package,
-    <package>,
+    <pkg>,
     <version>,
     major,
     minor,
