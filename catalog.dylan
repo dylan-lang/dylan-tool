@@ -8,7 +8,7 @@ json catalog format
 {
   "__catalog": { ... catalog metadata ... }
   "http": {
-    "__package": { ... package descriptor attributes ... }
+    "__package": { ... package group attributes ... }
     "1.0.0": { ... http 1.0.0 attributes ... }
     "1.2.3": { ... http 1.2.3 attributes ... }
   }
@@ -22,8 +22,8 @@ json catalog format
 
 // TODO: locking
 
-define constant $catalog-key :: <str> = "__catalog";
-define constant $package-key :: <str> = "__package";
+define constant $catalog-attrs-key :: <str> = "__catalog_attributes";
+define constant $package-group-attrs-key :: <str> = "__package_group_attributes";
 
 define class <catalog-error> (<package-error>)
 end;
@@ -90,11 +90,11 @@ define function json-to-catalog
   let catalog = make(<catalog>);
   let num-versions = 0;
   for (versions keyed-by pkg-name in json)
-    if (pkg-name ~= $catalog-key)
-      let pkg-desc = json-to-package-descriptor(pkg-name, versions[$package-key]);
+    if (pkg-name ~= $catalog-attrs-key)
+      let group = json-to-pkg-group(pkg-name, versions[$package-group-attrs-key]);
       for (attrs keyed-by version in versions)
-        if (version ~= $package-key)
-          add-package(catalog, json-to-package(pkg-desc, version, attrs));
+        if (version ~= $package-group-attrs-key)
+          add-package(catalog, json-to-package(group, version, attrs));
           num-versions := num-versions + 1;
         end if;
       end for;
@@ -103,12 +103,12 @@ define function json-to-catalog
   values(catalog, catalog.packages.size, num-versions)
 end;
 
-define function json-to-package-descriptor
-    (pkg-name :: <str>, pkg-attrs :: <any>) => (d :: <package-descriptor>)
+define function json-to-pkg-group
+    (pkg-name :: <str>, pkg-attrs :: <any>) => (d :: <pkg-group>)
   if (~instance?(pkg-attrs, <str-map>))
     invalid-catalog-data-error("Package structure must be a map.")
   end;
-  make(<package-descriptor>,
+  make(<pkg-group>,
        name: pkg-name,
        synopsis: pkg-attrs["synopsis"],
        description: pkg-attrs["description"],
@@ -119,12 +119,12 @@ define function json-to-package-descriptor
 end;
 
 define function json-to-package
-    (pkg-desc :: <package-descriptor>, version :: <str>, pkg-attrs :: <any>) => (p :: <pkg>)
+    (group :: <pkg-group>, version :: <str>, pkg-attrs :: <any>) => (p :: <pkg>)
   if (~instance?(pkg-attrs, <str-map>))
     invalid-catalog-data-error("Package version structure must be a map.")
   end;
   make(<pkg>,
-       descriptor: pkg-desc,
+       group: group,
        version: json-to-version(version),
        dependencies: map(string-to-dependency, pkg-attrs["deps"]),
        source-url: pkg-attrs["source-url"])
@@ -174,13 +174,13 @@ end;
 
 define method store-catalog
     (catalog :: <catalog>, store :: <json-file-storage>)
-  let packages = table(<istr-map>, $catalog-key => table(<str-map>, "unused" => "for now"));
+  let packages = table(<istr-map>, $catalog-attrs-key => table(<str-map>, "unused" => "for now"));
   for (pkg in all-packages(catalog))
-    let desc = pkg.descriptor;
-    let versions = element(packages, desc.name, default: #f);
+    let group = pkg.group;
+    let versions = element(packages, group.name, default: #f);
     if (~versions)
-      versions := table(<str-map>, $package-key => package-descriptor-to-json(desc));
-      packages[desc.name] := versions;
+      versions := table(<str-map>, $package-group-attrs-key => pkg-group-to-json(group));
+      packages[group.name] := versions;
     end;
     versions[version-to-string(pkg.version)] := package-to-json(pkg);
   end;
@@ -191,16 +191,16 @@ define method store-catalog
   end with-open-file;
 end;
 
-define function package-descriptor-to-json
-    (desc :: <package-descriptor>) => (json :: <str-map>)
+define function pkg-group-to-json
+    (group :: <pkg-group>) => (json :: <str-map>)
   table(<str-map>,
-        "name" => desc.name,
-        "synopsis" => desc.synopsis,
-        "description" => desc.description,
-        "contact" => desc.contact,
-        "license-type" => desc.license-type,
-        "keywords" => desc.keywords,
-        "category" => desc.category)
+        "name" => group.name,
+        "synopsis" => group.synopsis,
+        "description" => group.description,
+        "contact" => group.contact,
+        "license-type" => group.license-type,
+        "keywords" => group.keywords,
+        "category" => group.category)
 end;
 
 define function package-to-json
@@ -224,13 +224,11 @@ end;
 
 define method add-package
     (cat :: <catalog>, pkg :: <pkg>) => ()
-  if (element(cat.packages, pkg.descriptor.name, default: #f))
+  if (element(cat.packages, pkg.group.name, default: #f))
     package-error("Attempt to add package %=, which already exists in the catalog.",
-                  pkg.descriptor.name);
+                  pkg.group.name);
   end;
-  // TODO: no, this is wrong!  Rename <package-descriptor> to
-  // <package-group> and make it a container of packages.
-  cat.packages[pkg.descriptor.name] := pkg;
+  cat.packages[pkg.group.name] := pkg;
 end;
 
 define method find-package

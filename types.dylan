@@ -47,10 +47,10 @@ define function dylan-directory
   end
 end;
 
-// A <package-descriptor> knows about a package as a whole, but info
+// A <pkg-group> knows about a package as a whole, but info
 // that can change when a new version is added to the catalog is
 // stored in the <pkg> class.
-define class <package-descriptor> (<any>)
+define class <pkg-group> (<any>)
   constant slot name :: <str>, required-init-keyword: name:;
   constant slot synopsis :: <str>, required-init-keyword: synopsis:;
   constant slot description :: <str>, required-init-keyword: description:;
@@ -75,7 +75,7 @@ end;
 // Metadata for a specific version of a package. Anything that can
 // change when a new version of the package is released.
 define class <pkg> (<any>)
-  constant slot descriptor :: <package-descriptor>, required-init-keyword: descriptor:;
+  constant slot group :: <pkg-group>, required-init-keyword: group:;
   constant slot version :: <version>, required-init-keyword: version:;
   constant slot dependencies :: <dep-vec>, required-init-keyword: dependencies:;
 
