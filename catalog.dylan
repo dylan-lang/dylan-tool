@@ -25,7 +25,7 @@ json catalog format
 define constant $catalog-key :: <str> = "__catalog";
 define constant $package-key :: <str> = "__package";
 
-define class <catalog-error> (<error>)
+define class <catalog-error> (<package-error>)
 end;
 
 define function invalid-catalog-data-error
@@ -44,19 +44,26 @@ define class <json-file-storage> (<storage>)
 end;
 
 // TODO: for now we assume the catalog is a local file. should be fetched from some URL.
-//define constant $catalog-url :: <uri> = 
+//define constant $catalog-url :: <uri> = "http://github.com/dylan-lang/package-catalog/catalog.json"
 
-define constant $catalog-local-filename :: <str> = "catalog.json";
+define constant $local-catalog-filename :: <str> = "catalog.json";
 
-define function catalog-storage
-    () => (s :: <storage>)
-  let path = merge-locators(as(<physical-locator>, $catalog-local-filename),
+define function local-cache
+    () => (s :: <json-file-storage>)
+  let path = merge-locators(as(<physical-locator>, $local-catalog-filename),
                             package-manager-directory());
   make(<json-file-storage>, pathname: path)
 end;
 
+define function load-catalog
+    (#key store :: false-or(<storage>)) => (cat :: <catalog>)
+  // TODO: Use $catalog-url if local cache out of date, and update local cache.
+  //       If we can't reach $catalog-url, fall-back to local cache.
+  %load-catalog(store | local-cache())
+end;
+
 // Load a json-encoded catalog from file.
-define method load-catalog
+define method %load-catalog
     (store :: <json-file-storage>) => (cat :: <catalog>)
   let json = with-open-file(stream = store.pathname,
                             direction: #"input",
@@ -149,7 +156,7 @@ define function string-to-dependency
     (input :: <str>) => (d :: <dep>)
   let strings = regex-search-strings($dependency-regex, input);
   if (~strings)
-    error("Invalid dependency spec, %=, should be in the form pkg/1.2.3", input)
+    package-error("Invalid dependency spec, %=, should be in the form pkg/1.2.3", input)
   end;
   let name = strings[1];
   let version = strings[2];
@@ -218,9 +225,30 @@ end;
 define method add-package
     (cat :: <catalog>, pkg :: <pkg>) => ()
   if (element(cat.packages, pkg.descriptor.name, default: #f))
-    error(make(<package-error>,
-               format-string: "Attempt to add package %=, which already exists in the catalog.",
-               format-arguments: list(pkg.descriptor.name)));
+    package-error("Attempt to add package %=, which already exists in the catalog.",
+                  pkg.descriptor.name);
   end;
+  // TODO: no, this is wrong!  Rename <package-descriptor> to
+  // <package-group> and make it a container of packages.
   cat.packages[pkg.descriptor.name] := pkg;
 end;
+
+define method find-package
+    (cat :: <catalog>, pkg-name :: <str>, ver :: <version>) => (pkg :: false-or(<pkg>))
+  block (return)
+    let latest = #f;
+    for (pkg keyed-by name in cat.packages)
+      if (~reserved-package-name?(name) & string-equal-ic?(name, pkg-name))
+        if (ver == $latest)
+          if (~latest | pkg.version > latest.version)
+            latest := pkg;
+          end;
+        elseif (ver == pkg.version)
+          return(pkg)
+        end
+      end;
+    end for;
+    latest
+  end block
+end method find-package;
+          

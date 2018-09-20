@@ -20,15 +20,6 @@ define sealed generic transitive-dependencies
 /// Catalog
 ///
 
-// Load the catalog from storage. If there is no catalog in the given
-// storage location an empty catalog is returned.
-define open generic load-catalog
-    (store :: <storage>) => (cat :: <catalog>);
-
-// Store a catalog in a format appropriate for the given storage.
-define open generic store-catalog
-    (catalog :: <catalog>, store :: <storage>);
-
 // Add a new package to the catalog or signal <package-error>, for
 // example if there was a problem persisting the modified catalog or
 // if the package was already present.

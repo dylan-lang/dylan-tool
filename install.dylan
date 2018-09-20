@@ -3,19 +3,23 @@ Synopsis: Package download and installation
 
 define function installation-directory
     (pkg-name :: <str>, ver :: <version>) => (dir :: <directory-locator>)
-  subdirectory-locator(package-manager-directory(), as-lowercase(pkg-name), version-to-string(ver))
+  subdirectory-locator(package-manager-directory(),
+                       as-lowercase(pkg-name),
+                       version-to-string(ver))
 end;
 
 define method download-package
     (pkg-name :: <str>, ver :: <version>, dest-dir :: <directory-locator>) => (p :: <pkg>)
-  let catalog = load-catalog(...);
+  let catalog = load-catalog();
+  let pkg-name :: <str> = pkg-name;
   let pkg = find-package(catalog, pkg-name, ver);
   if (~pkg)
-    package-not-found-error(pkg-name, ver);
+    package-error("package not found: %s/%s", pkg-name, version-to-string(ver));
   end;
   let url = pkg.source-url;
   // Dispatch based on the transport type: git, mercurial, tarball, ...
   download(transport-from-url(url), url, dest-dir);
+  pkg
 end method download-package;
 
 // Download a package and install it in the standard location
@@ -35,9 +39,7 @@ define function transport-from-url
   if (#t /* temp */ | starts-with?(url, $github-url))
     make(<git-transport>)
   else
-    error(make(<package-error>,
-               format-string: "Unrecognized package source URL: %=",
-               format-arguments: list(url)));
+    package-error("unrecognized package source URL: %=", url);
   end
 end function transport-from-url;
 
@@ -60,8 +62,6 @@ define method download
                       if-output-exists: #"append",
                       if-error-exists: #"append");
   if (exit-code ~= 0)
-    error(make(<package-error>,
-               format-string: "git clone command (%=) failed with exit code %d.",
-               format-arguments: list(command, exit-code)));
+    package-error("git clone command (%=) failed with exit code %d.", command, exit-code);
   end;
 end method download;

@@ -34,7 +34,7 @@ define module package-manager
   use streams,
     import: { read-to-end };
   use strings,
-    import: { starts-with? };
+    import: { starts-with?, string-equal-ic? };
   use table-extensions,
     import: { table, <case-insensitive-string-table> };
 

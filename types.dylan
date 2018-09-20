@@ -16,6 +16,11 @@ define constant <pkg-vec> = limited(<vector>, of: <pkg>);
 define class <package-error> (<simple-error>)
 end;
 
+define function package-error
+    (msg :: <str>, #rest args)
+  error(make(<package-error>, format-string: msg, format-arguments: args));
+end;
+
 // The name of the Dylan environment variable.
 define constant $dylan :: <str> = "DYLAN";
 
@@ -42,8 +47,9 @@ define function dylan-directory
   end
 end;
 
-// A <package-descriptor> knows about a package as a whole, but info that can change when a new
-// version is added to the catalog is stored in the <pkg> class.
+// A <package-descriptor> knows about a package as a whole, but info
+// that can change when a new version is added to the catalog is
+// stored in the <pkg> class.
 define class <package-descriptor> (<any>)
   constant slot name :: <str>, required-init-keyword: name:;
   constant slot synopsis :: <str>, required-init-keyword: synopsis:;
@@ -66,16 +72,16 @@ define class <dep> (<any>)
   constant slot version :: <version>, required-init-keyword: version:;
 end;
 
-
-// Metadata for a specific version of a package. Anything that can change when a new version of the
-// package is released.
+// Metadata for a specific version of a package. Anything that can
+// change when a new version of the package is released.
 define class <pkg> (<any>)
   constant slot descriptor :: <package-descriptor>, required-init-keyword: descriptor:;
   constant slot version :: <version>, required-init-keyword: version:;
   constant slot dependencies :: <dep-vec>, required-init-keyword: dependencies:;
 
-  // Identifies where the package can be downloaded from. For example a git repo or URL pointing to
-  // a tarball. (Details TBD. Could be type <url>?)
+  // Identifies where the package can be downloaded from. For example
+  // a git repo or URL pointing to a tarball. (Details TBD. Could be
+  // type <url>?)
   constant slot source-url :: <str>, required-init-keyword: source-url:;
 end;
 
@@ -83,8 +89,9 @@ define class <version> (<any>)
   constant slot major :: <int>, required-init-keyword: major:;
   constant slot minor :: <int>, required-init-keyword: minor:;
   constant slot patch :: <int>, required-init-keyword: patch:;
-  // TODO: consider adding a tag slot for "alpha-1" or "rc.3". I think it would not be part of the
-  // equality comparisons and would be solely for display purposes but I'm not sure.
+  // TODO: consider adding a tag slot for "alpha-1" or "rc.3". I think
+  // it would not be part of the equality comparisons and would be
+  // solely for display purposes but I'm not sure.
 end;
 
 define function version-to-string
