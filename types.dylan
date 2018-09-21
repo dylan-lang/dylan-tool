@@ -1,10 +1,9 @@
 Module: package-manager
 
-// This file might better be called load-me-first.dylan.
-
 // Trying these on for size.
-define constant <int> = <integer>;
 define constant <any> = <object>;
+define constant <bool> = <boolean>;
+define constant <int> = <integer>;
 define constant <str> = <string>;
 define constant <str-map> = <string-table>;
 define constant <istr-map> = <case-insensitive-string-table>;
@@ -54,6 +53,7 @@ define class <pkg-group> (<any>)
   constant slot name :: <str>, required-init-keyword: name:;
   constant slot synopsis :: <str>, required-init-keyword: synopsis:;
   constant slot description :: <str>, required-init-keyword: description:;
+  constant slot packages :: <pkg-vec>, required-init-keyword: packages:;
 
   // Who to contact with questions about this package.
   constant slot contact :: <str>, required-init-keyword: contact:;
@@ -66,25 +66,6 @@ define class <pkg-group> (<any>)
 end;
 
 
-// A dependency on a specific version of a package.
-define class <dep> (<any>)
-  constant slot package-name :: <str>, required-init-keyword: name:;
-  constant slot version :: <version>, required-init-keyword: version:;
-end;
-
-// Metadata for a specific version of a package. Anything that can
-// change when a new version of the package is released.
-define class <pkg> (<any>)
-  constant slot group :: <pkg-group>, required-init-keyword: group:;
-  constant slot version :: <version>, required-init-keyword: version:;
-  constant slot dependencies :: <dep-vec>, required-init-keyword: dependencies:;
-
-  // Identifies where the package can be downloaded from. For example
-  // a git repo or URL pointing to a tarball. (Details TBD. Could be
-  // type <url>?)
-  constant slot source-url :: <str>, required-init-keyword: source-url:;
-end;
-
 define class <version> (<any>)
   constant slot major :: <int>, required-init-keyword: major:;
   constant slot minor :: <int>, required-init-keyword: minor:;
@@ -95,26 +76,75 @@ define class <version> (<any>)
 end;
 
 define function version-to-string
-    (ver :: <version>) => (v :: <str>)
-  format-to-string("%d.%d.%d", ver.major, ver.minor, ver,patch)
+    (v :: <version>) => (_ :: <str>)
+  format-to-string("%d.%d.%d", v.major, v.minor, v.patch)
 end;
 
-// TODO: subclass uncommon-dylan:<singleton-object>. Don't want to deal with
-// updating the registry and so on right now....
-define class <latest> (<version>)
+define constant $version-regex :: <regex> = compile-regex("(\\d+)\\.(\\d+)\\.(\\d+)");
+
+define function string-to-version
+    (input :: <str>) => (_ :: <version>)
+  let strings = regex-search-strings($version-regex, input);
+  make(<version>,
+       major: string-to-integer(strings[1]),
+       minor: string-to-integer(strings[2]),
+       patch: string-to-integer(strings[3]))
 end;
 
-define method make (class == <latest>, #key) => (v :: <latest>)
-  next-method(class, major: -1, minor: -1, patch: -1)
+define class <latest> (<version>, <singleton-object>)
 end;
 
-define constant $latest :: <latest> = make(<latest>);
+define constant $latest :: <latest> = make(<latest>, major: -1, minor: -1, patch: -1);
+
+
+// A dependency on a specific version of a package.
+define class <dep> (<any>)
+  constant slot package-name :: <str>, required-init-keyword: name:;
+  constant slot version :: <version>, required-init-keyword: version:;
+end;
+
+define function dep-to-string (dep :: <dep>) => (_ :: <str>)
+  format-to-string("%s/%s", dep.package-name, version-to-string(dep.version))
+end;
+
+// TODO: validate package names against this when packages are added.
+// Start out with a restrictive naming scheme. Can expand later if needed.
+define constant $package-name-regex :: <regex> = compile-regex("([a-zA-Z][a-zA-Z0-9-]*)");
+define constant $dependency-regex :: <regex>
+  = compile-regex(concatenate(regex-pattern($package-name-regex),
+                              "/(", regex-pattern($version-regex), ")"));
+
+// Parse a dependency spec in the form pkg-name/m.n.p.
+define function string-to-dep
+    (input :: <str>) => (d :: <dep>)
+  let strings = regex-search-strings($dependency-regex, input);
+  if (~strings)
+    catalog-error("Invalid dependency spec, %=, should be in the form pkg/1.2.3", input)
+  end;
+  let name = strings[1];
+  let version = strings[2];
+  make(<dep>, name: name, version: string-to-version(version))
+end;
+
+
+// Metadata for a specific version of a package. Anything that can
+// change when a new version of the package is released.
+define class <pkg> (<any>)
+  slot group :: <pkg-group>, required-init-keyword: group:;
+  constant slot version :: <version>, required-init-keyword: version:;
+  constant slot dependencies :: <dep-vec>, required-init-keyword: dependencies:;
+
+  // Identifies where the package can be downloaded from. For example
+  // a git repo or URL pointing to a tarball. (Details TBD. Could be
+  // type <url>?)
+  constant slot source-url :: <str>, required-init-keyword: source-url:;
+end;
 
 
 // The catalog knows what packages (and versions thereof) exist.
 define sealed class <catalog> (<any>)
-  // Maps package names to <pkg>s.
-  constant slot packages :: <istr-map> = make(<istr-map>);
+  // Maps package names to <pkg-group>s.
+  constant slot package-groups :: <istr-map>, required-init-keyword: package-groups:;
 end;
 
 // A place to store catalog data.

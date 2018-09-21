@@ -13,6 +13,7 @@ define library package-manager
   use json;
   use regular-expressions;
   use strings;
+  use uncommon-dylan;
   export
     package-manager;
 end library package-manager;
@@ -37,6 +38,8 @@ define module package-manager
     import: { starts-with?, string-equal-ic? };
   use table-extensions,
     import: { table, <case-insensitive-string-table> };
+  use uncommon-dylan,
+    import: { <singleton-object> };
 
   // Catalog
   export
