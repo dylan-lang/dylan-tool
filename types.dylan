@@ -84,7 +84,7 @@ define constant $version-regex :: <regex> = compile-regex("(\\d+)\\.(\\d+)\\.(\\
 
 define function string-to-version
     (input :: <str>) => (_ :: <version>)
-  let strings = regex-search-strings($version-regex, input);
+  let (#rest strings) = regex-search-strings($version-regex, input);
   make(<version>,
        major: string-to-integer(strings[1]),
        minor: string-to-integer(strings[2]),
@@ -117,7 +117,7 @@ define constant $dependency-regex :: <regex>
 // Parse a dependency spec in the form pkg-name/m.n.p.
 define function string-to-dep
     (input :: <str>) => (d :: <dep>)
-  let strings = regex-search-strings($dependency-regex, input);
+  let (#rest strings) = regex-search-strings($dependency-regex, input);
   if (~strings)
     catalog-error("Invalid dependency spec, %=, should be in the form pkg/1.2.3", input)
   end;
@@ -130,7 +130,7 @@ end;
 // Metadata for a specific version of a package. Anything that can
 // change when a new version of the package is released.
 define class <pkg> (<any>)
-  slot group :: <pkg-group>, required-init-keyword: group:;
+  slot group :: <pkg-group>;    // back-pointer filled in after init.
   constant slot version :: <version>, required-init-keyword: version:;
   constant slot dependencies :: <dep-vec>, required-init-keyword: dependencies:;
 
