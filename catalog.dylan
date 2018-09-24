@@ -1,4 +1,4 @@
-Module: package-manager
+Module: pacman
 
 /*
 json catalog format
@@ -67,12 +67,13 @@ end;
 // Load a json-encoded catalog from file.
 define method %load-catalog
     (store :: <json-file-storage>) => (_ :: <catalog>)
-  let json = with-open-file(stream = store.pathname,
+  let text = with-open-file(stream = store.pathname,
                             direction: #"input",
                             if-does-not-exist: #f)
-               parse-json(read-to-end(stream))
+               read-to-end(stream)
              end;
-  if (json)
+  if (text)
+    let json = parse-json(text);
     let (cat, num-pkgs, num-versions) = json-to-catalog(json);
     message("Loaded %d packages with %d versions from %s.",
             num-pkgs, num-versions, store.pathname);

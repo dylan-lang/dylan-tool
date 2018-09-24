@@ -1,0 +1,11 @@
+Module: dylan-user
+
+define library pacman-test
+  use common-dylan;
+  use testworks;
+end;
+
+define module pacman-test
+  use common-dylan;
+  use testworks;
+end;

@@ -1,5 +1,6 @@
-Module: package-manager
+Module: pacman
 Synopsis: Package download and installation
+
 
 define function installation-directory
     (pkg-name :: <str>, ver :: <version>) => (dir :: <directory-locator>)

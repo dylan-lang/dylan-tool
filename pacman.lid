@@ -1,4 +1,4 @@
-library: package-manager
+library: pacman
 files: library.dylan
        types.dylan
        api.dylan

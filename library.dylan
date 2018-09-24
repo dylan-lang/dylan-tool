@@ -1,7 +1,7 @@
 Module: dylan-user
 Synopsis: Dylan package manager
 
-define library package-manager
+define library pacman
   use common-dylan,
     import: { common-dylan, simple-format };
   use collections,
@@ -15,10 +15,15 @@ define library package-manager
   use strings;
   use uncommon-dylan;
   export
-    package-manager;
-end library package-manager;
+    pacman,
+    %pacman;
+end library pacman;
 
-define module package-manager
+define module %pacman
+  create json-to-catalog;
+end;
+
+define module pacman
   use common-dylan;
   use file-system,
     import: { with-open-file };
@@ -41,6 +46,8 @@ define module package-manager
   use uncommon-dylan,
     import: { <singleton-object> };
 
+  use %pacman;
+
   // Catalog
   export
     <catalog>,
@@ -60,4 +67,4 @@ define module package-manager
     major,
     minor,
     patch;
-end module package-manager;
+end module pacman;

@@ -1,4 +1,4 @@
-Module: package-manager
+Module: pacman
 
 // Trying these on for size.
 define constant <any> = <object>;

@@ -1,4 +1,4 @@
-Module: package-manager
+Module: pacman
 Synopsis: Package manager API
 
 ///
