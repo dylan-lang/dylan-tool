@@ -1,4 +1,4 @@
-Module: pacman
+Module: %pacman
 
 /*
 json catalog format
@@ -21,8 +21,6 @@ json catalog format
 }
 
 */
-
-// TODO: a lot
 
 define constant $catalog-attrs-key :: <str> = "__catalog_attributes";
 
@@ -67,21 +65,25 @@ end;
 // Load a json-encoded catalog from file.
 define method %load-catalog
     (store :: <json-file-storage>) => (_ :: <catalog>)
-  let text = with-open-file(stream = store.pathname,
-                            direction: #"input",
-                            if-does-not-exist: #f)
-               read-to-end(stream)
-             end;
-  if (text)
-    let json = parse-json(text);
-    let (cat, num-pkgs, num-versions) = json-to-catalog(json);
+  with-open-file(stream = store.pathname,
+                 direction: #"input",
+                 if-does-not-exist: #f)
+    let (cat, num-pkgs, num-versions) = read-json-catalog(stream);
     message("Loaded %d packages with %d versions from %s.",
             num-pkgs, num-versions, store.pathname);
     cat
-  else
-    message("WARNING: No package catalog found in %s. Using empty catalog.", store.pathname);
-    make(<catalog>)
   end
+  | begin
+      message("WARNING: No package catalog found in %s. Using empty catalog.", store.pathname);
+      make(<catalog>)
+    end
+end;
+
+define function read-json-catalog
+    (stream :: <stream>, #key table-class)
+ => (_ :: <catalog>, pkgs :: <int>, versions :: <int>)
+  let json = parse-json(stream, table-class: table-class | <string-table>);
+  json-to-catalog(json)
 end;
 
 define function json-to-catalog
@@ -118,7 +120,7 @@ define function json-to-pkg-group
        description: group-attrs["description"],
        category: element(group-attrs, "category", default: #f),
        keywords: element(group-attrs, "keywords", default: #f),
-       licence-type: group-attrs["license-type"],
+       license-type: group-attrs["license-type"],
        synopsis: group-attrs["synopsis"])
 end;
 
@@ -126,22 +128,27 @@ define function json-to-pkg
     (version :: <str>, pkg-attrs :: <str-map>) => (_ :: <pkg>)
   make(<pkg>,
        version: string-to-version(version),
-       dependencies: map(string-to-dep, pkg-attrs["deps"]),
+       dependencies: map-as(<dep-vec>, string-to-dep, pkg-attrs["deps"]),
        source-url: pkg-attrs["source-url"])
 end;
 
 define method store-catalog
-    (catalog :: <catalog>, store :: <json-file-storage>)
+    (catalog :: <catalog>, store :: <json-file-storage>) => ()
+  with-open-file(stream = store.pathname,
+                 direction: #"output",
+                 if-exists: #"overwrite")
+    write-json-catalog(catalog, stream)
+  end;
+end;
+
+define function write-json-catalog
+    (catalog :: <catalog>, stream :: <stream>) => ()
   let groups = table(<istr-map>,
                      $catalog-attrs-key => table(<str-map>, "unused" => "for now"));
   for (group in catalog.package-groups)
     groups[group.name] := pkg-group-to-json(group);
   end;
-  with-open-file(stream = store.pathname,
-                 direction: #"output",
-                 if-exists: #"overwrite")
-    encode-json(stream, groups);
-  end;
+  encode-json(stream, groups);
 end;
 
 define function pkg-group-to-json
@@ -151,7 +158,6 @@ define function pkg-group-to-json
     versions[version-to-string(pkg.version)] := pkg-to-json(pkg);
   end;
   table(<str-map>,
-        "name" => group.name,
         "synopsis" => group.synopsis,
         "description" => group.description,
         "contact" => group.contact,
@@ -164,23 +170,32 @@ end;
 define function pkg-to-json
     (pkg :: <pkg>) => (json :: <str-map>)
   table(<str-map>,
-        "deps" => map(dep-to-string, pkg.dependencies),
+        "deps" => map-as(<vector>, dep-to-string, pkg.dependencies),
         "source-url" => pkg.source-url)
+end;
+
+define method find-package
+    (cat :: <catalog>, pkg-name :: <str>, ver :: <string>) => (pkg :: false-or(<pkg>))
+  find-package(cat, pkg-name, string-to-version(ver))
 end;
 
 define method find-package
     (cat :: <catalog>, pkg-name :: <str>, ver :: <version>) => (pkg :: false-or(<pkg>))
   let group = element(cat.package-groups, pkg-name, default: #f);
-  group &
-    block (return)
-      let latest = #f;
-      for (pkg in group.packages)
-        if (ver == $latest & (~latest | pkg.version > latest.version))
-          latest := pkg;
-        elseif (ver == pkg.version)
-          return(pkg)
-        end
-      end for;
-      latest
-    end block
+  group & group.packages.size > 0 &
+    if (ver = $latest)
+      let newest-first = sort(group.packages,
+                              test: method (p1, p2)
+                                      p1.version > p2.version
+                                    end);
+      newest-first[0]
+    else
+      block (return)
+        for (pkg in group.packages)
+          if (pkg.version = ver)
+            return(pkg)
+          end
+        end for
+      end block
+    end if
 end;

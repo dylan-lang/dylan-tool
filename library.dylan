@@ -16,14 +16,53 @@ define library pacman
   use uncommon-dylan;
   export
     pacman,
-    %pacman;
+    %pacman;                    // For the test suite.
 end library pacman;
 
-define module %pacman
-  create json-to-catalog;
-end;
-
 define module pacman
+  // Catalog
+  export
+    <catalog>,
+    package-groups,
+    add-package,
+    all-packages,
+    find-package,
+    load-catalog,
+    remove-package,
+    store-catalog;
+
+  // Packages
+  export
+    download-package,
+    install-package,
+
+    <pkg>,
+    dependencies,
+    group,
+    source-url,
+
+    <pkg-group>,
+    category,
+    contact,
+    description,
+    keywords,
+    name,
+    license-type,
+    packages,
+    synopsis,
+    
+    <dep>,
+    package-name,
+    version,
+
+    <version>,
+    $latest,
+    major,
+    minor,
+    patch;
+end module pacman;
+
+define module %pacman
   use common-dylan;
   use file-system,
     import: { with-open-file };
@@ -46,25 +85,11 @@ define module pacman
   use uncommon-dylan,
     import: { <singleton-object> };
 
-  use %pacman;
+  use pacman, export: all;
 
-  // Catalog
+  // For the test suite.
   export
-    <catalog>,
-    add-package,
-    all-packages,
-    find-package,
-    load-catalog,
-    remove-package,
-    store-catalog;
-
-  // Packages
-  export
-    download-package,
-    install-package,
-    <pkg>,
-    <version>,
-    major,
-    minor,
-    patch;
-end module pacman;
+    read-json-catalog,
+    write-json-catalog,
+    version-to-string;
+end module %pacman;

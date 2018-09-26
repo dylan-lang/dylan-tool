@@ -1,14 +1,14 @@
-Module: pacman
+Module: %pacman
 
 // Trying these on for size.
 define constant <any> = <object>;
 define constant <bool> = <boolean>;
 define constant <int> = <integer>;
+define constant <seq> = <sequence>;
 define constant <str> = <string>;
 define constant <str-map> = <string-table>;
 define constant <istr-map> = <case-insensitive-string-table>;
 
-define constant <str-vec> = limited(<vector>, of: <str>);
 define constant <dep-vec> = limited(<vector>, of: <dep>);
 define constant <pkg-vec> = limited(<vector>, of: <pkg>);
 
@@ -61,7 +61,7 @@ define class <pkg-group> (<any>)
   // License type for this package, e.g. "MIT" or "BSD".
   constant slot license-type :: <str>, required-init-keyword: license-type:;
 
-  constant slot keywords :: false-or(<str-vec>) = #f, init-keyword: keywords:;
+  constant slot keywords :: false-or(<seq>) = #f, init-keyword: keywords:;
   constant slot category :: false-or(<str>) = #f, init-keyword: category:;
 end;
 
@@ -84,11 +84,11 @@ define constant $version-regex :: <regex> = compile-regex("(\\d+)\\.(\\d+)\\.(\\
 
 define function string-to-version
     (input :: <str>) => (_ :: <version>)
-  let (#rest strings) = regex-search-strings($version-regex, input);
+  let (_, maj, min, pat) = regex-search-strings($version-regex, input);
   make(<version>,
-       major: string-to-integer(strings[1]),
-       minor: string-to-integer(strings[2]),
-       patch: string-to-integer(strings[3]))
+       major: string-to-integer(maj),
+       minor: string-to-integer(min),
+       patch: string-to-integer(pat))
 end;
 
 define class <latest> (<version>, <singleton-object>)
@@ -96,6 +96,19 @@ end;
 
 define constant $latest :: <latest> = make(<latest>, major: -1, minor: -1, patch: -1);
 
+define method \= (v1 :: <version>, v2 :: <version>) => (_ :: <bool>)
+  v1.major == v2.major
+  & v1.minor == v2.minor
+  & v1.patch == v2.patch
+end;
+
+define method \< (v1 :: <version>, v2 :: <version>) => (_ :: <bool>)
+  v1.major < v2.major
+  | (v1.major == v2.major
+       & (v1.minor < v2.minor
+            | (v1.minor == v2.minor & v1.patch < v2.patch)))
+end;
+  
 
 // A dependency on a specific version of a package.
 define class <dep> (<any>)
@@ -117,12 +130,10 @@ define constant $dependency-regex :: <regex>
 // Parse a dependency spec in the form pkg-name/m.n.p.
 define function string-to-dep
     (input :: <str>) => (d :: <dep>)
-  let (#rest strings) = regex-search-strings($dependency-regex, input);
-  if (~strings)
+  let (_, name, version) = regex-search-strings($dependency-regex, input);
+  if (~name)
     catalog-error("Invalid dependency spec, %=, should be in the form pkg/1.2.3", input)
   end;
-  let name = strings[1];
-  let version = strings[2];
   make(<dep>, name: name, version: string-to-version(version))
 end;
 

@@ -1,4 +1,4 @@
-Module: pacman
+Module: %pacman
 Synopsis: Package manager API
 
 ///
@@ -41,10 +41,12 @@ define sealed generic remove-package
 define sealed generic all-packages
     (cat :: <catalog>) => (pkgs :: <sequence>);
 
-// Find a package in the catalog that has the given name. Package
-// names are always compared ignoring case.
+// Find a package in the catalog that has the given name and
+// version. Package names are always compared ignoring case.  The
+// special version `$latest` finds the latest version of a package.
 define sealed generic find-package
-    (cat :: <catalog>, pkg-name :: <str>, ver :: <version>) => (pkg :: false-or(<pkg>));
+    (cat :: <catalog>, pkg-name :: <str>, ver :: type-union(<string>, <version>))
+ => (pkg :: false-or(<pkg>));
 
 ///
 /// Installation

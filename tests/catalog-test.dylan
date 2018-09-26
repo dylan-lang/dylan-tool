@@ -1,10 +1,12 @@
 Module: pacman-test
 
-define function raw-parser (s :: <string>) => (_ :: <string>) s end;
+define constant <str> = <string>;
 
-define constant $catalog-json =
+define function raw-parser (s :: <str>) => (_ :: <str>) s end;
+
+define constant $catalog-text =
   #raw:({
-         "__catalog_attributes": {},
+         "__catalog_attributes": {"unused": "for now"},
          "http": {
                   "contact": "zippy",
                   "description": "foo",
@@ -14,18 +16,15 @@ define constant $catalog-json =
                   "keywords": [ "http" ],
                   "versions": {
                                "1.0.0": {
-                                         "deps": [ "uri/4.0.9", "opendylan/2014.1.0" ],
+                                         "deps": [ "uri/4.0.9", "opendylan/2014.2.2" ],
                                          "source-url": "https://github.com/dylan-lang/http"
-                                        }
-                              }
-                 }
-           });
-/*
+                                        },
                                "2.10.0": {
-                                         "deps": [ "strings/2.3.3", "uri/6.1.0", "opendylan/2018.0.2" ],
+                                         "deps": [ "strings/2.3.4", "uri/6.1.0", "opendylan/2018.0.2" ],
                                          "source-url": "https://github.com/dylan-lang/http"
                                          }
-
+                              }
+                 },
          "json": {
                   "contact": "me@mine",
                   "description": "bar",
@@ -39,12 +38,41 @@ define constant $catalog-json =
                                          "source-url": "https://github.com/dylan-lang/json"
                                         },
                                "3.1234.100": {
-                                              "deps": [ "strings/2.3.3", "opendylan/2018.0.2" ],
+                                              "deps": [ "strings/3.4.5", "opendylan/2018.8.8" ],
                                               "source-url": "https://github.com/dylan-lang/json"
                                              }
                                }
                    }
-*/
-define test test-json-to-catalog ()
-  let catalog = json-to-catalog(parse-json($catalog-json));
+           });
+
+define function get-test-catalog () => (_ :: <catalog>)
+  with-input-from-string (in = $catalog-text)
+    read-json-catalog(in /* table-class: <ordered-string-table> */)
+  end
 end;
+
+define test test-catalog ()
+  // Okay, this is a shitty test, but what can I do?  We don't have an
+  // <ordered-dict> class, which would allow me to write the json back
+  // out to a string in a predictable way, remove whitespace, and then
+  // diff. We don't have an object differ. So for now I'll just spot
+  // check a few values.
+/*
+  let text = with-output-to-string (out)
+               write-json-catalog(cat1, out)
+             end;
+  let orig-stripped = choose(complement(whitespace?), $catalog-text);
+  let text-stripped = choose(complement(whitespace?), text);
+  assert-equal(orig-stripped, text-stripped);
+*/
+  let cat = get-test-catalog();
+  assert-equal(#["http", "json"], sort(map-as(<vector>, name, cat.package-groups)));
+  let http = find-package(cat, "http", "2.10.0");
+  assert-true(http);
+  assert-equal("MIT", http.group.license-type);
+  assert-equal("opendylan", http.dependencies[2].package-name);
+
+  let json = find-package(cat, "json", $latest);
+  assert-true(json);
+  assert-equal("3.1234.100", version-to-string(json.version));
+end test-catalog;

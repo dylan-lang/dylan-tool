@@ -1,4 +1,4 @@
-Module: pacman
+Module: %pacman
 Synopsis: Package download and installation
 
 
