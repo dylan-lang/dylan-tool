@@ -71,8 +71,11 @@ define test test-catalog ()
   assert-true(http);
   assert-equal("MIT", http.group.license-type);
   assert-equal("opendylan", http.dependencies[2].package-name);
+end;
 
+define test test-latest ()
+  let cat = get-test-catalog();
   let json = find-package(cat, "json", $latest);
   assert-true(json);
   assert-equal("3.1234.100", version-to-string(json.version));
-end test-catalog;
+end;
