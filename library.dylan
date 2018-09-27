@@ -1,6 +1,11 @@
 Module: dylan-user
 Synopsis: Dylan package manager
 
+// Note that in this project I'm trying out a naming style that is
+// less verbose than usual, including renaming some of the basic Dylan
+// types and functions. If it works out maybe I'll make an alternative
+// module to common-dylan called "brevity".
+
 define library pacman
   use common-dylan,
     import: { common-dylan, simple-format };
@@ -63,17 +68,36 @@ define module pacman
 end module pacman;
 
 define module %pacman
-  use common-dylan;
+  use common-dylan,
+    rename: { <object> => <any>,
+              <boolean> => <bool>,
+              <integer> => <int>,
+              <sequence> => <seq>,
+              <string> => <str>,
+
+              <table> => <map>,
+              <string-table> => <str-map>,
+              <case-insensitive-string-table> => <istr-map>,
+
+              concatenate => concat };
   use file-system,
     import: { with-open-file };
   use json,
-    import: { parse-json, encode-json };
+    import: { parse-json => json/parse,
+              encode-json => json/encode };
   use locators,
-    import: { <directory-locator>, <physical-locator>, merge-locators, subdirectory-locator };
+    import: { <directory-locator>,
+              <physical-locator>,
+              merge-locators,
+              subdirectory-locator };
   use operating-system,
-    import: { environment-variable, run-application };
+    import: { environment-variable => os/getenv,
+              run-application => os/run };
   use regular-expressions,
-    import: { <regex>, compile-regex, regex-pattern, regex-search-strings };
+    import: { <regex>,
+              compile-regex => re/compile,
+              regex-pattern => re/pattern,
+              regex-search-strings => re/search-strings };
   use simple-format,
     import: { format-out, format-to-string };
   use streams,
@@ -81,7 +105,8 @@ define module %pacman
   use strings,
     import: { starts-with?, string-equal-ic? };
   use table-extensions,
-    import: { table, <case-insensitive-string-table> };
+    import: { table,
+              <case-insensitive-string-table> => <istr-map> };
   use uncommon-dylan,
     import: { <singleton-object> };
 

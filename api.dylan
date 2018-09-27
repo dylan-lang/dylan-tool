@@ -32,20 +32,20 @@ define sealed generic add-package
 // couldn't be removed, for example if there was a problem persisting
 // the modified catalog.
 define sealed generic remove-package
-    (cat :: <catalog>, pkg-name :: <str>) => (removed? :: <boolean>);
+    (cat :: <catalog>, pkg-name :: <str>) => (removed? :: <bool>);
 
 // TODO:
 //   * verify-package[-version] ?
 
 // Return all packages in the catalog as a sequence.
 define sealed generic all-packages
-    (cat :: <catalog>) => (pkgs :: <sequence>);
+    (cat :: <catalog>) => (pkgs :: <seq>);
 
 // Find a package in the catalog that has the given name and
 // version. Package names are always compared ignoring case.  The
 // special version `$latest` finds the latest version of a package.
 define sealed generic find-package
-    (cat :: <catalog>, pkg-name :: <str>, ver :: type-union(<string>, <version>))
+    (cat :: <catalog>, pkg-name :: <str>, ver :: type-union(<str>, <version>))
  => (pkg :: false-or(<pkg>));
 
 ///

@@ -34,6 +34,8 @@ end method install-package;
 // Using this constant works around https://github.com/dylan-lang/dylan-mode/issues/27.
 define constant $github-url = "https://github.com";
 
+//define constant $git-transport-re = re/compile
+
 define function transport-from-url
     (url :: <str>) => (transport :: <transport>)
   // TODO: these shouldn't be github-specific.
@@ -57,11 +59,11 @@ define method download
   let command = list("git", "clone", "--recurse-submodules",
                      "--branch", branch, url, dest-dir);
   let (exit-code, #rest more)
-    = run-application(command,
-                      output: "/tmp/git-clone-stdout.log", // temp
-                      error: "/tmp/git-clone-stderr.log",  // temp
-                      if-output-exists: #"append",
-                      if-error-exists: #"append");
+    = os/run(command,
+             output: "/tmp/git-clone-stdout.log", // temp
+             error: "/tmp/git-clone-stderr.log",  // temp
+             if-output-exists: #"append",
+             if-error-exists: #"append");
   if (exit-code ~= 0)
     package-error("git clone command (%=) failed with exit code %d.", command, exit-code);
   end;

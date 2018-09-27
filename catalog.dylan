@@ -82,7 +82,7 @@ end;
 define function read-json-catalog
     (stream :: <stream>, #key table-class)
  => (_ :: <catalog>, pkgs :: <int>, versions :: <int>)
-  let json = parse-json(stream, table-class: table-class | <string-table>);
+  let json = json/parse(stream, table-class: table-class | <str-map>);
   json-to-catalog(json)
 end;
 
@@ -148,7 +148,7 @@ define function write-json-catalog
   for (group in catalog.package-groups)
     groups[group.name] := pkg-group-to-json(group);
   end;
-  encode-json(stream, groups);
+  json/encode(stream, groups);
 end;
 
 define function pkg-group-to-json
@@ -175,7 +175,7 @@ define function pkg-to-json
 end;
 
 define method find-package
-    (cat :: <catalog>, pkg-name :: <str>, ver :: <string>) => (pkg :: false-or(<pkg>))
+    (cat :: <catalog>, pkg-name :: <str>, ver :: <str>) => (pkg :: false-or(<pkg>))
   find-package(cat, pkg-name, string-to-version(ver))
 end;
 

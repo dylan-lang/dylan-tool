@@ -1,14 +1,5 @@
 Module: %pacman
 
-// Trying these on for size.
-define constant <any> = <object>;
-define constant <bool> = <boolean>;
-define constant <int> = <integer>;
-define constant <seq> = <sequence>;
-define constant <str> = <string>;
-define constant <str-map> = <string-table>;
-define constant <istr-map> = <case-insensitive-string-table>;
-
 define constant <dep-vec> = limited(<vector>, of: <dep>);
 define constant <pkg-vec> = limited(<vector>, of: <pkg>);
 
@@ -32,12 +23,12 @@ define constant $default-dylan-directory :: <str> = "/opt/dylan";
 // TODO: Dylan implementations should export this.
 define function dylan-directory
     () => (dir :: <directory-locator>)
-  let dylan = environment-variable($dylan);
+  let dylan = os/getenv($dylan);
   if (dylan)
     as(<directory-locator>, dylan)
   else
     // TODO: use %APPDATA% on Windows
-    let home = environment-variable("HOME");
+    let home = os/getenv("HOME");
     if (home)
       subdirectory-locator(as(<directory-locator>, home), "dylan")
     else
@@ -80,11 +71,11 @@ define function version-to-string
   format-to-string("%d.%d.%d", v.major, v.minor, v.patch)
 end;
 
-define constant $version-regex :: <regex> = compile-regex("(\\d+)\\.(\\d+)\\.(\\d+)");
+define constant $version-regex :: <regex> = re/compile("(\\d+)\\.(\\d+)\\.(\\d+)");
 
 define function string-to-version
     (input :: <str>) => (_ :: <version>)
-  let (_, maj, min, pat) = regex-search-strings($version-regex, input);
+  let (_, maj, min, pat) = re/search-strings($version-regex, input);
   make(<version>,
        major: string-to-integer(maj),
        minor: string-to-integer(min),
@@ -122,15 +113,15 @@ end;
 
 // TODO: validate package names against this when packages are added.
 // Start out with a restrictive naming scheme. Can expand later if needed.
-define constant $package-name-regex :: <regex> = compile-regex("([a-zA-Z][a-zA-Z0-9-]*)");
+define constant $package-name-regex :: <regex> = re/compile("([a-zA-Z][a-zA-Z0-9-]*)");
 define constant $dependency-regex :: <regex>
-  = compile-regex(concatenate(regex-pattern($package-name-regex),
-                              "/(", regex-pattern($version-regex), ")"));
+  = re/compile(concat(re/pattern($package-name-regex),
+                      "/(", re/pattern($version-regex), ")"));
 
 // Parse a dependency spec in the form pkg-name/m.n.p.
 define function string-to-dep
     (input :: <str>) => (d :: <dep>)
-  let (_, name, version) = regex-search-strings($dependency-regex, input);
+  let (_, name, version) = re/search-strings($dependency-regex, input);
   if (~name)
     catalog-error("Invalid dependency spec, %=, should be in the form pkg/1.2.3", input)
   end;
