@@ -9,42 +9,49 @@ define function installation-directory
                        version-to-string(ver))
 end;
 
+define function installed? (pkg :: <pkg>) => (i :: <bool>)
+  #f  // TODO
+end;
+
 define method download-package
-    (pkg-name :: <str>, ver :: <version>, dest-dir :: <directory-locator>) => (p :: <pkg>)
-  let catalog = load-catalog();
-  let pkg-name :: <str> = pkg-name;
-  let pkg = find-package(catalog, pkg-name, ver);
-  if (~pkg)
-    package-error("package not found: %s/%s", pkg-name, version-to-string(ver));
-  end;
+    (pkg :: <pkg>, dest-dir :: <directory-locator>) => ()
   let url = pkg.source-url;
   // Dispatch based on the transport type: git, mercurial, tarball, ...
   download(transport-from-url(url), url, dest-dir);
-  pkg
-end method download-package;
+end;
 
 // Download a package and install it in the standard location
 // based on the version number.
-// TODO: skip if already installed.
 define method install-package
-    (pkg-name :: <str>, ver :: <version>) => (p :: <pkg>)
-  download-package(pkg-name, ver, installation-directory(pkg-name, ver));
-end method install-package;
+    (pkg :: <pkg>, #key force? :: <bool>) => ()
+  if (force? | ~installed?(pkg))
+    download-package(pkg, installation-directory(pkg.group.name, pkg.version))
+  else
+    // TODO: make <pkg> print as "json/1.2.3".
+    message("Package %s is already installed.", pkg)
+  end
+end;
 
 // Using this constant works around https://github.com/dylan-lang/dylan-mode/issues/27.
 define constant $github-url = "https://github.com";
 
-//define constant $git-transport-re = re/compile
+// For now I'm assuming file://... is git because it doesn't seem to
+// allow a trailing ".git" in the URL to disambiguate. Not sure if
+// Mercurial or others can use "file:" URLs.
+// TODO:
+//   git@<domain>:org/repo.git or
+//   https://<domain>/org/repo.git or
+//   ssh://blah-de-blah/repo.git 
+//define constant $git-transport-re = re/compile(file://
 
 define function transport-from-url
     (url :: <str>) => (transport :: <transport>)
-  // TODO: these shouldn't be github-specific.
-  if (#t /* temp */ | starts-with?(url, $github-url))
+  if (#t /* TODO */ | starts-with?(url, $github-url))
     make(<git-transport>)
   else
     package-error("unrecognized package source URL: %=", url);
   end
-end function transport-from-url;
+end;
 
 // TODO: when downloading for installation (as opposed to for
 //       development, e.g., into a workspace) just do a shallow clone
@@ -67,4 +74,4 @@ define method download
   if (exit-code ~= 0)
     package-error("git clone command (%=) failed with exit code %d.", command, exit-code);
   end;
-end method download;
+end;

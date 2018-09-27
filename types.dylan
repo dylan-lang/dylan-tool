@@ -1,5 +1,8 @@
 Module: %pacman
 
+// This enables the #str: prefix to "parse" raw string literals.
+define function str-parser (s :: <str>) => (_ :: <str>) s end;
+
 define constant <dep-vec> = limited(<vector>, of: <dep>);
 define constant <pkg-vec> = limited(<vector>, of: <pkg>);
 

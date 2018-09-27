@@ -114,7 +114,12 @@ define module %pacman
 
   // For the test suite.
   export
+    %find-package,
+    str-parser,                 // #str:...
+
+    string-to-version,
+    version-to-string,
+
     read-json-catalog,
-    write-json-catalog,
-    version-to-string;
+    write-json-catalog;
 end module %pacman;

@@ -1,11 +1,7 @@
 Module: pacman-test
 
-define constant <str> = <string>;
-
-define function raw-parser (s :: <str>) => (_ :: <str>) s end;
-
 define constant $catalog-text =
-  #raw:({
+  #str:({
          "__catalog_attributes": {"unused": "for now"},
          "http": {
                   "contact": "zippy",
@@ -67,7 +63,7 @@ define test test-catalog ()
 */
   let cat = get-test-catalog();
   assert-equal(#["http", "json"], sort(map-as(<vector>, name, cat.package-groups)));
-  let http = find-package(cat, "http", "2.10.0");
+  let http = %find-package(cat, "http", string-to-version("2.10.0"));
   assert-true(http);
   assert-equal("MIT", http.group.license-type);
   assert-equal("opendylan", http.dependencies[2].package-name);
@@ -75,7 +71,7 @@ end;
 
 define test test-latest ()
   let cat = get-test-catalog();
-  let json = find-package(cat, "json", $latest);
+  let json = %find-package(cat, "json", $latest);
   assert-true(json);
   assert-equal("3.1234.100", version-to-string(json.version));
 end;

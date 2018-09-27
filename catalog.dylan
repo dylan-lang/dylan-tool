@@ -20,6 +20,10 @@ json catalog format
   ...
 }
 
+TODO:
+* consider combining the <pkg-group> into <pkg> class. Can still use
+  the above format to reduce redundancy, and it might simplify the code.
+
 */
 
 define constant $catalog-attrs-key :: <str> = "__catalog_attributes";
@@ -175,13 +179,14 @@ define function pkg-to-json
 end;
 
 define method find-package
-    (cat :: <catalog>, pkg-name :: <str>, ver :: <str>) => (pkg :: false-or(<pkg>))
-  find-package(cat, pkg-name, string-to-version(ver))
+    (name :: <str>, ver :: <str>) => (pkg :: <pkg>)
+  %find-package(load-catalog(), name, string-to-version(ver))
+  | package-error("package not found: %s/%s", name, ver);
 end;
 
-define method find-package
-    (cat :: <catalog>, pkg-name :: <str>, ver :: <version>) => (pkg :: false-or(<pkg>))
-  let group = element(cat.package-groups, pkg-name, default: #f);
+define function %find-package
+    (cat :: <catalog>, name :: <str>, ver :: <version>) => (p :: false-or(<pkg>))
+  let group = element(cat.package-groups, name, default: #f);
   group & group.packages.size > 0 &
     if (ver = $latest)
       let newest-first = sort(group.packages,

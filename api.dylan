@@ -41,25 +41,26 @@ define sealed generic remove-package
 define sealed generic all-packages
     (cat :: <catalog>) => (pkgs :: <seq>);
 
-// Find a package in the catalog that has the given name and
-// version. Package names are always compared ignoring case.  The
+// Find a package in the default catalog having the given `name` and
+// `version`. Package names are always compared ignoring case.  The
 // special version `$latest` finds the latest version of a package.
+// Signals `<package-error>` if not found.
 define sealed generic find-package
-    (cat :: <catalog>, pkg-name :: <str>, ver :: type-union(<str>, <version>))
- => (pkg :: false-or(<pkg>));
+    (pkg-name :: <str>, ver :: <str>) => (pkg :: <pkg>);
 
 ///
 /// Installation
 ///
 
-// Download package source into dest-dir or signal <package-error>,
-// for example on a network failure.  This is distinct from installing
-// the package.
-define sealed generic download-package
-    (pkg-name :: <str>, ver :: <version>, dest-dir :: <directory-locator>) => (p :: <pkg>);
+// Generally call these functions with the result of find-package(name, version).
 
-// Download and install the given version of pkg-name into the
-// standard location and update the LATEST pointer if version is the
-// latest version.
+// Download package source into `dir` or signal <package-error> (for
+// example due to a network or file-system error).
+define sealed generic download-package
+    (pkg :: <pkg>, dir :: <directory-locator>) => ();
+
+// Download and install `pkg` into the standard location and update
+// the LATEST pointer if it's the latest version of the package. If
+// `force?` is true the package is re-installed if already present.
 define sealed generic install-package
-    (pkg-name :: <str>, v :: <version>) => (p :: <pkg>);
+    (pkg :: <pkg>, #key force?) => ();
