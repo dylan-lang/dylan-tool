@@ -114,6 +114,7 @@ define module %pacman
 
   // For the test suite.
   export
+    <dep-vec>,
     %find-package,
     str-parser,                 // #str:...
 

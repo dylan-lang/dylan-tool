@@ -25,11 +25,11 @@ end;
 define method install-package
     (pkg :: <pkg>, #key force? :: <bool>) => ()
   if (force? | ~installed?(pkg))
-    download-package(pkg, installation-directory(pkg.group.name, pkg.version))
+    download-package(pkg, installation-directory(pkg.group.name, pkg.version));
   else
     // TODO: make <pkg> print as "json/1.2.3".
-    message("Package %s is already installed.", pkg)
-  end
+    message("Package %s is already installed.", pkg);
+  end;
 end;
 
 // Using this constant works around https://github.com/dylan-lang/dylan-mode/issues/27.
