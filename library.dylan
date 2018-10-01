@@ -28,7 +28,6 @@ define module pacman
   // Catalog
   export
     <catalog>,
-    package-groups,
     add-package,
     all-packages,
     find-package,
@@ -43,17 +42,13 @@ define module pacman
 
     <pkg>,
     dependencies,
-    group,
     source-url,
-
-    <pkg-group>,
     category,
     contact,
     description,
     keywords,
     name,
     license-type,
-    packages,
     synopsis,
     
     <dep>,
@@ -108,7 +103,7 @@ define module %pacman
     import: { table,
               <case-insensitive-string-table> => <istr-map> };
   use uncommon-dylan,
-    import: { <singleton-object> };
+    import: { <singleton-object>, value-sequence };
 
   use pacman, export: all;
 
@@ -116,6 +111,7 @@ define module %pacman
   export
     <dep-vec>,
     %find-package,
+    package-map,
     str-parser,                 // #str:...
 
     string-to-version,

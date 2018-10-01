@@ -20,10 +20,6 @@ json catalog format
   ...
 }
 
-TODO:
-* consider combining the <pkg-group> into <pkg> class. Can still use
-  the above format to reduce redundancy, and it might simplify the code.
-
 */
 
 define constant $catalog-attrs-key :: <str> = "__catalog_attributes";
@@ -93,48 +89,39 @@ end;
 define function json-to-catalog
     (json :: <str-map>) => (cat :: <catalog>, num-groups :: <int>, num-pkgs :: <int>)
   let num-pkgs = 0;
-  let groups = make(<istr-map>);
-  for (group-map keyed-by pkg-name in json)
+  let packages = make(<istr-map>);
+  for (shared-attrs keyed-by pkg-name in json)
     if (pkg-name ~= $catalog-attrs-key) // unused for now
-      if (element(groups, pkg-name, default: #f))
+      if (element(shared-attrs, pkg-name, default: #f))
         // This is probably a bug due to a difference in character
         // case when the package was added.
         catalog-error("Duplicate package group %=", pkg-name);
       end;
-      let group = json-to-pkg-group(pkg-name, group-map);
-      for (pkg in group.packages)
-        pkg.group := group;
-      end;
-      groups[pkg-name] := group;
+      let version->pkg = make(<istr-map>);
+      for (version-attrs keyed-by version in shared-attrs["versions"])
+	if (element(version->pkg, version, default: #f))
+	  catalog-error("Duplicate package version: %s/%s", pkg-name, version);
+	end;
+	version->pkg[version] :=
+	  make(<pkg>,
+	       name: pkg-name,
+	       version: string-to-version(version),
+	       source-url: version-attrs["source-url"],
+	       dependencies: map-as(<dep-vec>, string-to-dep, version-attrs["deps"]),
+	       // Shared attributes...
+	       synopsis: shared-attrs["synopsis"],
+	       description: shared-attrs["description"],
+	       contact: shared-attrs["contact"],
+	       license-type: shared-attrs["license-type"],
+	       category: element(shared-attrs, "category", default: #f),
+	       keywords: element(shared-attrs, "keywords", default: #f));
+	num-pkgs := num-pkgs + 1;
+      end for;
+      packages[pkg-name] := version->pkg;
     end if;
   end for;
-  values(make(<catalog>, package-groups: groups), groups.size, num-pkgs)
+  values(make(<catalog>, package-map: packages), packages.size, num-pkgs)
 end function json-to-catalog;
-
-define function json-to-pkg-group
-    (pkg-name :: <str>, group-attrs :: <str-map>) => (_ :: <pkg-group>)
-  let pkgs = #();
-  for (pkg-attrs keyed-by version in group-attrs["versions"])
-    pkgs := add(pkgs, json-to-pkg(version, pkg-attrs));
-  end;
-  make(<pkg-group>,
-       name: pkg-name,
-       packages: map-as(<pkg-vec>, identity, pkgs),
-       contact: group-attrs["contact"],
-       description: group-attrs["description"],
-       category: element(group-attrs, "category", default: #f),
-       keywords: element(group-attrs, "keywords", default: #f),
-       license-type: group-attrs["license-type"],
-       synopsis: group-attrs["synopsis"])
-end;
-
-define function json-to-pkg
-    (version :: <str>, pkg-attrs :: <str-map>) => (_ :: <pkg>)
-  make(<pkg>,
-       version: string-to-version(version),
-       dependencies: map-as(<dep-vec>, string-to-dep, pkg-attrs["deps"]),
-       source-url: pkg-attrs["source-url"])
-end;
 
 define method store-catalog
     (catalog :: <catalog>, store :: <json-file-storage>) => ()
@@ -147,36 +134,35 @@ end;
 
 define function write-json-catalog
     (catalog :: <catalog>, stream :: <stream>) => ()
-  let groups = table(<istr-map>,
-                     $catalog-attrs-key => table(<str-map>, "unused" => "for now"));
-  for (group in catalog.package-groups)
-    groups[group.name] := pkg-group-to-json(group);
+  let pkg-map = table(<istr-map>,
+		      $catalog-attrs-key => table(<str-map>,
+						  "unused" => "for now"));
+  // In the Dylan data structures many attributes are duplicated in
+  // each version of the <pkg> class because it's convenient. In the
+  // json text we reduce that duplication by storing the shared
+  // attributes in one table and then storing the attributes for
+  // specific versions in sub-tables.
+  for (version-dict keyed-by pkg-name in catalog.package-map)
+    let version-map = make(<istr-map>);
+    for (pkg keyed-by version in version-dict)
+      if (~element(pkg-map, pkg-name, default: #f))
+	pkg-map[pkg-name]
+	  := table("synopsis" => pkg.synopsis,
+		   "description" => pkg.description,
+		   "contact" => pkg.contact,
+		   "license-type" => pkg.license-type,
+		   "keywords" => pkg.keywords,
+		   "category" => pkg.category,
+		   "versions" => version-map);
+      end;
+      version-map[version]
+	:= table(<istr-map>,
+		 "source-url" => pkg.source-url,
+		 "deps" => map(dep-to-string, pkg.dependencies));
+    end;
   end;
-  json/encode(stream, groups);
-end;
-
-define function pkg-group-to-json
-    (group :: <pkg-group>) => (json :: <str-map>)
-  let versions = make(<istr-map>);
-  for (pkg in group.packages)
-    versions[version-to-string(pkg.version)] := pkg-to-json(pkg);
-  end;
-  table(<str-map>,
-        "synopsis" => group.synopsis,
-        "description" => group.description,
-        "contact" => group.contact,
-        "license-type" => group.license-type,
-        "keywords" => group.keywords,
-        "category" => group.category,
-        "versions" => versions)
-end;
-
-define function pkg-to-json
-    (pkg :: <pkg>) => (json :: <str-map>)
-  table(<str-map>,
-        "deps" => map-as(<vector>, dep-to-string, pkg.dependencies),
-        "source-url" => pkg.source-url)
-end;
+  json/encode(stream, pkg-map);
+end function write-json-catalog;
 
 define method find-package
     (name :: <str>, ver :: <str>) => (pkg :: <pkg>)
@@ -186,21 +172,16 @@ end;
 
 define function %find-package
     (cat :: <catalog>, name :: <str>, ver :: <version>) => (p :: false-or(<pkg>))
-  let group = element(cat.package-groups, name, default: #f);
-  group & group.packages.size > 0 &
+  let version-map = element(cat.package-map, name, default: #f);
+  if (version-map & version-map.size > 0) 
     if (ver = $latest)
-      let newest-first = sort(group.packages,
+      let newest-first = sort(value-sequence(version-map),
                               test: method (p1, p2)
                                       p1.version > p2.version
                                     end);
       newest-first[0]
     else
-      block (return)
-        for (pkg in group.packages)
-          if (pkg.version = ver)
-            return(pkg)
-          end
-        end for
-      end block
-    end if
+      element(version-map, version-to-string(ver), default: #f)
+    end
+  end
 end;

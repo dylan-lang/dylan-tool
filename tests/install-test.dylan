@@ -11,10 +11,11 @@ define test test-install ()
 		   version: string-to-version("1.2.3"),
 		   dependencies: make(<dep-vec>, size: 0),
 		   source-url: "file:///home/cgay/dylan/repo/json");
-let tmpdir = as(<str>, temp-directory());
-environment-variable("DYLAN") := tmpdir;
-assert-no-errors(install-package(pkg));
-let lid-path = concat(tmpdir, "pkg/json/1.2.3/json/json.lid");
+let dylan-dir = concat(as(<str>, temp-directory()), "test-install/");
+
+environment-variable("DYLAN") := dylan-dir;
+install-package(pkg);
+let lid-path = concat(dylan-dir, "pkg/json/1.2.3/json/json.lid");
 assert-true(file-exists?(lid-path));
 end test;
   

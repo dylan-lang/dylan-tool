@@ -25,7 +25,7 @@ end;
 define method install-package
     (pkg :: <pkg>, #key force? :: <bool>) => ()
   if (force? | ~installed?(pkg))
-    download-package(pkg, installation-directory(pkg.group.name, pkg.version));
+    download-package(pkg, installation-directory(pkg.name, pkg.version));
   else
     // TODO: make <pkg> print as "json/1.2.3".
     message("Package %s is already installed.", pkg);
@@ -63,8 +63,13 @@ define method download
   // "version-1.2.3" to exist?
   let branch = "master";
   // TODO: wrap libgit2
-  let command = list("git", "clone", "--recurse-submodules",
-                     "--branch", branch, url, dest-dir);
+  let command = format-to-string("git clone --recurse-submodules --branch=%s -- %s %s",
+				 branch, url, as(<str>, dest-dir));
+/*
+  let command = as(<str-vec>,
+		   list("git", "clone", "--recurse-submodules",
+			concat("--branch=", branch), url, as(<str>, dest-dir)));
+*/
   let (exit-code, #rest more)
     = os/run(command,
              output: "/tmp/git-clone-stdout.log", // temp

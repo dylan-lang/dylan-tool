@@ -5,6 +5,7 @@ define function str-parser (s :: <str>) => (_ :: <str>) s end;
 
 define constant <dep-vec> = limited(<vector>, of: <dep>);
 define constant <pkg-vec> = limited(<vector>, of: <pkg>);
+define constant <str-vec> = limited(<vector>, of: <str>);
 
 define class <package-error> (<simple-error>)
 end;
@@ -40,14 +41,16 @@ define function dylan-directory
   end
 end;
 
-// A <pkg-group> knows about a package as a whole, but info
-// that can change when a new version is added to the catalog is
-// stored in the <pkg> class.
-define class <pkg-group> (<any>)
+// A <pkg> knows about a package as a whole, but info that can change
+// when a new version is added to the catalog is stored in the <pkg>
+// class.
+define class <pkg> (<any>)
+
+  // Required slots
+
   constant slot name :: <str>, required-init-keyword: name:;
   constant slot synopsis :: <str>, required-init-keyword: synopsis:;
   constant slot description :: <str>, required-init-keyword: description:;
-  constant slot packages :: <pkg-vec>, required-init-keyword: packages:;
 
   // Who to contact with questions about this package.
   constant slot contact :: <str>, required-init-keyword: contact:;
@@ -55,6 +58,16 @@ define class <pkg-group> (<any>)
   // License type for this package, e.g. "MIT" or "BSD".
   constant slot license-type :: <str>, required-init-keyword: license-type:;
 
+  constant slot version :: <version>, required-init-keyword: version:;
+
+  // Identifies where the package can be downloaded from. For example
+  // a git repo or URL pointing to a tarball. (Details TBD. Could be
+  // type <url>?)
+  constant slot source-url :: <str>, required-init-keyword: source-url:;
+
+  // Optional slots
+
+  constant slot dependencies :: false-or(<dep-vec>) = #f, init-keyword: dependencies:;
   constant slot keywords :: false-or(<seq>) = #f, init-keyword: keywords:;
   constant slot category :: false-or(<str>) = #f, init-keyword: category:;
 end;
@@ -132,24 +145,11 @@ define function string-to-dep
 end;
 
 
-// Metadata for a specific version of a package. Anything that can
-// change when a new version of the package is released.
-define class <pkg> (<any>)
-  slot group :: <pkg-group>;    // back-pointer filled in after init.
-  constant slot version :: <version>, required-init-keyword: version:;
-  constant slot dependencies :: <dep-vec>, required-init-keyword: dependencies:;
-
-  // Identifies where the package can be downloaded from. For example
-  // a git repo or URL pointing to a tarball. (Details TBD. Could be
-  // type <url>?)
-  constant slot source-url :: <str>, required-init-keyword: source-url:;
-end;
-
-
 // The catalog knows what packages (and versions thereof) exist.
 define sealed class <catalog> (<any>)
-  // Maps package names to <pkg-group>s.
-  constant slot package-groups :: <istr-map>, required-init-keyword: package-groups:;
+  // Maps package names to another <istr-map> that maps version
+  // strings to <pkg>s.
+  constant slot package-map :: <istr-map>, required-init-keyword: package-map:;
 end;
 
 // A place to store catalog data.

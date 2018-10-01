@@ -62,10 +62,10 @@ define test test-catalog ()
   assert-equal(orig-stripped, text-stripped);
 */
   let cat = get-test-catalog();
-  assert-equal(#["http", "json"], sort(map-as(<vector>, name, cat.package-groups)));
+  assert-equal(#["http", "json"], sort(key-sequence(cat.package-map)));
   let http = %find-package(cat, "http", string-to-version("2.10.0"));
   assert-true(http);
-  assert-equal("MIT", http.group.license-type);
+  assert-equal("MIT", http.license-type);
   assert-equal("opendylan", http.dependencies[2].package-name);
 end;
 
