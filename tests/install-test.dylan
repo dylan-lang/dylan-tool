@@ -10,12 +10,18 @@ define test test-install ()
 		   license-type: "MIT",
 		   version: string-to-version("1.2.3"),
 		   dependencies: make(<dep-vec>, size: 0),
-		   source-url: "file:///home/cgay/dylan/repo/json");
-let dylan-dir = concat(as(<str>, temp-directory()), "test-install/");
-
-environment-variable("DYLAN") := dylan-dir;
-install-package(pkg);
-let lid-path = concat(dylan-dir, "pkg/json/1.2.3/json/json.lid");
-assert-true(file-exists?(lid-path));
+                   // Work around dylan-mode indentation bug...
+		   source-url: concat("file:/", "/", "/home/cgay/dylan/repo/json"));
+  // TODO: all tests should automatically get their own empty test directory.
+  let test-dir = subdirectory-locator(temp-directory(), "test-install");
+  delete-directory(subdirectory-locator(test-dir, "pkg"),
+                   recursive?: #t);
+  environment-variable("DYLAN") := as(<byte-string>, test-dir);
+  install-package(pkg);
+  let lid-path = merge-locators(as(<file-system-file-locator>,
+                                   "pkg/json/1.2.3/json.lid"),
+                                test-dir);
+  test-output("\nlid-path = %s\n", as(<str>, lid-path));
+  assert-true(file-exists?(lid-path));
 end test;
   

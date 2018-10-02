@@ -3,12 +3,12 @@ Module: dylan-user
 define library pacman-test
   use common-dylan;
   use io,
-    import: { streams };
+    import: { format, streams };
   use json;
   use pacman;
   use strings;
   use system,
-    import: { file-system, operating-system };
+    import: { file-system, locators, operating-system };
   use testworks;
 end;
 
@@ -26,8 +26,16 @@ define module pacman-test
 
               concatenate => concat };
   use file-system,
-    import: { file-exists?, temp-directory };
+    import: { delete-directory,
+              file-exists?,
+              <file-system-file-locator>,
+              temp-directory };
+  use format,
+    import: { format-to-string => sprintf };
   use json;
+  use locators,
+    import: { merge-locators,
+              subdirectory-locator };
   use operating-system,
     import: { environment-variable-setter };
   use %pacman;

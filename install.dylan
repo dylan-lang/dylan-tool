@@ -63,8 +63,8 @@ define method download
   // "version-1.2.3" to exist?
   let branch = "master";
   // TODO: wrap libgit2
-  let command = format-to-string("git clone --recurse-submodules --branch=%s -- %s %s",
-				 branch, url, as(<str>, dest-dir));
+  let command = sprintf("git clone --recurse-submodules --branch=%s -- %s %s",
+			branch, url, as(<str>, dest-dir));
 /* TODO: The above works but not this.
          https://github.com/dylan-lang/opendylan/issues/1120
   let command = as(<str-vec>,

@@ -37,6 +37,7 @@ define module pacman
 
   // Packages
   export
+    <package-error>,
     download-package,
     install-package,
 
@@ -94,7 +95,8 @@ define module %pacman
               regex-pattern => re/pattern,
               regex-search-strings => re/search-strings };
   use simple-format,
-    import: { format-out, format-to-string };
+    import: { format-out => printf,
+	      format-to-string => sprintf };
   use streams,
     import: { read-to-end };
   use strings,
@@ -114,8 +116,8 @@ define module %pacman
     package-map,
     str-parser,                 // #str:...
 
-    string-to-version,
-    version-to-string,
+    string-to-version, version-to-string,
+    string-to-dep, dep-to-string,
 
     read-json-catalog,
     write-json-catalog;
