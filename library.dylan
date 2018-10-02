@@ -96,7 +96,7 @@ define module %pacman
               regex-search-strings => re/search-strings };
   use simple-format,
     import: { format-out => printf,
-	      format-to-string => sprintf };
+              format-to-string => sprintf };
   use streams,
     import: { read-to-end };
   use strings,

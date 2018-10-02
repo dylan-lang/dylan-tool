@@ -99,23 +99,23 @@ define function json-to-catalog
       end;
       let version->pkg = make(<istr-map>);
       for (version-attrs keyed-by version in shared-attrs["versions"])
-	if (element(version->pkg, version, default: #f))
-	  catalog-error("Duplicate package version: %s/%s", pkg-name, version);
-	end;
-	version->pkg[version] :=
-	  make(<pkg>,
-	       name: pkg-name,
-	       version: string-to-version(version),
-	       source-url: version-attrs["source-url"],
-	       dependencies: map-as(<dep-vec>, string-to-dep, version-attrs["deps"]),
-	       // Shared attributes...
-	       synopsis: shared-attrs["synopsis"],
-	       description: shared-attrs["description"],
-	       contact: shared-attrs["contact"],
-	       license-type: shared-attrs["license-type"],
-	       category: element(shared-attrs, "category", default: #f),
-	       keywords: element(shared-attrs, "keywords", default: #f));
-	num-pkgs := num-pkgs + 1;
+        if (element(version->pkg, version, default: #f))
+          catalog-error("Duplicate package version: %s/%s", pkg-name, version);
+        end;
+        version->pkg[version] :=
+          make(<pkg>,
+               name: pkg-name,
+               version: string-to-version(version),
+               source-url: version-attrs["source-url"],
+               dependencies: map-as(<dep-vec>, string-to-dep, version-attrs["deps"]),
+               // Shared attributes...
+               synopsis: shared-attrs["synopsis"],
+               description: shared-attrs["description"],
+               contact: shared-attrs["contact"],
+               license-type: shared-attrs["license-type"],
+               category: element(shared-attrs, "category", default: #f),
+               keywords: element(shared-attrs, "keywords", default: #f));
+        num-pkgs := num-pkgs + 1;
       end for;
       packages[pkg-name] := version->pkg;
     end if;
@@ -135,8 +135,8 @@ end;
 define function write-json-catalog
     (catalog :: <catalog>, stream :: <stream>) => ()
   let pkg-map = table(<istr-map>,
-		      $catalog-attrs-key => table(<str-map>,
-						  "unused" => "for now"));
+                      $catalog-attrs-key => table(<str-map>,
+                                                  "unused" => "for now"));
   // In the Dylan data structures many attributes are duplicated in
   // each version of the <pkg> class because it's convenient. In the
   // json text we reduce that duplication by storing the shared
@@ -146,19 +146,19 @@ define function write-json-catalog
     let version-map = make(<istr-map>);
     for (pkg keyed-by version in version-dict)
       if (~element(pkg-map, pkg-name, default: #f))
-	pkg-map[pkg-name]
-	  := table("synopsis" => pkg.synopsis,
-		   "description" => pkg.description,
-		   "contact" => pkg.contact,
-		   "license-type" => pkg.license-type,
-		   "keywords" => pkg.keywords,
-		   "category" => pkg.category,
-		   "versions" => version-map);
+        pkg-map[pkg-name]
+          := table("synopsis" => pkg.synopsis,
+                   "description" => pkg.description,
+                   "contact" => pkg.contact,
+                   "license-type" => pkg.license-type,
+                   "keywords" => pkg.keywords,
+                   "category" => pkg.category,
+                   "versions" => version-map);
       end;
       version-map[version]
-	:= table(<istr-map>,
-		 "source-url" => pkg.source-url,
-		 "deps" => map(dep-to-string, pkg.dependencies));
+        := table(<istr-map>,
+                 "source-url" => pkg.source-url,
+                 "deps" => map(dep-to-string, pkg.dependencies));
     end;
   end;
   json/encode(stream, pkg-map);
