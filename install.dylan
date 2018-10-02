@@ -65,10 +65,11 @@ define method download
   // TODO: wrap libgit2
   let command = format-to-string("git clone --recurse-submodules --branch=%s -- %s %s",
 				 branch, url, as(<str>, dest-dir));
-/*
+/* TODO: The above works but not this.
+         https://github.com/dylan-lang/opendylan/issues/1120
   let command = as(<str-vec>,
 		   list("git", "clone", "--recurse-submodules",
-			concat("--branch=", branch), url, as(<str>, dest-dir)));
+			concat("--branch=", branch), "--", url, as(<str>, dest-dir)));
 */
   let (exit-code, #rest more)
     = os/run(command,
