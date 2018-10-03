@@ -1,8 +1,0 @@
-Module: pacman-test
-Synopsis: pacman test suite main function
-
-define suite pacman-tests ()
-  test test-json-to-catalog;
-end;
-
-run-test-suite(pacman-tests);

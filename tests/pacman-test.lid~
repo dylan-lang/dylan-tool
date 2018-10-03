@@ -1,3 +1,0 @@
-Library: pacman-test
-Files: library.dylan
-       catalog-test.dylan
