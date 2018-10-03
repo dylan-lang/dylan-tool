@@ -27,6 +27,7 @@ end library pacman;
 define module pacman
   export
     <catalog>,
+    <catalog-error>,
     add-package,
     all-packages,
     find-package,
@@ -121,7 +122,9 @@ define module %pacman
 
     string-to-version, version-to-string,
     string-to-dep, dep-to-string,
+    version-satisfies?,
 
     read-json-catalog,
+    validate-catalog,
     write-json-catalog;
 end module %pacman;

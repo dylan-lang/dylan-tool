@@ -1,13 +1,10 @@
 Module: pacman-test
 Synopsis: pacman test suite main function
 
-define suite pacman-test-suite ()
-  test test-catalog;
-  test test-latest;
-  test test-install;
-  test test-dep-name;
-  test test-bad-dep-versions;
-  test test-good-dep-versions;
+define suite pacman-suite ()
+  suite catalog-suite;
+  suite install-suite;
+  suite types-suite;
 end;
 
-run-test-application(pacman-test-suite);
+run-test-application(pacman-suite);

@@ -30,3 +30,6 @@ define test test-install ()
   assert-equal(map-as(<list>, identity, versions), list(pkg.version));
 end test;
   
+define suite install-suite ()
+  test test-install;
+end;

@@ -9,6 +9,7 @@ define function regex-parser (s :: <str>) => (_ :: <regex>)
   re/compile(s)
 end;
 
+define constant $uncategorized = "Uncategorized";
 
 define constant <dep-vec> = limited(<vector>, of: <dep>);
 define constant <pkg-vec> = limited(<vector>, of: <pkg>);
@@ -17,8 +18,7 @@ define constant <str-vec> = limited(<vector>, of: <str>);
 define class <package-error> (<simple-error>)
 end;
 
-define function package-error
-    (msg :: <str>, #rest args)
+define function package-error (msg :: <str>, #rest args)
   error(make(<package-error>, format-string: msg, format-arguments: args));
 end;
 
@@ -74,9 +74,9 @@ define class <pkg> (<any>)
 
   // Optional slots
 
-  constant slot dependencies :: false-or(<dep-vec>) = #f, init-keyword: dependencies:;
-  constant slot keywords :: false-or(<seq>) = #f, init-keyword: keywords:;
-  constant slot category :: false-or(<str>) = #f, init-keyword: category:;
+  constant slot dependencies :: <dep-vec> = #[], init-keyword: dependencies:;
+  constant slot keywords :: <seq> = #[], init-keyword: keywords:;
+  constant slot category :: <str> = $uncategorized, init-keyword: category:;
 end;
 
 define method initialize (pkg :: <pkg>, #key name) => ()
@@ -216,6 +216,15 @@ define function string-to-dep
        package-name: name,
        min-version: minv & string-to-version(minv),
        max-version: maxv & string-to-version(maxv))
+end;
+
+define function version-satisfies?
+    (dep :: <dep>, version :: <version>) => (_ :: <bool>)
+  let (minv, maxv) = values(dep.min-version, dep.max-version);
+  (~minv & ~maxv)               // any version will do
+    | (~maxv & version >= minv)
+    | (~minv & version <= maxv)
+    | (minv & maxv & version >= minv & version <= maxv)
 end;
 
 

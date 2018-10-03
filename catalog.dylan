@@ -31,7 +31,7 @@ define constant $catalog-attrs-key :: <str> = "__catalog_attributes";
 define class <catalog-error> (<package-error>)
 end;
 
-define function catalog-error (fmt :: <str>, #rest args) => ()
+define function catalog-error (fmt :: <str>, #rest args)
   error(make(<catalog-error>,
              format-string: fmt,
              format-arguments: args));
@@ -75,10 +75,12 @@ define method %load-catalog
     let (cat, num-pkgs, num-versions) = read-json-catalog(stream);
     message("Loaded %d packages with %d versions from %s.",
             num-pkgs, num-versions, store.pathname);
+    validate-catalog(cat);
     cat
   end
   | begin
-      message("WARNING: No package catalog found in %s. Using empty catalog.", store.pathname);
+      message("WARNING: No package catalog found in %s. Using empty catalog.",
+              store.pathname);
       make(<catalog>)
     end
 end;
@@ -171,7 +173,7 @@ end function write-json-catalog;
 define method find-package
     (name :: <str>, ver :: <str>) => (pkg :: <pkg>)
   %find-package(load-catalog(), name, string-to-version(ver))
-  | package-error("package not found: %s/%s", name, ver);
+  | catalog-error("package not found: %s/%s", name, ver);
 end;
 
 define function %find-package
@@ -188,4 +190,37 @@ define function %find-package
       element(version-map, version-to-string(ver), default: #f)
     end
   end
+end;
+
+// Signal <catalog-error> if there are any problems found in the catalog.
+define function validate-catalog (cat :: <catalog>) => ()
+  for (version-map keyed-by pkg-name in cat.package-map)
+    for (pkg keyed-by vstring in version-map)
+      validate-dependencies(cat, pkg);
+    end;
+  end;
+end;
+
+// Verify that all dependencies specified in the catalog also exist in
+// the catalog. Note this has nothing to do with whether or not
+// they're installed.
+define function validate-dependencies (cat :: <catalog>, pkg :: <pkg>) => ()
+  local method missing-dep (dep)
+          catalog-error("for package %s/%s, dependency %s is missing from the catalog",
+                        pkg.name, version-to-string(pkg.version), dep-to-string(dep));
+        end;
+  for (dep in pkg.dependencies)
+    let version-map = element(cat.package-map, dep.package-name, default: #f);
+    if (~version-map)
+      missing-dep(dep);
+    end;
+    block (return)
+      for (pkg in version-map)
+        if (version-satisfies?(dep, pkg.version))
+          return()
+        end;
+      end;
+      missing-dep(dep)
+    end;
+  end;
 end;

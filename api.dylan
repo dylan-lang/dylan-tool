@@ -21,9 +21,9 @@ define sealed generic transitive-dependencies
 ///
 
 // Add a new package to the catalog or signal <package-error>, for
-// example if there was a problem persisting the modified catalog or
-// if the package was already present.
-// TODO: should the package be allowed to have any versions?
+// example if there was a problem persisting the modified catalog, the
+// package was already present, or one of the package's dependencies
+// wasn't in the catalog.
 define sealed generic add-package
     (cat :: <catalog>, pkg :: <pkg>) => ();
 
