@@ -24,5 +24,9 @@ define test test-install ()
                                    "pkg/json/1.2.3/src/json.lid"),
                                 test-dir);
   assert-true(file-exists?(lid-path));
+  let versions = installed-versions(pkg.name);
+  test-output("versions = %s", map(version-to-string, versions));
+  assert-equal(1, size(versions));
+  assert-equal(map-as(<list>, identity, versions), list(pkg.version));
 end test;
   

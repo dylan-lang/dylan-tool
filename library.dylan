@@ -25,7 +25,6 @@ define library pacman
 end library pacman;
 
 define module pacman
-  // Catalog
   export
     <catalog>,
     add-package,
@@ -33,24 +32,23 @@ define module pacman
     find-package,
     load-catalog,
     remove-package,
-    store-catalog;
+    store-catalog,
 
-  // Packages
-  export
     <package-error>,
     download-package,
     install-package,
+    installed-versions,
     installed?,
 
     <pkg>,
-    dependencies,
-    source-url,
     category,
     contact,
+    dependencies,
     description,
     keywords,
-    name,
     license-type,
+    name,
+    source-url,
     synopsis,
     
     <dep>,
@@ -76,9 +74,11 @@ define module %pacman
               <string-table> => <str-map>,
               <case-insensitive-string-table> => <istr-map>,
 
+              as-lowercase => lowercase,
               concatenate => concat };
   use file-system,
-    import: { directory-empty?,
+    import: { directory-contents,
+              directory-empty?,
               with-open-file };
   use json,
     import: { parse-json => json/parse,
@@ -86,6 +86,7 @@ define module %pacman
   use locators,
     import: { <directory-locator>,
               <physical-locator>,
+              locator-name,
               merge-locators,
               subdirectory-locator };
   use operating-system,

@@ -6,7 +6,7 @@ define constant $src-dir-name = "src";
 
 define function installation-directory (pkg :: <pkg>) => (_ :: <directory-locator>)
   subdirectory-locator(package-manager-directory(),
-                       as-lowercase(pkg.name),
+                       lowercase(pkg.name),
                        version-to-string(pkg.version))
 end;
 
@@ -83,4 +83,21 @@ define method download
     package-error("git clone command (%=) failed with exit code %d.",
                   command, exit-code);
   end;
+end;
+
+define function installed-versions (pkg-name :: <str>) => (versions :: <seq>)
+  let pkg-dir = subdirectory-locator(package-manager-directory(),
+                                     lowercase(pkg-name));
+  let files = directory-contents(pkg-dir);
+  let versions = make(<stretchy-vector>);
+  for (file in files)
+    if (instance?(file, <directory-locator>))
+      let name = locator-name(file);
+      block ()
+        add!(versions, string-to-version(name))
+      exception (_ :: <package-error>)
+      end;
+    end;
+  end;
+  versions
 end;
