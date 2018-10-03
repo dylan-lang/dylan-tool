@@ -81,8 +81,15 @@ define test test-validate-dependencies ()
   assert-signals(<catalog-error>, validate-catalog(get-test-catalog()));
 end;
 
+define test test-load-catalog ()
+  // TODO: this only works on my machine because I've linked
+  //       $DYLAN/pkg/catalog.json to the catalog.
+  assert-no-errors(load-catalog());
+end;
+
 define suite catalog-suite ()
   test test-catalog;
   test test-find-latest-version;
   test test-validate-dependencies;
+  test test-load-catalog;
 end;

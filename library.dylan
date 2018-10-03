@@ -80,6 +80,8 @@ define module %pacman
   use file-system,
     import: { directory-contents,
               directory-empty?,
+              <file-system-file-locator>,
+              <pathname>,
               with-open-file };
   use json,
     import: { parse-json => json/parse,

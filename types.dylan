@@ -10,6 +10,7 @@ define function regex-parser (s :: <str>) => (_ :: <regex>)
 end;
 
 define constant $uncategorized = "Uncategorized";
+define constant $pacman-dir-name = "pkg";
 
 define constant <dep-vec> = limited(<vector>, of: <dep>);
 define constant <pkg-vec> = limited(<vector>, of: <pkg>);
@@ -253,7 +254,7 @@ end;
 // Root of all things package managerish.
 define function package-manager-directory
     () => (dir :: <directory-locator>)
-  subdirectory-locator(dylan-directory(), "pkg")
+  subdirectory-locator(dylan-directory(), $pacman-dir-name)
 end;
 
 // Display a message on stdout. Abstracted here so we can easily change all

@@ -42,7 +42,7 @@ end;
 // which are themselves encoded as json dictionaries. Almost all
 // fields are required.
 define class <json-file-storage> (<storage>)
-  constant slot pathname :: <str>, required-init-keyword: pathname:;
+  constant slot pathname :: <pathname>, required-init-keyword: pathname:;
 end;
 
 // TODO: for now we assume the catalog is a local file. should be fetched from some URL.
@@ -52,7 +52,7 @@ define constant $local-catalog-filename :: <str> = "catalog.json";
 
 define function local-cache
     () => (_ :: <json-file-storage>)
-  let path = merge-locators(as(<physical-locator>, $local-catalog-filename),
+  let path = merge-locators(as(<file-system-file-locator>, $local-catalog-filename),
                             package-manager-directory());
   make(<json-file-storage>, pathname: path)
 end;
