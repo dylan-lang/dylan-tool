@@ -22,26 +22,26 @@ define function package-error
   error(make(<package-error>, format-string: msg, format-arguments: args));
 end;
 
-// The name of the Dylan environment variable.
-define constant $dylan :: <str> = "DYLAN";
-
-define constant $default-dylan-directory :: <str> = "/opt/dylan";
+// TODO: Windows
+define constant $default-dylan-directory = "/opt/dylan";
+define constant $dylan-dir-name = "dylan";
+define constant $dylan-env-var = "DYLAN";
 
 // The base directory for all things Dylan for a given user.
 //   1. ${DYLAN}
 //   2. ${HOME}/dylan or %APPDATA%\dylan
-//   3. /opt/dylan
+//   3. /opt/dylan or ??? on Windows
 // TODO: Dylan implementations should export this.
 define function dylan-directory
     () => (dir :: <directory-locator>)
-  let dylan = os/getenv($dylan);
+  let dylan = os/getenv($dylan-env-var);
   if (dylan)
     as(<directory-locator>, dylan)
   else
     // TODO: use %APPDATA% on Windows
     let home = os/getenv("HOME");
     if (home)
-      subdirectory-locator(as(<directory-locator>, home), "dylan")
+      subdirectory-locator(as(<directory-locator>, home), $dylan-dir-name)
     else
       as(<directory-locator>, $default-dylan-directory)
     end
@@ -162,6 +162,9 @@ define method \= (d1 :: <dep>, d2 :: <dep>) => (_ :: <bool>)
   & d1.max-version = d2.max-version
 end;
 
+// TODO: I like the dependency syntax/semantics used by Cargo. Will
+//       probably switch to those, but it can wait because for now
+//       we mostly can use 'latest'.
 define function dep-to-string (dep :: <dep>) => (_ :: <str>)
   let name = dep.package-name;
   let minv = dep.min-version;

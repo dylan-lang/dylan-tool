@@ -1,7 +1,7 @@
 Module: pacman-test
 
 define test test-install ()
-  // TODO: make a test repo with specific version branches in it.
+  // TODO: make a test repo and use instead of mine.
   let pkg = make(<pkg>,
                  name: "json",
                  synopsis: "json synopsis",
@@ -17,11 +17,12 @@ define test test-install ()
   delete-directory(subdirectory-locator(test-dir, "pkg"),
                    recursive?: #t);
   environment-variable("DYLAN") := as(<byte-string>, test-dir);
+  assert-false(installed?(pkg));
   install-package(pkg);
+  assert-true(installed?(pkg));
   let lid-path = merge-locators(as(<file-system-file-locator>,
-                                   "pkg/json/1.2.3/json.lid"),
+                                   "pkg/json/1.2.3/src/json.lid"),
                                 test-dir);
-  test-output("\nlid-path = %s\n", as(<str>, lid-path));
   assert-true(file-exists?(lid-path));
 end test;
   

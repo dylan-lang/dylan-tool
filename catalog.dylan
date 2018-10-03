@@ -1,7 +1,11 @@
 Module: %pacman
 
 /*
-json catalog format
+TODO:
+* do we specify the libraries contained in the package explicitly, or just
+  let them be found via the .lid files?
+
+json catalog format:
 
 * Order within a json object is never guaranteed.
 * Package names with leading "__" (double underscore) are reserved.

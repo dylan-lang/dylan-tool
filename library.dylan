@@ -40,6 +40,7 @@ define module pacman
     <package-error>,
     download-package,
     install-package,
+    installed?,
 
     <pkg>,
     dependencies,
@@ -77,7 +78,8 @@ define module %pacman
 
               concatenate => concat };
   use file-system,
-    import: { with-open-file };
+    import: { directory-empty?,
+              with-open-file };
   use json,
     import: { parse-json => json/parse,
               encode-json => json/encode };

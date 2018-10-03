@@ -2,15 +2,23 @@ Module: %pacman
 Synopsis: Package download and installation
 
 
-define function installation-directory
-    (pkg-name :: <str>, ver :: <version>) => (dir :: <directory-locator>)
+define constant $src-dir-name = "src";
+
+define function installation-directory (pkg :: <pkg>) => (_ :: <directory-locator>)
   subdirectory-locator(package-manager-directory(),
-                       as-lowercase(pkg-name),
-                       version-to-string(ver))
+                       as-lowercase(pkg.name),
+                       version-to-string(pkg.version))
 end;
 
-define function installed? (pkg :: <pkg>) => (i :: <bool>)
-  #f  // TODO
+// Where the tarball/repo/etc is actually unpacked. We use a subdir of
+// the installation directory so there's no conflict with files
+// maintained by the package manager.
+define function source-directory (pkg :: <pkg>) => (_ :: <directory-locator>)
+  subdirectory-locator(installation-directory(pkg), $src-dir-name)
+end;
+
+define function installed? (pkg :: <pkg>) => (_ :: <bool>)
+  ~directory-empty?(source-directory(pkg))
 end;
 
 define method download-package
@@ -20,12 +28,12 @@ define method download-package
   download(transport-from-url(url), url, dest-dir);
 end;
 
-// Download a package and install it in the standard location
-// based on the version number.
+// Download a package and install it in the standard location based on
+// the version number.
 define method install-package
     (pkg :: <pkg>, #key force? :: <bool>) => ()
   if (force? | ~installed?(pkg))
-    download-package(pkg, installation-directory(pkg.name, pkg.version));
+    download-package(pkg, source-directory(pkg));
   else
     // TODO: make <pkg> print as "json/1.2.3".
     message("Package %s is already installed.", pkg);
@@ -65,12 +73,6 @@ define method download
   // TODO: wrap libgit2
   let command = sprintf("git clone --recurse-submodules --branch=%s -- %s %s",
 			branch, url, as(<str>, dest-dir));
-/* TODO: The above works but not this.
-         https://github.com/dylan-lang/opendylan/issues/1120
-  let command = as(<str-vec>,
-		   list("git", "clone", "--recurse-submodules",
-			concat("--branch=", branch), "--", url, as(<str>, dest-dir)));
-*/
   let (exit-code, #rest more)
     = os/run(command,
              output: "/tmp/git-clone-stdout.log", // temp
@@ -78,6 +80,7 @@ define method download
              if-output-exists: #"append",
              if-error-exists: #"append");
   if (exit-code ~= 0)
-    package-error("git clone command (%=) failed with exit code %d.", command, exit-code);
+    package-error("git clone command (%=) failed with exit code %d.",
+                  command, exit-code);
   end;
 end;
