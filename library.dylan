@@ -18,7 +18,9 @@ define library pacman
   use json;
   use regular-expressions;
   use strings;
-  use uncommon-dylan;
+  use uncommon-dylan,
+    import: { uncommon-dylan,
+              uncommon-utils };
   export
     pacman,
     %pacman;                    // For the test suite.
@@ -110,7 +112,7 @@ define module %pacman
   use table-extensions,
     import: { table,
               <case-insensitive-string-table> => <istr-map> };
-  use uncommon-dylan,
+  use uncommon-utils,
     import: { <singleton-object>, value-sequence };
 
   use pacman, export: all;
