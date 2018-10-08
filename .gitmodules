@@ -1,0 +1,9 @@
+[submodule "submodules/uncommon-dylan"]
+	path = submodules/uncommon-dylan
+	url = https://github.com/dylan-lang/uncommon-dylan
+[submodule "submodules/pacman"]
+	path = submodules/pacman
+	url = git@github.com:cgay/pacman
+[submodule "submodules/json"]
+	path = submodules/json
+	url = git@github.com:cgay/json
