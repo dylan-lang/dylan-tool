@@ -73,13 +73,15 @@ define method %load-catalog
                  direction: #"input",
                  if-does-not-exist: #f)
     let (cat, num-pkgs, num-versions) = read-json-catalog(stream);
-    message("Loaded %d packages with %d versions from %s.",
-            num-pkgs, num-versions, store.pathname);
+    message("Loaded %d package%s with %d version%s from %s.\n",
+            num-pkgs, iff(num-pkgs == 1, "", "s"),
+            num-versions, iff(num-versions == 1, "", "s"),
+            store.pathname);
     validate-catalog(cat);
     cat
   end
   | begin
-      message("WARNING: No package catalog found in %s. Using empty catalog.",
+      message("WARNING: No package catalog found in %s. Using empty catalog.\n",
               store.pathname);
       make(<catalog>)
     end

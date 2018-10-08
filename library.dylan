@@ -113,7 +113,7 @@ define module %pacman
     import: { table,
               <case-insensitive-string-table> => <istr-map> };
   use uncommon-utils,
-    import: { <singleton-object>, value-sequence };
+    import: { iff, <singleton-object>, value-sequence };
 
   use pacman, export: all;
 

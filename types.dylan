@@ -103,7 +103,11 @@ end;
 
 define function version-to-string
     (v :: <version>) => (_ :: <str>)
-  sprintf("%d.%d.%d", v.major, v.minor, v.patch)
+  if (v = $latest)
+    "LATEST"
+  else
+    sprintf("%d.%d.%d", v.major, v.minor, v.patch)
+  end
 end;
 
 define constant $version-regex = #regex:{^(\d+)\.(\d+)\.(\d+)$};
