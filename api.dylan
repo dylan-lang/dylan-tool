@@ -46,7 +46,7 @@ define sealed generic all-packages
 // special version `$latest` finds the latest version of a package.
 // Signals `<package-error>` if not found.
 define sealed generic find-package
-    (pkg-name :: <str>, ver :: <str>) => (pkg :: <pkg>);
+    (pkg-name :: <str>, version :: <any>) => (pkg :: <pkg>);
 
 ///
 /// Installation

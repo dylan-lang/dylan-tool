@@ -172,8 +172,13 @@ end function write-json-catalog;
 
 define method find-package
     (name :: <str>, ver :: <str>) => (pkg :: <pkg>)
-  %find-package(load-catalog(), name, string-to-version(ver))
-  | catalog-error("package not found: %s/%s", name, ver);
+  find-package(name, string-to-version(ver))
+end;
+
+define method find-package
+    (name :: <str>, ver :: <version>) => (pkg :: <pkg>)
+  %find-package(load-catalog(), name, ver)
+  | catalog-error("package not found: %s/%s", name, version-to-string(ver));
 end;
 
 define function %find-package
