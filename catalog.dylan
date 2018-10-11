@@ -90,7 +90,8 @@ end;
 define function read-json-catalog
     (stream :: <stream>, #key table-class)
  => (_ :: <catalog>, pkgs :: <int>, versions :: <int>)
-  let json = json/parse(stream, table-class: table-class | <str-map>);
+  let json = json/parse(stream, table-class: table-class | <str-map>,
+                        strict?: #f); // allow comments
   json-to-catalog(json)
 end;
 

@@ -12,10 +12,11 @@ define test test-install ()
                  dependencies: make(<dep-vec>, size: 0),
                  // Work around dylan-mode indentation bug...
                  source-url: concat("file:/", "/", "/home/cgay/dylan/repo/json"));
-  // TODO: all tests should automatically get their own empty test directory.
   let test-dir = subdirectory-locator(temp-directory(), "test-install");
-  delete-directory(subdirectory-locator(test-dir, "pkg"),
-                   recursive?: #t);
+  let pkg-dir = subdirectory-locator(test-dir, "pkg");
+  if (file-exists?(pkg-dir))
+    delete-directory(pkg-dir, recursive?: #t);
+  end;
   environment-variable("DYLAN") := as(<byte-string>, test-dir);
   assert-false(installed?(pkg));
   install-package(pkg);
@@ -25,7 +26,6 @@ define test test-install ()
                                 test-dir);
   assert-true(file-exists?(lid-path));
   let versions = installed-versions(pkg.name);
-  test-output("versions = %s", map(version-to-string, versions));
   assert-equal(1, size(versions));
   assert-equal(map-as(<list>, identity, versions), list(pkg.version));
 end test;

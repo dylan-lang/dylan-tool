@@ -1,7 +1,6 @@
 Module: dylan-user
 
 define library pacman-test
-  use common-dylan;
   use io,
     import: { format, streams };
   use json;
@@ -10,21 +9,11 @@ define library pacman-test
   use system,
     import: { file-system, locators, operating-system };
   use testworks;
+  use uncommon-dylan,
+    import: { uncommon-dylan, uncommon-utils };
 end;
 
 define module pacman-test
-  use common-dylan,
-    rename: { <object> => <any>,
-              <boolean> => <bool>,
-              <integer> => <int>,
-              <sequence> => <seq>,
-              <string> => <str>,
-
-              <table> => <map>,
-              <string-table> => <str-map>,
-              <case-insensitive-string-table> => <istr-map>,
-
-              concatenate => concat };
   use file-system,
     import: { delete-directory,
               file-exists?,
@@ -45,4 +34,5 @@ define module pacman-test
   use streams,
     import: { with-input-from-string, with-output-to-string };
   use testworks;
+  use uncommon-dylan;
 end;

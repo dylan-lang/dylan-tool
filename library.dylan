@@ -8,13 +8,13 @@ Synopsis: Dylan package manager
 
 define library pacman
   use common-dylan,
-    import: { common-dylan, simple-format };
+    import: { simple-format };
   use collections,
     import: { table-extensions };
   use system,
     import: { file-system, locators, operating-system };
   use io,
-    import: { streams };
+    import: { format, streams };
   use json;
   use regular-expressions;
   use strings;
@@ -66,19 +66,6 @@ define module pacman
 end module pacman;
 
 define module %pacman
-  use common-dylan,
-    rename: { <object> => <any>,
-              <boolean> => <bool>,
-              <integer> => <int>,
-              <sequence> => <seq>,
-              <string> => <str>,
-
-              <table> => <map>,
-              <string-table> => <str-map>,
-              <case-insensitive-string-table> => <istr-map>,
-
-              as-lowercase => lowercase,
-              concatenate => concat };
   use file-system,
     import: { directory-contents,
               directory-empty?,
@@ -108,10 +95,12 @@ define module %pacman
   use streams,
     import: { read-to-end };
   use strings,
-    import: { starts-with?, string-equal-ic? };
+    import: { starts-with?,
+              string-equal-ic? => istr= };
   use table-extensions,
     import: { table,
               <case-insensitive-string-table> => <istr-map> };
+  use uncommon-dylan;
   use uncommon-utils,
     import: { iff, <singleton-object>, value-sequence };
 

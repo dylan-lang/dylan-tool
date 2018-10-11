@@ -1,5 +1,38 @@
 Module: pacman-test
 
+define test test-version-= ()
+  for (item in #[#["latest", "latest", #t],
+                 #["latest", "0.0.0", #f],
+                 #["0.0.0", "0.0.1", #f],
+                 #["1.0.0", "1.0.0", #t],
+                 #["0.1.0", "0.2.0", #f]])
+    let (s1, s2, want) = apply(values, item);
+    let v1 = string-to-version(s1);
+    let v2 = string-to-version(s2);
+    let got = v1 = v2;
+    assert-equal(got, want,
+                 sprintf("got %=, want %= for 'version(%s) = version(%s)'",
+                         got, want, s1, s2));
+  end;
+end;
+
+define test test-version-< ()
+  for (item in #[#["latest", "latest", #f],
+                 #["latest", "0.0.0", #f],
+                 #["0.0.0", "0.0.1", #t],
+                 #["1.0.0", "1.0.0", #f],
+                 #["0.1.0", "0.2.0", #t],
+                 #["1.2.1", "1.3.0", #t]])
+    let (s1, s2, want) = apply(values, item);
+    let v1 = string-to-version(s1);
+    let v2 = string-to-version(s2);
+    let got = v1 < v2;
+    assert-equal(got, want,
+                 sprintf("got %=, want %= for 'version(%s) < version(%s)'",
+                         got, want, s1, s2));
+  end;
+end;
+
 define test test-dep-name ()
   for (name in #["", "-x", "x_"])
     assert-signals(<package-error>, make(<dep>, package-name: name), name);
@@ -59,6 +92,8 @@ define test test-version-satisfies? ()
 end;
 
 define suite types-suite ()
+  test test-version-=;
+  test test-version-<;
   test test-dep-name;
   test test-bad-dep-versions;
   test test-good-dep-versions;

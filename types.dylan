@@ -52,6 +52,10 @@ end;
 // A <pkg> knows about a package as a whole, but info that can change
 // when a new version is added to the catalog is stored in the <pkg>
 // class.
+// TODO:
+//   * add slot libraries :: <seq> ? Or just put library names in the
+//     keywords list?
+//   * make description optional and default to synopsis.
 define class <pkg> (<any>)
 
   // Required slots
@@ -104,7 +108,7 @@ end;
 define function version-to-string
     (v :: <version>) => (_ :: <str>)
   if (v = $latest)
-    "LATEST"
+    "latest"
   else
     sprintf("%d.%d.%d", v.major, v.minor, v.patch)
   end
@@ -114,12 +118,16 @@ define constant $version-regex = #regex:{^(\d+)\.(\d+)\.(\d+)$};
 
 define function string-to-version
     (input :: <str>) => (_ :: <version>)
-  let (_, maj, min, pat) = re/search-strings($version-regex, input);
-  maj | package-error("invalid version spec: %=", input);
-  make(<version>,
-       major: string-to-integer(maj),
-       minor: string-to-integer(min),
-       patch: string-to-integer(pat))
+  if (istr=(input, "latest"))
+    $latest
+  else
+    let (_, maj, min, pat) = re/search-strings($version-regex, input);
+    maj | package-error("invalid version spec: %=", input);
+    make(<version>,
+         major: string-to-integer(maj),
+         minor: string-to-integer(min),
+         patch: string-to-integer(pat))
+  end
 end;
 
 define class <latest> (<version>, <singleton-object>)
@@ -134,10 +142,12 @@ define method \= (v1 :: <version>, v2 :: <version>) => (_ :: <bool>)
 end;
 
 define method \< (v1 :: <version>, v2 :: <version>) => (_ :: <bool>)
-  v1.major < v2.major
-  | (v1.major == v2.major
-       & (v1.minor < v2.minor
-            | (v1.minor == v2.minor & v1.patch < v2.patch)))
+  v1 ~= $latest
+  & (v2 = $latest
+       | v1.major < v2.major
+       | (v1.major == v2.major
+            & (v1.minor < v2.minor
+                 | (v1.minor == v2.minor & v1.patch < v2.patch))))
 end;
   
 
@@ -168,8 +178,9 @@ define method \= (d1 :: <dep>, d2 :: <dep>) => (_ :: <bool>)
 end;
 
 // TODO: I like the dependency syntax/semantics used by Cargo. Will
-//       probably switch to those, but it can wait because for now
-//       we mostly can use 'latest'.
+//       probably switch to those, but it can wait because for now we
+//       mostly can use 'latest'. Might be more complex than
+//       necessary?
 define function dep-to-string (dep :: <dep>) => (_ :: <str>)
   let name = dep.package-name;
   let minv = dep.min-version;
@@ -192,7 +203,7 @@ define constant $dependency-regex :: <regex>
       let range = concat(rev, "-", rev);
       let version-spec = concat(#str:"(\*|([<=>])?", rev, "|", range, ")");
       // groups: 1:name, 2:vspec, 3:[<=>], 4: v1, 5:v1, 6:v2
-      let pattern = concat("^([A-Za-z][A-Za-z0-9-]*)/", version-spec, "$");
+      let pattern = concat("^([A-Za-z][A-Za-z0-9-]*)(?:/", version-spec, ")?$");
       re/compile(pattern)
     end;
 
@@ -202,7 +213,7 @@ define function string-to-dep
   let (whole, name, vspec, binop, v1a, v1b, v2) = re/search-strings($dependency-regex, input);
   if (~whole)
     // TODO: add doc link explaining dependency syntax.
-    catalog-error("Invalid dependency spec, %=, should be in the form pkg/1.2.3", input)
+    package-error("Invalid dependency spec: %=", input)
   end;
   let (minv, maxv) = #f;
   case
