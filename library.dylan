@@ -67,7 +67,8 @@ end module pacman;
 
 define module %pacman
   use file-system,
-    import: { directory-contents,
+    import: { delete-directory,
+              directory-contents,
               directory-empty?,
               <file-system-file-locator>,
               <pathname>,
@@ -102,7 +103,7 @@ define module %pacman
               <case-insensitive-string-table> => <istr-map> };
   use uncommon-dylan;
   use uncommon-utils,
-    import: { iff, <singleton-object>, value-sequence };
+    import: { elt, iff, <singleton-object>, value-sequence };
 
   use pacman, export: all;
 
@@ -115,7 +116,7 @@ define module %pacman
 
     string-to-version, version-to-string,
     string-to-dep, dep-to-string,
-    version-satisfies?,
+    satisfies?,
 
     read-json-catalog,
     validate-catalog,

@@ -10,11 +10,10 @@ define function regex-parser (s :: <str>) => (_ :: <regex>)
 end;
 
 define constant $uncategorized = "Uncategorized";
-define constant $pacman-dir-name = "pkg";
+define constant $pkg-dir-name = "pkg";
 
 define constant <dep-vec> = limited(<vector>, of: <dep>);
 define constant <pkg-vec> = limited(<vector>, of: <pkg>);
-define constant <str-vec> = limited(<vector>, of: <str>);
 
 define class <package-error> (<simple-error>)
 end;
@@ -234,7 +233,7 @@ define function string-to-dep
        max-version: maxv & string-to-version(maxv))
 end;
 
-define function version-satisfies?
+define function satisfies?
     (dep :: <dep>, version :: <version>) => (_ :: <bool>)
   let (minv, maxv) = values(dep.min-version, dep.max-version);
   (~minv & ~maxv)               // any version will do
@@ -266,10 +265,12 @@ end;
 
 // TODO: mercurial, tarballs, ...
 
-// Root of all things package managerish.
+// The package manager will never modify anything outside this
+// directory unless explicitly requested (e.g., via a directory passed
+// to download-package).
 define function package-manager-directory
     () => (dir :: <directory-locator>)
-  subdirectory-locator(dylan-directory(), $pacman-dir-name)
+  subdirectory-locator(dylan-directory(), $pkg-dir-name)
 end;
 
 // Display a message on stdout. Abstracted here so we can easily change all

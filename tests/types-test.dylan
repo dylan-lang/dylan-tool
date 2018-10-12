@@ -73,7 +73,7 @@ define test test-good-dep-versions ()
   end;
 end test;
 
-define test test-version-satisfies? ()
+define test test-satisfies? ()
   for (item in #(#("p/*", #("1.0.0", "0.0.1"), #t),
                  #("p/1.2.3", #("1.2.3"), #t),
                  #("p/1.2.3", #("1.2.4"), #f),
@@ -85,7 +85,7 @@ define test test-version-satisfies? ()
     let dep = string-to-dep(dstring);
     for (vstring in vstrings)
       let version = string-to-version(vstring);
-      assert-equal(version-satisfies?(dep, version), want,
+      assert-equal(satisfies?(dep, version), want,
                    sprintf("for dep %s and version %s", dstring, vstring));
     end;
   end;
@@ -97,5 +97,5 @@ define suite types-suite ()
   test test-dep-name;
   test test-bad-dep-versions;
   test test-good-dep-versions;
-  test test-version-satisfies?;
+  test test-satisfies?;
 end;

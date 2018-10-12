@@ -2,21 +2,6 @@ Module: %pacman
 Synopsis: Package manager API
 
 ///
-/// Packages
-///
-
-// Return all of pkg's versions as a sequence. The sequence is sorted
-// from oldest version to latest version.
-define sealed generic all-versions
-    (pkg :: <pkg>) => (versions :: <pkg-vec>);
-
-// Return pkg's dependencies, a sequence of other package
-// versions, in the order they appear in the package definition, with
-// duplicates removed.
-define sealed generic transitive-dependencies
-    (pkg :: <pkg>) => (deps :: <dep-vec>);
-
-///
 /// Catalog
 ///
 
@@ -55,12 +40,18 @@ define sealed generic find-package
 // Generally call these functions with the result of find-package(name, version).
 
 // Download package source into `dir` or signal <package-error> (for
-// example due to a network or file-system error).
+// example due to a network or file-system error). Dependencies are
+// not downloaded.
 define sealed generic download-package
     (pkg :: <pkg>, dir :: <directory-locator>) => ();
 
 // Download and install `pkg` into the standard location and update
 // the LATEST pointer if it's the latest version of the package. If
-// `force?` is true the package is re-installed if already present.
+// `force?` is true the existing package is removed, if present, and
+// the package is re-installed.  If `deps?` is true , also install
+// dependencies recursively. The `force?` argument applies to
+// dependent installations also. If `skip` is provided it must be a
+// list of package names (strings) to skip while installing
+// dependencies.
 define sealed generic install-package
-    (pkg :: <pkg>, #key force?) => ();
+    (pkg :: <pkg>, #key force?, deps?) => ();

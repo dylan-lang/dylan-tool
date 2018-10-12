@@ -224,11 +224,22 @@ define function validate-dependencies (cat :: <catalog>, pkg :: <pkg>) => ()
     end;
     block (return)
       for (pkg in version-map)
-        if (version-satisfies?(dep, pkg.version))
+        if (satisfies?(dep, pkg.version))
           return()
         end;
       end;
       missing-dep(dep)
     end;
+  end;
+end;
+
+define function package-versions
+    (cat :: <catalog>, pkg-name :: <str>) => (pkgs :: <pkg-vec>)
+  // TODO: fix bug in uncommon-dylan:uncommon-utils:elt macro
+  let vmap = element(cat.package-map, pkg-name, default: #f);
+  if (vmap)
+    map-as(<pkg-vec>, identity, vmap)
+  else
+    #[]
   end;
 end;

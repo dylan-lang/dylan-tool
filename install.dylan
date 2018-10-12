@@ -4,23 +4,28 @@ Synopsis: Package download and installation
 
 define constant $src-dir-name = "src";
 
-define function installation-directory (pkg :: <pkg>) => (_ :: <directory-locator>)
-  subdirectory-locator(package-manager-directory(),
-                       lowercase(pkg.name),
-                       version-to-string(pkg.version))
+// Directory in which all versions of a package are installed.
+define function package-directory (pkg-name :: <str>) => (_ :: <directory-locator>)
+  subdirectory-locator(package-manager-directory(), lowercase(pkg-name))
+end;
+
+// Directory in which a specific version is installed.
+define function version-directory (pkg :: <pkg>) => (_ :: <directory-locator>)
+  subdirectory-locator(package-directory(pkg.name), version-to-string(pkg.version))
 end;
 
 // Where the tarball/repo/etc is actually unpacked. We use a subdir of
 // the installation directory so there's no conflict with files
-// maintained by the package manager.
+// maintained by the package manager itself.
 define function source-directory (pkg :: <pkg>) => (_ :: <directory-locator>)
-  subdirectory-locator(installation-directory(pkg), $src-dir-name)
+  subdirectory-locator(version-directory(pkg), $src-dir-name)
 end;
 
 define function installed? (pkg :: <pkg>) => (_ :: <bool>)
   ~directory-empty?(source-directory(pkg))
 end;
 
+// See the generic in api.dylan.
 define method download-package
     (pkg :: <pkg>, dest-dir :: <directory-locator>) => ()
   let url = pkg.source-url;
@@ -28,16 +33,58 @@ define method download-package
   download(transport-from-url(url), url, dest-dir);
 end;
 
-// Download a package and install it in the standard location based on
-// the version number.
+// See the generic in api.dylan.
 define method install-package
-    (pkg :: <pkg>, #key force? :: <bool>) => ()
-  if (force? | ~installed?(pkg))
+    (pkg :: <pkg>, #key force? :: <bool>, deps? :: <bool> = #t)
+ => ()
+  if (deps?)
+    install-deps(pkg, force?: force?);
+  end;
+  if (force? & installed?(pkg))
+    message("Deleting package %s %s for forced install.\n", pkg.name, pkg.version);
+    delete-directory(version-directory(pkg), recursive?: #t);
+  end;
+  if (~installed?(pkg))
     download-package(pkg, source-directory(pkg));
   else
-    // TODO: make <pkg> print as "json/1.2.3".
-    message("Package %s is already installed.", pkg);
+    // TODO: make %s print <pkg> as "json/1.2.3" and fix everywhere. Same for <dep>.
+    message("Package %s %s is already installed.\n", pkg.name, pkg.version);
   end;
+end;
+
+// Install all dependencies of pkg recursively.
+define function install-deps (pkg :: <pkg>, #key force? :: <bool>)
+  for (dep in pkg.dependencies)
+    let (pkg, installed?) = resolve(dep);
+    if (~installed?)
+      install-package(pkg, force?: force?, deps?: #t)
+    end;
+  end;
+end;
+
+// Resolve a dep to a specific version of a package. If an installed
+// package meets the dependency requirement, it is used, even if there
+// is a newer version in the catalog.
+define function resolve (dep :: <dep>) => (pkg :: <pkg>, installed? :: <bool>)
+  let cat = load-catalog();
+  let pkg-name = dep.package-name;
+  block (return)
+    // See if an installed version works.
+    for (version in installed-versions(dep.package-name)) // Sorted newest to oldest.
+      if (satisfies?(dep, version))
+        let pkg = %find-package(cat, pkg-name, version);
+        if (pkg)
+          return(pkg, #t);
+        end;
+      end;
+    end;
+    // Nope, so find newest matching version in the catalog.
+    for (pkg in package-versions(cat, pkg-name))
+      if (satisfies?(dep, pkg.version))
+        return(pkg, #f);
+      end;
+    end;
+  end block;
 end;
 
 // Using this constant works around https://github.com/dylan-lang/dylan-mode/issues/27.
