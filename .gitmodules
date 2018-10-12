@@ -1,9 +1,0 @@
-[submodule "submodules/json"]
-	path = submodules/json
-	url = git@github.com:dylan-lang/json
-[submodule "submodules/regular-expressions"]
-	path = submodules/regular-expressions
-	url = git@github.com:dylan-lang/regular-expressions
-[submodule "submodules/uncommon-dylan"]
-	path = submodules/uncommon-dylan
-	url = git@github.com:dylan-lang/uncommon-dylan
