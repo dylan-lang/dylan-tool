@@ -17,7 +17,7 @@ and creates registry files as needed.
 
 ## The Workspace File
 
-A workspace is described by a `workspace.conf` file containing a
+A workspace is described by a `workspace.json` file containing a
 single JSON object. Example:
 
     {
