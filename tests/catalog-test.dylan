@@ -63,7 +63,7 @@ define test test-catalog ()
 */
   let cat = get-test-catalog();
   assert-equal(#["http", "json"], sort(key-sequence(cat.package-map)));
-  let http = %find-package(cat, "http", string-to-version("2.10.0"));
+  let http = find-package(cat, "http", string-to-version("2.10.0"));
   assert-true(http);
   assert-equal("MIT", http.license-type);
   assert-equal("opendylan", http.dependencies[2].package-name);
@@ -71,7 +71,7 @@ end;
 
 define test test-find-latest-version ()
   let cat = get-test-catalog();
-  let json = %find-package(cat, "json", $latest);
+  let json = find-package(cat, "json", $latest);
   assert-true(json);
   assert-equal("3.1234.100", version-to-string(json.version));
 end;

@@ -2,8 +2,10 @@ Module: %pacman
 
 /*
 TODO:
-* do we specify the libraries contained in the package explicitly, or just
+* do we specify package dependencies explicitly, or just
   let them be found via the .lid files?
+* can the catalog itself (the pacman-catalog package) be installed like
+  any other package and loaded from the install directory? 
 
 json catalog format:
 
@@ -57,13 +59,12 @@ define function local-cache
   make(<json-file-storage>, pathname: path)
 end;
 
-define function load-catalog
-    (#key store :: false-or(<storage>)) => (_ :: <catalog>)
+define method load-catalog () => (_ :: <catalog>)
   // TODO: handle type errors (e.g., from assumptions that the json is valid)
   //       and return <catalog-error>.
   // TODO: Use $catalog-url if local cache out of date, and update local cache.
   //       If we can't reach $catalog-url, fall-back to local cache.
-  %load-catalog(store | local-cache())
+  %load-catalog(local-cache())
 end;
 
 // Load a json-encoded catalog from file.
@@ -174,17 +175,11 @@ define function write-json-catalog
 end function write-json-catalog;
 
 define method find-package
-    (name :: <str>, ver :: <str>) => (pkg :: <pkg>)
-  find-package(name, string-to-version(ver))
+    (cat :: <catalog>, name :: <str>, ver :: <str>) => (pkg :: false-or(<pkg>))
+  find-package(cat, name, string-to-version(ver))
 end;
 
 define method find-package
-    (name :: <str>, ver :: <version>) => (pkg :: <pkg>)
-  %find-package(load-catalog(), name, ver)
-  | catalog-error("package not found: %s/%s", name, version-to-string(ver));
-end;
-
-define function %find-package
     (cat :: <catalog>, name :: <str>, ver :: <version>) => (p :: false-or(<pkg>))
   let version-map = element(cat.package-map, name, default: #f);
   if (version-map & version-map.size > 0) 

@@ -65,7 +65,7 @@ end;
 // Resolve a dep to a specific version of a package. If an installed
 // package meets the dependency requirement, it is used, even if there
 // is a newer version in the catalog.
-// TODO: update-dep, a function to install the latest packages that satisfy a dep.
+// TODO: update-dep, a function to install the latest versions of
 define function resolve (dep :: <dep>) => (pkg :: <pkg>, installed? :: <bool>)
   let cat = load-catalog();
   let pkg-name = dep.package-name;
@@ -73,7 +73,7 @@ define function resolve (dep :: <dep>) => (pkg :: <pkg>, installed? :: <bool>)
     // See if an installed version works.
     for (version in installed-versions(dep.package-name)) // Sorted newest to oldest.
       if (satisfies?(dep, version))
-        let pkg = %find-package(cat, pkg-name, version);
+        let pkg = find-package(cat, pkg-name, version);
         if (pkg)
           return(pkg, #t);
         end;

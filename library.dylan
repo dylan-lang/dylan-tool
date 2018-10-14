@@ -39,9 +39,13 @@ define module pacman
 
     <package-error>,
     download-package,
+    install-deps,
     install-package,
     installed-versions,
     installed?,
+    package-directory,
+    version-directory,
+    source-directory,
 
     <pkg>,
     category,
@@ -96,7 +100,8 @@ define module %pacman
   use streams,
     import: { read-to-end };
   use strings,
-    import: { starts-with?,
+    import: { lowercase,
+              starts-with?,
               string-equal-ic? => istr= };
   use table-extensions,
     import: { table,
@@ -110,7 +115,6 @@ define module %pacman
   // For the test suite.
   export
     <dep-vec>,
-    %find-package,
     package-map,
     str-parser,                 // #str:...
 

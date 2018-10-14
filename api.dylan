@@ -5,6 +5,11 @@ Synopsis: Package manager API
 /// Catalog
 ///
 
+// Load the catalog from a standard location, currently defined as
+// ${DYLAN}/pkg/catalog.json. At some point this will be loaded from
+// the net.
+define sealed generic load-catalog () => (cat :: <catalog>);
+
 // Add a new package to the catalog or signal <package-error>, for
 // example if there was a problem persisting the modified catalog, the
 // package was already present, or one of the package's dependencies
@@ -29,9 +34,8 @@ define sealed generic all-packages
 // Find a package in the default catalog having the given `name` and
 // `version`. Package names are always compared ignoring case.  The
 // special version `$latest` finds the latest version of a package.
-// Signals `<package-error>` if not found.
 define sealed generic find-package
-    (pkg-name :: <str>, version :: <any>) => (pkg :: <pkg>);
+    (cat :: <catalog>, pkg-name :: <str>, version :: <any>) => (pkg :: false-or(<pkg>));
 
 ///
 /// Installation
