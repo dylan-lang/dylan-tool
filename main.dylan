@@ -47,19 +47,28 @@ define function update ()
   let config = load-workspace-config($workspace-file);
   update-active-packages(config);
   update-deps(config);
+  update-registry(config);
 end;
 
+// TODO: make this the unique object that knows the layout of the workspace directory.
+//       workspace/
+//         registry/
+//         active-package-1/
+//         active-package-2/
 define class <config> (<any>)
   constant slot active-packages :: <istr-map>, required-init-keyword: active:;
+  constant slot workspace-directory :: <directory-locator>, required-init-keyword: workspace-directory:;
 end;
 
 define function active-package-names (conf :: <config>) => (names :: <seq>)
   key-sequence(conf.active-packages)
 end;
 
-define function load-workspace-config (filename :: <str>) => (_ :: <config>)
+define function load-workspace-config (filename :: <str>) => (c :: <config>)
   // TODO: search up directory tree to find nearest workspace file.
-  let path = as(<file-system-file-locator>, $workspace-file);
+  let workspace-dir = working-directory();
+  let path = merge-locators(as(<file-system-file-locator>, $workspace-file),
+                            workspace-dir);
   with-open-file(stream = path, if-does-not-exist: #"error")
     let object = json/parse(stream, strict?: #f);
     if (~instance?(object, <map>))
@@ -67,7 +76,9 @@ define function load-workspace-config (filename :: <str>) => (_ :: <config>)
     elseif (~elt(object, "active", or: #f))
       error("invalid workspace file %s, missing required key 'active'", path);
     end;
-    object["active"]
+    make(<config>,
+         active: object["active"],
+         workspace-directory: workspace-dir)
   end
 end;
 
@@ -75,14 +86,16 @@ define function update-active-packages (conf :: <config>)
   // TODO: clone active packages if directory doesn't exist.
 end;
 
+// Update dep packages if needed.
 define function update-deps (conf :: <config>)
   // TODO: as a quick way to get started this uses the catalog to find
   // dependencies. The right way is to specify the dependencies in the
   // source code of the package somewhere, e.g., a package definition
   // file or in the .lid files. That way, as the dependencies change
-  // for new code they can be updated accordingly.
+  // for new code they can be updated accordingly. For now I'll just
+  // make sure the catalog is updated before I run "dylan update".
   let cat = pkg/load-catalog();
-  for (pkg-name in active-package-names(conf))
+  for (pkg-name in conf.active-package-names)
     let pkg = pkg/find-package(cat, pkg-name, pkg/$latest);
     if (pkg)
       pkg/install-deps(pkg);
@@ -93,19 +106,57 @@ define function update-deps (conf :: <config>)
   end;
 end;
 
-// Create/update a single registry directory in the current directory
-// having an entry for each library in each active package and all
-// transitive dependencies.
+// Create/update a single registry directory having an entry for each
+// library in each active package and all transitive dependencies.
 define function update-registry (conf :: <config>)
+  // Library names must be unique across the registry...
+  let library-names = make(<istr-map>);
+
+  // TODO: This is the same shortcut as in update-deps.
   let cat = pkg/load-catalog();
   let pkgs = make(<istr-map>);
-  for (pkg-name in conf.active-packag-names)
+  for (pkg-name in conf.active-package-names)
     let pkg = pkg/find-package(cat, pkg-name, pkg/$latest);
     if (pkg)
-      pkg/do-deps(pkg, method (p)
-                         let old-srcdir = elt(pkgs, p.name, #f);
-                         let new-srcdir = source-directory(p);
-                         if (old-srcdir & (old-srcdir ~= new-srcdir))
-                           error("
+      pkg/do-resolved-deps(pkg, curry(update-registry-for-package, conf));
+    else
+      format-out("Active package %s not found in catalog; not creating registry"
+                   " files for its deps.\n", pkg);
+    end;
+  end;
+end;
+
+// Dig around in each package to find its libraries and create
+// registry files for them.
+define method update-registry-for-package (conf, pkg, dep, installed?)
+  if (~installed?)
+    error("Attempt to update registry for dependency %s, which"
+            " is not yet installed. This may be a bug.", dep);
+  end;
+  do-directory(method (dir, name, type)
+                 if (type = #"file" & ends-with?(name, ".lid"))
+                   let lid-path = merge-locators(as(<file-locator>, name), dir);
+                   update-registry-for-lid(conf, lid-path);
+                 end;
+               end,
+               pkg/source-directory(pkg));
+end;
+
+define function update-registry-for-lid
+    (conf :: <config>, lid-path :: <file-locator>)
+  let lib-name = library-from-lid(lid-path);
+  // TODO: I suspect the best thing is to write all registry files in
+  // the platform-specific directory for the current architecture
+  // rather than trying to figure out whether they should go in
+  // "/generic/" or not. But for now this only works with generic
+  // libraries.
+  let generic = subdirectory-locator(conf.registry-directory, "generic");
+  let reg-file = merge-locators(as(<file-locator>, lib-name), generic);
+  ensure-directory-exists(generic);
+  with-open-file(stream = reg-file, direction: #"output", if-exists?: #"overwrite")
+    format(stream, "abstract:/" "/dylan/%s\n", // Split string to work around dylan-mode bug.
+           relative-locator(reg-file, conf.workspace-directory));
+  end;
+end;
 
 exit-application(main());
