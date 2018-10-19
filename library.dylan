@@ -52,6 +52,7 @@ define module pacman
     contact,
     dependencies,
     description,
+    do-resolved-deps,
     keywords,
     license-type,
     name,

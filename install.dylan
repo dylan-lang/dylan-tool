@@ -54,11 +54,22 @@ end;
 
 // Install all dependencies of pkg recursively.
 define function install-deps (pkg :: <pkg>, #key force? :: <bool>)
+  local method install (p, _, installed?)
+          ~installed? & install-package(p, force?: force?, deps?: #t)
+        end;
+  do-resolved-deps(pkg, install);
+end;
+
+// Apply `fn` to all transitive dependencies of `pkg` using a
+// post-order traversal. `fn` is called with three arguments: the
+// package to which the dep was resolved, the dep itself, and a
+// boolean indicating whether or not the package is already
+// installed. The return value of `fn`, if any, is ignored.
+define function do-resolved-deps (pkg :: <pkg>, fn :: <func>) => ()
   for (dep in pkg.dependencies)
     let (pkg, installed?) = resolve(dep);
-    if (~installed?)
-      install-package(pkg, force?: force?, deps?: #t)
-    end;
+    do-resolved-deps(pkg, fn);
+    fn(pkg, dep, installed?);
   end;
 end;
 
@@ -144,6 +155,8 @@ define function installed-versions (pkg-name :: <str>) => (versions :: <seq>)
       block ()
         add!(versions, string-to-version(name))
       exception (_ :: <package-error>)
+        // Delete this. I just want to see the feedback for now.
+        message("Ignoring error parsing filename %= as a version.\n", name);
       end;
     end;
   end;

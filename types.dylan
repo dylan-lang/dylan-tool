@@ -48,17 +48,14 @@ define function dylan-directory
   end
 end;
 
-// A <pkg> knows about a package as a whole, but info that can change
-// when a new version is added to the catalog is stored in the <pkg>
-// class.
+// The slots in this class are the same for all versions of a package.
+// This class is simply to document which ones are shared. It makes
+// the code simpler to copy these attributes into each <pkg> instance
+// rather than turning this into a concrete class and making each
+// <pkg> point to it. Maybe.
 // TODO:
-//   * add slot libraries :: <seq> ? Or just put library names in the
-//     keywords list?
 //   * make description optional and default to synopsis.
-define class <pkg> (<any>)
-
-  // Required slots
-
+define abstract class <shared-pkg-attributes> (<any>)
   constant slot name :: <str>, required-init-keyword: name:;
   constant slot synopsis :: <str>, required-init-keyword: synopsis:;
   constant slot description :: <str>, required-init-keyword: description:;
@@ -68,6 +65,14 @@ define class <pkg> (<any>)
 
   // License type for this package, e.g. "MIT" or "BSD".
   constant slot license-type :: <str>, required-init-keyword: license-type:;
+  constant slot category :: <str> = $uncategorized, init-keyword: category:;
+end;
+
+// <pkg> represents a specific version of a package.
+// TODO:
+//   * add slot libraries :: <seq> ? Or just put library names in the
+//     keywords list?
+define class <pkg> (<shared-pkg-attributes>)
 
   constant slot version :: <version>, required-init-keyword: version:;
 
@@ -80,12 +85,17 @@ define class <pkg> (<any>)
 
   constant slot dependencies :: <dep-vec> = #[], init-keyword: dependencies:;
   constant slot keywords :: <seq> = #[], init-keyword: keywords:;
-  constant slot category :: <str> = $uncategorized, init-keyword: category:;
 end;
 
 define method initialize (pkg :: <pkg>, #key name) => ()
   next-method();
   validate-package-name(name);
+end;
+
+// A package with the same name and version is guaranteed to have all
+// other attributes the same.
+define method \= (p1 :: <pkg>, p2 :: <pkg>) => (_ :: <bool>)
+  istr=(p1.name, p2.name) & p1.version = p2.version
 end;
 
 define constant $pkg-name-regex = #regex:{^[A-Za-z][A-Za-z0-9-]*$};
@@ -171,7 +181,7 @@ define method initialize (dep :: <dep>, #key package-name) => ()
 end;
 
 define method \= (d1 :: <dep>, d2 :: <dep>) => (_ :: <bool>)
-  d1.package-name = d2.package-name
+  istr=(d1.package-name, d2.package-name)
   & d1.min-version = d2.min-version
   & d1.max-version = d2.max-version
 end;
@@ -189,6 +199,7 @@ define function dep-to-string (dep :: <dep>) => (_ :: <str>)
     ~minv         => concat(name, "/<", version-to-string(maxv));
     ~maxv         => concat(name, "/>", version-to-string(minv));
     minv = maxv   => concat(name, "/", version-to-string(minv));
+    // bleh, this isn't right because it needs to indicate <= max version
     otherwise     => sprintf("%s/%s-%s", name, version-to-string(minv), version-to-string(maxv));
   end
 end;
