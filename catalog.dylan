@@ -59,12 +59,15 @@ define function local-cache
   make(<json-file-storage>, pathname: path)
 end;
 
+// Loading the catalog once per session should be enough, so cache it here.
+define variable *catalog* :: false-or(<catalog>) = #f;
+
 define method load-catalog () => (_ :: <catalog>)
   // TODO: handle type errors (e.g., from assumptions that the json is valid)
   //       and return <catalog-error>.
   // TODO: Use $catalog-url if local cache out of date, and update local cache.
   //       If we can't reach $catalog-url, fall-back to local cache.
-  %load-catalog(local-cache())
+  *catalog* | (*catalog* := %load-catalog(local-cache()))
 end;
 
 // Load a json-encoded catalog from file.
