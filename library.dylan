@@ -5,9 +5,10 @@ define library dylan-tool
     import: { table-extensions };
   use command-line-parser;
   use io,
-    import: { format, format-out };
+    import: { format, format-out, streams };
   use json;
   use pacman;
+  use regular-expressions;
   use strings;
   use system,
     import: { file-system, locators };
@@ -21,6 +22,7 @@ define module dylan-tool
               make-command-line-parser => cli/make-parser };
   use file-system,
     import: { do-directory,
+              ensure-directories-exist,
               <file-system-file-locator>,
               with-open-file,
               working-directory };
@@ -38,6 +40,10 @@ define module dylan-tool
               subdirectory-locator };
   use pacman,
     prefix: "pkg/";
+  use regular-expressions,
+    import: { regex-parser };      // #regex:"..."
+  use streams,
+    import: { read-line };
   use strings,
     import: { ends-with?,
               string-equal? => str=,

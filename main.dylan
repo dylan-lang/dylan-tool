@@ -60,10 +60,6 @@ define class <config> (<any>)
   constant slot workspace-directory :: <directory-locator>, required-init-keyword: workspace-directory:;
 end;
 
-define function active-package-names (conf :: <config>) => (names :: <seq>)
-  key-sequence(conf.active-packages)
-end;
-
 define function load-workspace-config (filename :: <str>) => (c :: <config>)
   // TODO: search up directory tree to find nearest workspace file.
   let workspace-dir = working-directory();
@@ -80,6 +76,14 @@ define function load-workspace-config (filename :: <str>) => (c :: <config>)
          active: object["active"],
          workspace-directory: workspace-dir)
   end
+end;
+
+define function active-package-names (conf :: <config>) => (names :: <seq>)
+  key-sequence(conf.active-packages)
+end;
+
+define function registry-directory (conf :: <config>) => (d :: <directory-locator>)
+  subdirectory-locator(conf.workspace-directory, "registry")
 end;
 
 define function update-active-packages (conf :: <config>)
@@ -152,10 +156,26 @@ define function update-registry-for-lid
   // libraries.
   let generic = subdirectory-locator(conf.registry-directory, "generic");
   let reg-file = merge-locators(as(<file-locator>, lib-name), generic);
-  ensure-directory-exists(generic);
+  ensure-directories-exist(generic);
   with-open-file(stream = reg-file, direction: #"output", if-exists?: #"overwrite")
     format(stream, "abstract:/" "/dylan/%s\n", // Split string to work around dylan-mode bug.
            relative-locator(reg-file, conf.workspace-directory));
+  end;
+end;
+
+define function library-from-lid (path :: <file-locator>) => (library-name :: <str>)
+  with-open-file(stream = path)
+    let whitespace = #regex:" \t";
+    let line = #f;
+    block (return)
+      while (line := read-line(stream, on-end-of-file: #f))
+        let parts = split(line, whitespace, remove-if-empty?: #t);
+        if (parts.size > 1 & istr=(parts[0], "library:"))
+          return(parts[1])
+        end;
+      end;
+      error("No library found in %s", path);
+    end;
   end;
 end;
 
