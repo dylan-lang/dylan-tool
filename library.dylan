@@ -5,7 +5,7 @@ define library dylan-tool
     import: { table-extensions };
   use command-line-parser;
   use io,
-    import: { format, format-out, streams };
+    import: { format, format-out, print, streams };
   use json;
   use pacman;
   use regular-expressions;
@@ -40,6 +40,7 @@ define module dylan-tool
               subdirectory-locator };
   use pacman,
     prefix: "pkg/";
+  use print;
   use regular-expressions,
     import: { regex-parser };      // #regex:"..."
   use streams,

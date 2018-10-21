@@ -50,7 +50,8 @@ define function update ()
   update-registry(config);
 end;
 
-// TODO: make this the unique object that knows the layout of the workspace directory.
+// <config> holds the parsed workspace configuration file, and is the one object
+// that knows the layout of the workspace directory.  That is,
 //       workspace/
 //         registry/
 //         active-package-1/
@@ -66,7 +67,7 @@ define function load-workspace-config (filename :: <str>) => (c :: <config>)
   let path = merge-locators(as(<file-system-file-locator>, $workspace-file),
                             workspace-dir);
   with-open-file(stream = path, if-does-not-exist: #"error")
-    let object = json/parse(stream, strict?: #f);
+    let object = json/parse(stream, strict?: #f, table-class: <istr-map>);
     if (~instance?(object, <map>))
       error("invalid workspace file %s, must be a single JSON object", path);
     elseif (~elt(object, "active", or: #f))
@@ -80,6 +81,15 @@ end;
 
 define function active-package-names (conf :: <config>) => (names :: <seq>)
   key-sequence(conf.active-packages)
+end;
+
+define function active-package-directory
+    (conf :: <config>, pkg-name :: <str>) => (d :: <directory-locator>)
+  subdirectory-locator(conf.workspace-directory, pkg-name)
+end;
+
+define function active-package? (conf :: <config>, pkg-name :: <str>) => (_ :: <bool>)
+  member?(pkg-name, conf.active-package-names, test: istr=)
 end;
 
 define function registry-directory (conf :: <config>) => (d :: <directory-locator>)
@@ -102,6 +112,9 @@ define function update-deps (conf :: <config>)
   for (pkg-name in conf.active-package-names)
     let pkg = pkg/find-package(cat, pkg-name, pkg/$latest);
     if (pkg)
+      // TODO: in a perfect world this wouldn't install any deps that
+      // are also active packages. It doesn't cause a problem though,
+      // as long as the registry points to the right place.
       pkg/install-deps(pkg);
     else
       format-out("Active package %s not found in catalog; not installing its deps.\n",
@@ -113,15 +126,13 @@ end;
 // Create/update a single registry directory having an entry for each
 // library in each active package and all transitive dependencies.
 define function update-registry (conf :: <config>)
-  // Library names must be unique across the registry...
-  let library-names = make(<istr-map>);
-
-  // TODO: This is the same shortcut as in update-deps.
+  // TODO: This uses the same shortcut as in update-deps.
   let cat = pkg/load-catalog();
   let pkgs = make(<istr-map>);
   for (pkg-name in conf.active-package-names)
     let pkg = pkg/find-package(cat, pkg-name, pkg/$latest);
     if (pkg)
+      update-registry-for-package(conf, pkg, #f, #t);
       pkg/do-resolved-deps(pkg, curry(update-registry-for-package, conf));
     else
       format-out("Active package %s not found in catalog; not creating registry"
@@ -137,13 +148,18 @@ define method update-registry-for-package (conf, pkg, dep, installed?)
     error("Attempt to update registry for dependency %s, which"
             " is not yet installed. This may be a bug.", dep);
   end;
+  let pkg-dir = if (active-package?(conf, pkg.pkg/name))
+                  active-package-directory(conf, pkg.pkg/name)
+                else
+                  pkg/source-directory(pkg)
+                end;
   do-directory(method (dir, name, type)
                  if (type = #"file" & ends-with?(name, ".lid"))
                    let lid-path = merge-locators(as(<file-locator>, name), dir);
                    update-registry-for-lid(conf, lid-path);
                  end;
                end,
-               pkg/source-directory(pkg));
+               pkg-dir);
 end;
 
 define function update-registry-for-lid
@@ -159,16 +175,16 @@ define function update-registry-for-lid
   ensure-directories-exist(generic);
   with-open-file(stream = reg-file, direction: #"output", if-exists?: #"overwrite")
     format(stream, "abstract:/" "/dylan/%s\n", // Split string to work around dylan-mode bug.
-           relative-locator(reg-file, conf.workspace-directory));
+           relative-locator(lid-path, conf.workspace-directory));
   end;
 end;
 
 define function library-from-lid (path :: <file-locator>) => (library-name :: <str>)
   with-open-file(stream = path)
-    let whitespace = #regex:" \t";
+    let whitespace = #regex:"[ \t]";
     let line = #f;
     block (return)
-      while (line := read-line(stream, on-end-of-file: #f))
+      while (line := read-line(stream, on-end-of-stream: #f))
         let parts = split(line, whitespace, remove-if-empty?: #t);
         if (parts.size > 1 & istr=(parts[0], "library:"))
           return(parts[1])
