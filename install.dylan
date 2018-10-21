@@ -41,14 +41,13 @@ define method install-package
     install-deps(pkg, force?: force?);
   end;
   if (force? & installed?(pkg))
-    message("Deleting package %s %s for forced install.\n", pkg.name, pkg.version);
+    message("Deleting package %s for forced install.\n", pkg);
     delete-directory(version-directory(pkg), recursive?: #t);
   end;
   if (~installed?(pkg))
     download-package(pkg, source-directory(pkg));
   else
-    // TODO: make %s print <pkg> as "json/1.2.3" and fix everywhere. Same for <dep>.
-    message("Package %s %s is already installed.\n", pkg.name, pkg.version);
+    message("Package %s is already installed.\n", pkg);
   end;
 end;
 

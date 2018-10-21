@@ -7,20 +7,18 @@ Synopsis: Dylan package manager
 // module to common-dylan called "brevity".
 
 define library pacman
-  use common-dylan,
-    import: { simple-format };
+  use common-dylan;
   use collections,
     import: { table-extensions };
   use system,
     import: { file-system, locators, operating-system };
   use io,
-    import: { format, streams };
+    import: { format, format-out, print, streams };
   use json;
   use regular-expressions;
   use strings;
   use uncommon-dylan,
-    import: { uncommon-dylan,
-              uncommon-utils };
+    import: { uncommon-dylan, uncommon-utils };
   export
     pacman,
     %pacman;                    // For the test suite.
@@ -78,6 +76,11 @@ define module %pacman
               <file-system-file-locator>,
               <pathname>,
               with-open-file };
+  use format,
+    import: { format,
+              format-to-string => sprintf };
+  use format-out,
+    import: { format-out => printf };
   use json,
     import: { parse-json => json/parse,
               encode-json => json/encode };
@@ -90,16 +93,15 @@ define module %pacman
   use operating-system,
     import: { environment-variable => os/getenv,
               run-application => os/run };
+  use print,
+    import: { print-object, *print-escape?* };
   use regular-expressions,
     import: { <regex>,
               compile-regex => re/compile,
               regex-pattern => re/pattern,
               regex-search-strings => re/search-strings };
-  use simple-format,
-    import: { format-out => printf,
-              format-to-string => sprintf };
   use streams,
-    import: { read-to-end };
+    import: { read-to-end, <stream> };
   use strings,
     import: { lowercase,
               starts-with?,

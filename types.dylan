@@ -92,6 +92,12 @@ define method initialize (pkg :: <pkg>, #key name) => ()
   validate-package-name(name);
 end;
 
+define method print-object (pkg :: <pkg>, stream :: <stream>) => ()
+  format(stream, 
+         if (*print-escape?*) "<pkg %s %s>" else "%s %s" end,
+         pkg.name, pkg.version);
+end;
+
 // A package with the same name and version is guaranteed to have all
 // other attributes the same.
 define method \= (p1 :: <pkg>, p2 :: <pkg>) => (_ :: <bool>)
@@ -112,6 +118,12 @@ define class <version> (<any>)
   // TODO: consider adding a tag slot for "alpha-1" or "rc.3". I think
   // it would not be part of the equality comparisons and would be
   // solely for display purposes but I'm not sure.
+end;
+
+define method print-object (v :: <version>, stream :: <stream>) => ()
+  format(stream,
+         if (*print-escape?*) "<version %s>" else "%s" end,
+         version-to-string(v));
 end;
 
 define function version-to-string
@@ -180,6 +192,12 @@ define method initialize (dep :: <dep>, #key package-name) => ()
   end;
 end;
 
+define method print-object (dep :: <dep>, stream :: <stream>) => ()
+  format(stream,
+         if (*print-escape?*) "<dep %s>" else "%s" end,
+         dep-to-string(dep));
+end;
+
 define method \= (d1 :: <dep>, d2 :: <dep>) => (_ :: <bool>)
   istr=(d1.package-name, d2.package-name)
   & d1.min-version = d2.min-version
@@ -195,12 +213,12 @@ define function dep-to-string (dep :: <dep>) => (_ :: <str>)
   let minv = dep.min-version;
   let maxv = dep.max-version;
   case
-    ~minv & ~maxv => concat(name, "/*");
-    ~minv         => concat(name, "/<", version-to-string(maxv));
-    ~maxv         => concat(name, "/>", version-to-string(minv));
-    minv = maxv   => concat(name, "/", version-to-string(minv));
+    ~minv & ~maxv => concat(name, " *");
+    ~minv         => concat(name, " <", version-to-string(maxv));
+    ~maxv         => concat(name, " >", version-to-string(minv));
+    minv = maxv   => concat(name, " ", version-to-string(minv));
     // bleh, this isn't right because it needs to indicate <= max version
-    otherwise     => sprintf("%s/%s-%s", name, version-to-string(minv), version-to-string(maxv));
+    otherwise     => sprintf("%s %s-%s", name, version-to-string(minv), version-to-string(maxv));
   end
 end;
 
