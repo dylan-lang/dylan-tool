@@ -30,7 +30,7 @@ define function main () => (status :: <int>)
         if (~pkg)
           error("Package %s not found.", pkg-name);
         end;
-        pkg/install-package(pkg);
+        pkg/install(pkg);
       "update" =>
         // Update the workspace based on config file.
         update();
@@ -70,7 +70,7 @@ define function load-workspace-config (filename :: <str>) => (c :: <config>)
     let object = json/parse(stream, strict?: #f, table-class: <istr-map>);
     if (~instance?(object, <map>))
       error("invalid workspace file %s, must be a single JSON object", path);
-    elseif (~elt(object, "active", or: #f))
+    elseif (~element(object, "active", default: #f))
       error("invalid workspace file %s, missing required key 'active'", path);
     end;
     make(<config>,
@@ -88,6 +88,12 @@ define function active-package-directory
   subdirectory-locator(conf.workspace-directory, pkg-name)
 end;
 
+define function active-package-file
+    (conf :: <config>, pkg-name :: <str>) => (f :: <file-locator>)
+  merge-locators(as(<file-locator>, "pkg.json"),
+                 active-package-directory(conf, pkg-name))
+end;
+
 define function active-package? (conf :: <config>, pkg-name :: <str>) => (_ :: <bool>)
   member?(pkg-name, conf.active-package-names, test: istr=)
 end;
@@ -102,24 +108,12 @@ end;
 
 // Update dep packages if needed.
 define function update-deps (conf :: <config>)
-  // TODO: as a quick way to get started this uses the catalog to find
-  // dependencies. The right way is to specify the dependencies in the
-  // source code of the package somewhere, e.g., a package definition
-  // file or in the .lid files. That way, as the dependencies change
-  // for new code they can be updated accordingly. For now I'll just
-  // make sure the catalog is updated before I run "dylan update".
-  let cat = pkg/load-catalog();
   for (pkg-name in conf.active-package-names)
-    let pkg = pkg/find-package(cat, pkg-name, pkg/$latest);
-    if (pkg)
-      // TODO: in a perfect world this wouldn't install any deps that
-      // are also active packages. It doesn't cause a problem though,
-      // as long as the registry points to the right place.
-      pkg/install-deps(pkg);
-    else
-      format-out("Active package %s not found in catalog; not installing its deps.\n",
-                 pkg-name);
-    end;
+    let pkg = pkg/read-package-file(active-package-file(conf, pkg-name));
+    // TODO: in a perfect world this wouldn't install any deps that
+    // are also active packages. It doesn't cause a problem though,
+    // as long as the registry points to the right place.
+    pkg/install-deps(pkg);
   end;
 end;
 
@@ -153,13 +147,22 @@ define method update-registry-for-package (conf, pkg, dep, installed?)
                 else
                   pkg/source-directory(pkg)
                 end;
-  do-directory(method (dir, name, type)
-                 if (type = #"file" & ends-with?(name, ".lid"))
-                   let lid-path = merge-locators(as(<file-locator>, name), dir);
-                   update-registry-for-lid(conf, lid-path);
-                 end;
-               end,
-               pkg-dir);
+  local method doit (dir, name, type)
+          select (type)
+            #"file" =>
+              if (ends-with?(name, ".lid"))
+                let lid-path = merge-locators(as(<file-locator>, name), dir);
+                update-registry-for-lid(conf, lid-path);
+              end;
+            #"directory" =>
+              // ., .., .git, etc.  Could be too broad a brush, but it's hard to imagine
+              // putting Dylan code in .foo directories?
+              if (~starts-with?(name, "."))
+                do-directory(doit, subdirectory-locator(dir, name));
+              end;
+          end;
+        end;
+  do-directory(doit, pkg-dir);
 end;
 
 define function update-registry-for-lid

@@ -46,12 +46,11 @@ define module dylan-tool
   use streams,
     import: { read-line };
   use strings,
-    import: { ends-with?,
+    import: { starts-with?,
+              ends-with?,
               string-equal? => str=,
               string-equal-ic? => istr= };
   use table-extensions,
     import: { <case-insensitive-string-table> => <istr-map> };
   use uncommon-dylan;
-  use uncommon-utils,
-    import: { elt };
 end;
