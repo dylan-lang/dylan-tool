@@ -13,11 +13,11 @@ define constant $catalog-text =
       "versions": {
         "1.0.0": {
           "deps": [ "uri/4.0.9", "opendylan/2014.2.2" ],
-          "source-url": "https://github.com/dylan-lang/http"
+          "location": "https://github.com/dylan-lang/http"
         },
         "2.10.0": {
           "deps": [ "strings/2.3.4", "uri/6.1.0", "opendylan/2018.0.2" ],
-          "source-url": "https://github.com/dylan-lang/http"
+          "location": "https://github.com/dylan-lang/http"
         }
       }
     },
@@ -31,11 +31,11 @@ define constant $catalog-text =
       "versions": {
         "1.0.0": {
           "deps": [ "opendylan/2014.1.0" ],
-          "source-url": "https://github.com/dylan-lang/json"
+          "location": "https://github.com/dylan-lang/json"
         },
         "3.1234.100": {
           "deps": [ "strings/3.4.5", "opendylan/2018.8.8" ],
-          "source-url": "https://github.com/dylan-lang/json"
+          "location": "https://github.com/dylan-lang/json"
         }
       }
     }
@@ -47,7 +47,7 @@ define function get-test-catalog () => (_ :: <catalog>)
   end
 end;
 
-define test test-catalog ()
+define test catalog-test ()
   // Okay, this is a shitty test, but what can I do?  We don't have an
   // <ordered-dict> class, which would allow me to write the json back
   // out to a string in a predictable way, remove whitespace, and then
@@ -62,34 +62,34 @@ define test test-catalog ()
   assert-equal(orig-stripped, text-stripped);
 */
   let cat = get-test-catalog();
-  assert-equal(#["http", "json"], sort(key-sequence(cat.package-map)));
+  assert-equal(#["http", "json"], sort(key-sequence(cat.entries)));
   let http = find-package(cat, "http", string-to-version("2.10.0"));
   assert-true(http);
   assert-equal("MIT", http.license-type);
   assert-equal("opendylan", http.deps[2].package-name);
 end;
 
-define test test-find-latest-version ()
+define test find-latest-version-test ()
   let cat = get-test-catalog();
   let json = find-package(cat, "json", $latest);
   assert-true(json);
   assert-equal("3.1234.100", version-to-string(json.version));
 end;
 
-define test test-validate-dependencies ()
+define test validate-dependencies-test ()
   // needs more...
   assert-signals(<catalog-error>, validate-catalog(get-test-catalog()));
 end;
 
-define test test-load-catalog ()
+define test load-catalog-test ()
   // TODO: this only works on my machine because I've linked
   //       $DYLAN/pkg/catalog.json to the catalog.
   assert-no-errors(load-catalog());
 end;
 
 define suite catalog-suite ()
-  test test-catalog;
-  test test-find-latest-version;
-  test test-validate-dependencies;
-  test test-load-catalog;
+  test catalog-test;
+  test find-latest-version-test;
+  test validate-dependencies-test;
+  test load-catalog-test;
 end;

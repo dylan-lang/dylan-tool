@@ -1,6 +1,6 @@
 Module: pacman-test
 
-define test test-version-= ()
+define test version-=-test ()
   for (item in #[#["latest", "latest", #t],
                  #["latest", "0.0.0", #f],
                  #["0.0.0", "0.0.1", #f],
@@ -16,7 +16,7 @@ define test test-version-= ()
   end;
 end;
 
-define test test-version-< ()
+define test version-<-test ()
   for (item in #[#["latest", "latest", #f],
                  #["latest", "0.0.0", #f],
                  #["0.0.0", "0.0.1", #t],
@@ -33,7 +33,7 @@ define test test-version-< ()
   end;
 end;
 
-define test test-dep-name ()
+define test dep-name-test ()
   for (name in #["", "-x", "x_"])
     assert-signals(<package-error>, make(<dep>, package-name: name), name);
   end;
@@ -42,7 +42,7 @@ define test test-dep-name ()
   end;
 end test;
 
-define test test-bad-dep-versions ()
+define test bad-dep-versions-test ()
   // The -beta1 bit may be supported in the future, but not now.
   for (vstring in #["a.b.c", "4.5.6-beta1", "2.-3.4",
                     "2", "2.", "2.3", "2.3.", "2.3.4.5"])
@@ -55,7 +55,7 @@ define test test-bad-dep-versions ()
   end;
 end test;
 
-define test test-good-dep-versions ()
+define test good-dep-versions-test ()
   for (item in list(#("p/*", #f, #f),
                     #("p/9.8.7", "9.8.7", "9.8.7"),
                     #("p/=99.88.77", "99.88.77", "99.88.77"),
@@ -73,7 +73,7 @@ define test test-good-dep-versions ()
   end;
 end test;
 
-define test test-satisfies? ()
+define test satisfies?-test ()
   for (item in #(#("p/*", #("1.0.0", "0.0.1"), #t),
                  #("p/1.2.3", #("1.2.3"), #t),
                  #("p/1.2.3", #("1.2.4"), #f),
@@ -92,10 +92,10 @@ define test test-satisfies? ()
 end;
 
 define suite types-suite ()
-  test test-version-=;
-  test test-version-<;
-  test test-dep-name;
-  test test-bad-dep-versions;
-  test test-good-dep-versions;
-  test test-satisfies?;
+  test version-=-test;
+  test version-<-test;
+  test dep-name-test;
+  test bad-dep-versions-test;
+  test good-dep-versions-test;
+  test satisfies?-test;
 end;

@@ -111,7 +111,8 @@ define module %pacman
   // For the test suite.
   export
     <dep-vec>,
-    package-map,
+    entries,
+    license-type,
     str-parser,                 // #str:...
 
     string-to-version, version-to-string,

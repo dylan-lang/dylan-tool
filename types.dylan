@@ -56,6 +56,7 @@ define class <pkg> (<any>)
   constant slot name :: <str>, required-init-keyword: name:;
   constant slot version :: <version>, required-init-keyword: version:;
   constant slot deps :: <dep-vec> = #[], init-keyword: deps:;
+  constant slot entry :: false-or(<entry>) = #f, init-keyword: entry:;
   // Where the package can be downloaded from. (Details TBD. Could be
   // type <url>?)
   constant slot location :: false-or(<str>) = #f, init-keyword: location:;
@@ -83,6 +84,15 @@ define constant $pkg-name-regex = #regex:{^[A-Za-z][A-Za-z0-9-]*$};
 define function validate-package-name (name :: <str>) => ()
   re/search-strings($pkg-name-regex, name)
   | package-error("invalid package name: %=", name);
+end;
+
+// Convert to table for outputing as JSON. Only deps and location are
+// needed because version and name are encoded higher up in the JSON
+// object structure.
+define method to-table (pkg :: <pkg>) => (t :: <istr-map>)
+  table(<istr-map>,
+        "deps" => map(dep-to-string, pkg.deps),
+        "location" => pkg.location)
 end;
 
 define class <version> (<any>)
@@ -248,9 +258,8 @@ end;
 
 // The catalog knows what packages (and versions thereof) exist.
 define sealed class <catalog> (<any>)
-  // Maps package names to another <istr-map> that maps version
-  // strings to <entry>s.
-  constant slot package-map :: <istr-map>, required-init-keyword: package-map:;
+  // package name -> <entry>
+  constant slot entries :: <istr-map>, required-init-keyword: entries:;
 end;
 
 // A place to store catalog data.

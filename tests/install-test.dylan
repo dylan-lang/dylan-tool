@@ -1,17 +1,13 @@
 Module: pacman-test
 
-define test test-install ()
+define test install-test ()
   // TODO: make a test repo and use instead of mine.
   let pkg = make(<pkg>,
                  name: "json",
-                 synopsis: "json synopsis",
-                 description: "json description",
-                 contact: "zippy@zippy.com",
-                 license-type: "MIT",
                  version: string-to-version("1.2.3"),
-                 dependencies: make(<dep-vec>, size: 0),
+                 deps: make(<dep-vec>, size: 0),
                  // Work around dylan-mode indentation bug...
-                 source-url: concat("file:/", "/", "/home/cgay/dylan/repo/json"));
+                 location: concat("file:/", "/", "/home/cgay/dylan/repo/json"));
   let test-dir = subdirectory-locator(temp-directory(), "test-install");
   let pkg-dir = subdirectory-locator(test-dir, "pkg");
   if (file-exists?(pkg-dir))
@@ -31,5 +27,5 @@ define test test-install ()
 end test;
   
 define suite install-suite ()
-  test test-install;
+  test install-test;
 end;
