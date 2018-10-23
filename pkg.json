@@ -1,0 +1,5 @@
+{
+    "name": "pacman",
+    "deps": [ "json/*", "regular-expressions/*", "uncommon-dylan/*" ],
+    "location": "git@github.com:cgay/pacman"
+}

@@ -48,43 +48,17 @@ define function dylan-directory
   end
 end;
 
-// The slots in this class are the same for all versions of a package.
-// This class is simply to document which ones are shared. It makes
-// the code simpler to copy these attributes into each <pkg> instance
-// rather than turning this into a concrete class and making each
-// <pkg> point to it. Maybe.
-// TODO:
-//   * make description optional and default to synopsis.
-define abstract class <shared-pkg-attributes> (<any>)
-  constant slot name :: <str>, required-init-keyword: name:;
-  constant slot synopsis :: <str>, required-init-keyword: synopsis:;
-  constant slot description :: <str>, required-init-keyword: description:;
-
-  // Who to contact with questions about this package.
-  constant slot contact :: <str>, required-init-keyword: contact:;
-
-  // License type for this package, e.g. "MIT" or "BSD".
-  constant slot license-type :: <str>, required-init-keyword: license-type:;
-  constant slot category :: <str> = $uncategorized, init-keyword: category:;
-end;
-
 // <pkg> represents a specific version of a package.
 // TODO:
 //   * add slot libraries :: <seq> ? Or just put library names in the
 //     keywords list?
-define class <pkg> (<shared-pkg-attributes>)
-
+define class <pkg> (<any>)
+  constant slot name :: <str>, required-init-keyword: name:;
   constant slot version :: <version>, required-init-keyword: version:;
-
-  // Identifies where the package can be downloaded from. For example
-  // a git repo or URL pointing to a tarball. (Details TBD. Could be
+  constant slot deps :: <dep-vec> = #[], init-keyword: deps:;
+  // Where the package can be downloaded from. (Details TBD. Could be
   // type <url>?)
-  constant slot source-url :: <str>, required-init-keyword: source-url:;
-
-  // Optional slots
-
-  constant slot dependencies :: <dep-vec> = #[], init-keyword: dependencies:;
-  constant slot keywords :: <seq> = #[], init-keyword: keywords:;
+  constant slot location :: false-or(<str>) = #f, init-keyword: location:;
 end;
 
 define method initialize (pkg :: <pkg>, #key name) => ()
@@ -275,7 +249,7 @@ end;
 // The catalog knows what packages (and versions thereof) exist.
 define sealed class <catalog> (<any>)
   // Maps package names to another <istr-map> that maps version
-  // strings to <pkg>s.
+  // strings to <entry>s.
   constant slot package-map :: <istr-map>, required-init-keyword: package-map:;
 end;
 
@@ -307,4 +281,16 @@ end;
 define function message
     (pattern :: <str>, #rest args) => ()
   apply(printf, pattern, args)
+end;
+
+define function read-package-file (file :: <file-locator>) => (pkg :: <pkg>)
+  message("Reading package file %s\n", file);
+  with-open-file (stream = file)
+    let json = json/parse(stream, table-class: <istr-map>, strict?: #f);
+    message("deps = %s\n", json["deps"]);
+    make(<pkg>,
+         name: json["name"],
+         deps: map-as(<dep-vec>, string-to-dep, json["deps"]),
+         version: element(json, "version", default: $latest))
+  end
 end;

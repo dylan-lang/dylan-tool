@@ -25,18 +25,73 @@ define function installed? (pkg :: <pkg>) => (_ :: <bool>)
   ~directory-empty?(source-directory(pkg))
 end;
 
-// See the generic in api.dylan.
-define method download-package
+// Download and unpack `pkg` into `dest-dir` or signal <package-error>
+// (for example due to a network or file-system error). Dependencies
+// are not downloaded.
+define sealed generic download
+    (pkg :: <pkg>, dest-dir :: <directory-locator>) => ();
+
+define method download
     (pkg :: <pkg>, dest-dir :: <directory-locator>) => ()
-  let url = pkg.source-url;
+  let url = pkg.location;
   // Dispatch based on the transport type: git, mercurial, tarball, ...
-  download(transport-from-url(url), url, dest-dir);
+  %download(transport-from-url(url), url, dest-dir);
 end;
 
-// See the generic in api.dylan.
-define method install-package
-    (pkg :: <pkg>, #key force? :: <bool>, deps? :: <bool> = #t)
+// TODO: when downloading for installation (as opposed to for
+//       development, e.g., into a workspace) just do a shallow clone
+//       of a specific branch.  #key shallow?
+define method %download
+    (transport :: <git-transport>, url :: <str>, dest-dir :: <directory-locator>)
  => ()
+  // TODO: for git packages, how to handle branches? Require branch
+  // "version-1.2.3" to exist?
+  let branch = "master";
+  // TODO: wrap libgit2
+  let command = sprintf("git clone --recurse-submodules --branch=%s -- %s %s",
+			branch, url, as(<str>, dest-dir));
+  let (exit-code, #rest more)
+    = os/run(command,
+             output: "/tmp/git-clone-stdout.log", // temp
+             error: "/tmp/git-clone-stderr.log",  // temp
+             if-output-exists: #"append",
+             if-error-exists: #"append");
+  if (exit-code ~= 0)
+    package-error("git clone command (%=) failed with exit code %d.",
+                  command, exit-code);
+  end;
+end;
+
+// Using this constant works around https://github.com/dylan-lang/dylan-mode/issues/27.
+define constant $github-url = "https://github.com";
+
+// For now I'm assuming file://... is git because it doesn't seem to
+// allow a trailing ".git" in the URL to disambiguate. Not sure if
+// Mercurial or others can use "file:" URLs.
+// TODO:
+//   git@<domain>:org/repo.git or
+//   https://<domain>/org/repo.git or
+//   ssh://blah-de-blah/repo.git 
+//define constant $git-transport-re = re/compile(file://
+
+define function transport-from-url
+    (url :: <str>) => (transport :: <transport>)
+  if (#t /* TODO */ | starts-with?(url, $github-url))
+    make(<git-transport>)
+  else
+    package-error("unrecognized package source URL: %=", url);
+  end
+end;
+
+// Download and install `pkg` into the standard location. If `force?`
+// is true the existing package is removed, if present, and the
+// package is re-installed.  If `deps?` is true , also install
+// dependencies recursively. The `force?` argument applies to
+// dependency installations also.
+define sealed generic install (pkg :: <pkg>, #key force?, deps?) => ();
+
+define method install
+    (pkg :: <pkg>, #key force? :: <bool>, deps? :: <bool> = #t) => ()
   if (deps?)
     install-deps(pkg, force?: force?);
   end;
@@ -44,19 +99,18 @@ define method install-package
     message("Deleting package %s for forced install.\n", pkg);
     delete-directory(version-directory(pkg), recursive?: #t);
   end;
-  if (~installed?(pkg))
-    download-package(pkg, source-directory(pkg));
-  else
+  if (installed?(pkg))
     message("Package %s is already installed.\n", pkg);
+  else
+    download(pkg, source-directory(pkg));
   end;
 end;
 
-// Install all dependencies of pkg recursively.
-define function install-deps (pkg :: <pkg>, #key force? :: <bool>)
-  local method install (p, _, installed?)
-          ~installed? & install-package(p, force?: force?, deps?: #t)
+define method install-deps (pkg :: <pkg>, #key force? :: <bool>)
+  local method doit (p, _, installed?)
+          ~installed? & install(p, force?: force?, deps?: #t)
         end;
-  do-resolved-deps(pkg, install);
+  do-resolved-deps(pkg, doit);
 end;
 
 // Apply `fn` to all transitive dependencies of `pkg` using a
@@ -64,8 +118,10 @@ end;
 // package to which the dep was resolved, the dep itself, and a
 // boolean indicating whether or not the package is already
 // installed. The return value of `fn`, if any, is ignored.
+//
+// TODO: detect dep circularities
 define function do-resolved-deps (pkg :: <pkg>, fn :: <func>) => ()
-  for (dep in pkg.dependencies)
+  for (dep in pkg.deps)
     let (pkg, installed?) = resolve(dep);
     do-resolved-deps(pkg, fn);
     fn(pkg, dep, installed?);
@@ -99,51 +155,6 @@ define function resolve (dep :: <dep>) => (pkg :: <pkg>, installed? :: <bool>)
   end block;
 end;
 
-// Using this constant works around https://github.com/dylan-lang/dylan-mode/issues/27.
-define constant $github-url = "https://github.com";
-
-// For now I'm assuming file://... is git because it doesn't seem to
-// allow a trailing ".git" in the URL to disambiguate. Not sure if
-// Mercurial or others can use "file:" URLs.
-// TODO:
-//   git@<domain>:org/repo.git or
-//   https://<domain>/org/repo.git or
-//   ssh://blah-de-blah/repo.git 
-//define constant $git-transport-re = re/compile(file://
-
-define function transport-from-url
-    (url :: <str>) => (transport :: <transport>)
-  if (#t /* TODO */ | starts-with?(url, $github-url))
-    make(<git-transport>)
-  else
-    package-error("unrecognized package source URL: %=", url);
-  end
-end;
-
-// TODO: when downloading for installation (as opposed to for
-//       development, e.g., into a workspace) just do a shallow clone
-//       of a specific branch.  #key shallow?
-define method download
-    (transport :: <git-transport>, url :: <str>, dest-dir :: <directory-locator>)
- => ()
-  // TODO: for git packages, how to handle branches? Require branch
-  // "version-1.2.3" to exist?
-  let branch = "master";
-  // TODO: wrap libgit2
-  let command = sprintf("git clone --recurse-submodules --branch=%s -- %s %s",
-			branch, url, as(<str>, dest-dir));
-  let (exit-code, #rest more)
-    = os/run(command,
-             output: "/tmp/git-clone-stdout.log", // temp
-             error: "/tmp/git-clone-stderr.log",  // temp
-             if-output-exists: #"append",
-             if-error-exists: #"append");
-  if (exit-code ~= 0)
-    package-error("git clone command (%=) failed with exit code %d.",
-                  command, exit-code);
-  end;
-end;
-
 define function installed-versions (pkg-name :: <str>) => (versions :: <seq>)
   let pkg-dir = subdirectory-locator(package-manager-directory(),
                                      lowercase(pkg-name));
@@ -155,7 +166,7 @@ define function installed-versions (pkg-name :: <str>) => (versions :: <seq>)
       block ()
         add!(versions, string-to-version(name))
       exception (_ :: <package-error>)
-        // Delete this. I just want to see the feedback for now.
+        // TODO: Delete this. I just want to see the feedback for now.
         message("Ignoring error parsing filename %= as a version.\n", name);
       end;
     end;

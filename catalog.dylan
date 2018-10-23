@@ -39,6 +39,22 @@ define function catalog-error (fmt :: <str>, #rest args)
              format-arguments: args));
 end;
 
+// TODO:
+//   * make description optional and default to synopsis.
+define class <entry> (<any>)
+  constant slot package :: <pkg>, required-init-keyword: package:;
+  constant slot synopsis :: <str>, required-init-keyword: synopsis:;
+  constant slot description :: <str>, required-init-keyword: description:;
+
+  // Who to contact with questions about this package.
+  constant slot contact :: <str>, required-init-keyword: contact:;
+
+  // License type for this package, e.g. "MIT" or "BSD".
+  constant slot license-type :: <str>, required-init-keyword: license-type:;
+  constant slot category :: <str> = $uncategorized, init-keyword: category:;
+  constant slot keywords :: <seq> = #[], init-keyword: keywords:;
+end;
+
 // A datastore backed by a json file on disk. The json encoding is a
 // top-level dictionary mapping package names to package objects,
 // which are themselves encoded as json dictionaries. Almost all
@@ -110,27 +126,32 @@ define function json-to-catalog
         // case when the package was added.
         catalog-error("Duplicate package group %=", pkg-name);
       end;
-      let version->pkg = make(<istr-map>);
+      let entries = make(<istr-map>); // version string -> <entry>
       for (version-attrs keyed-by version in shared-attrs["versions"])
-        if (element(version->pkg, version, default: #f))
+        if (element(entries, version, default: #f))
           catalog-error("Duplicate package version: %s/%s", pkg-name, version);
         end;
-        version->pkg[version] :=
-          make(<pkg>,
-               name: pkg-name,
-               version: string-to-version(version),
-               source-url: version-attrs["source-url"],
-               dependencies: map-as(<dep-vec>, string-to-dep, version-attrs["deps"]),
-               // Shared attributes...
-               synopsis: shared-attrs["synopsis"],
-               description: shared-attrs["description"],
-               contact: shared-attrs["contact"],
-               license-type: shared-attrs["license-type"],
-               category: element(shared-attrs, "category", default: #f),
-               keywords: element(shared-attrs, "keywords", default: #f));
+        entries[version] :=
+          begin
+            let deps = map-as(<dep-vec>, string-to-dep, version-attrs["deps"]);
+            let pkg = make(<pkg>,
+                           name: pkg-name,
+                           version: string-to-version(version),
+                           deps: deps,
+                           location: version-attrs["location"]);
+            // TODO: this is dumb now. just make one entry and have it contain a list of packages.
+            make(<entry>,
+                 package: pkg,
+                 synopsis: shared-attrs["synopsis"],
+                 description: shared-attrs["description"],
+                 contact: shared-attrs["contact"],
+                 license-type: shared-attrs["license-type"],
+                 category: element(shared-attrs, "category", default: #f),
+                 keywords: element(shared-attrs, "keywords", default: #f))
+          end;
         num-pkgs := num-pkgs + 1;
       end for;
-      packages[pkg-name] := version->pkg;
+      packages[pkg-name] := entries;
     end if;
   end for;
   values(make(<catalog>, package-map: packages), packages.size, num-pkgs)
@@ -150,28 +171,24 @@ define function write-json-catalog
   let pkg-map = table(<istr-map>,
                       $catalog-attrs-key => table(<str-map>,
                                                   "unused" => "for now"));
-  // In the Dylan data structures many attributes are duplicated in
-  // each version of the <pkg> class because it's convenient. In the
-  // json text we reduce that duplication by storing the shared
-  // attributes in one table and then storing the attributes for
-  // specific versions in sub-tables.
   for (version-dict keyed-by pkg-name in catalog.package-map)
     let version-map = make(<istr-map>);
-    for (pkg keyed-by version in version-dict)
+    for (entry keyed-by version in version-dict)
       if (~element(pkg-map, pkg-name, default: #f))
         pkg-map[pkg-name]
-          := table("synopsis" => pkg.synopsis,
-                   "description" => pkg.description,
-                   "contact" => pkg.contact,
-                   "license-type" => pkg.license-type,
-                   "keywords" => pkg.keywords,
-                   "category" => pkg.category,
+          := table("synopsis" => entry.synopsis,
+                   "description" => entry.description,
+                   "contact" => entry.contact,
+                   "license-type" => entry.license-type,
+                   "keywords" => entry.keywords,
+                   "category" => entry.category,
                    "versions" => version-map);
       end;
+      let pkg = entry.package;
       version-map[version]
         := table(<istr-map>,
-                 "source-url" => pkg.source-url,
-                 "deps" => map(dep-to-string, pkg.dependencies));
+                 "location" => pkg.location,
+                 "deps" => map(dep-to-string, pkg.deps));
     end;
   end;
   json/encode(stream, pkg-map);
@@ -185,24 +202,28 @@ end;
 define method find-package
     (cat :: <catalog>, name :: <str>, ver :: <version>) => (p :: false-or(<pkg>))
   let version-map = element(cat.package-map, name, default: #f);
-  if (version-map & version-map.size > 0) 
+  if (version-map & version-map.size > 0)
     if (ver = $latest)
       let newest-first = sort(value-sequence(version-map),
-                              test: method (p1, p2)
-                                      p1.version > p2.version
+                              test: method (e1 :: <entry>, e2 :: <entry>)
+                                      e1.package.version > e2.package.version
                                     end);
-      newest-first[0]
+      newest-first[0].package
     else
-      element(version-map, version-to-string(ver), default: #f)
+      let entry = element(version-map, version-to-string(ver), default: #f);
+      entry & entry.package
     end
   end
 end;
 
 // Signal <catalog-error> if there are any problems found in the catalog.
+//
+// TODO: verify (on load) that there aren't two entries for the same version number
+//       or the same package name with different capitalization.
 define function validate-catalog (cat :: <catalog>) => ()
   for (version-map keyed-by pkg-name in cat.package-map)
-    for (pkg keyed-by vstring in version-map)
-      validate-dependencies(cat, pkg);
+    for (entry keyed-by vstring in version-map)
+      validate-deps(cat, entry.package);
     end;
   end;
 end;
@@ -210,19 +231,19 @@ end;
 // Verify that all dependencies specified in the catalog also exist in
 // the catalog. Note this has nothing to do with whether or not
 // they're installed.
-define function validate-dependencies (cat :: <catalog>, pkg :: <pkg>) => ()
+define function validate-deps (cat :: <catalog>, pkg :: <pkg>) => ()
   local method missing-dep (dep)
           catalog-error("for package %s/%s, dependency %s is missing from the catalog",
                         pkg.name, version-to-string(pkg.version), dep-to-string(dep));
         end;
-  for (dep in pkg.dependencies)
+  for (dep in pkg.deps)
     let version-map = element(cat.package-map, dep.package-name, default: #f);
     if (~version-map)
       missing-dep(dep);
     end;
     block (return)
-      for (pkg in version-map)
-        if (satisfies?(dep, pkg.version))
+      for (entry in version-map)
+        if (satisfies?(dep, entry.package.version))
           return()
         end;
       end;
@@ -233,7 +254,6 @@ end;
 
 define function package-versions
     (cat :: <catalog>, pkg-name :: <str>) => (pkgs :: <pkg-vec>)
-  // TODO: fix bug in uncommon-dylan:uncommon-utils:elt macro
   let vmap = element(cat.package-map, pkg-name, default: #f);
   if (vmap)
     map-as(<pkg-vec>, identity, vmap)

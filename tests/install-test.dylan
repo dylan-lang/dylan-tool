@@ -19,7 +19,7 @@ define test test-install ()
   end;
   environment-variable("DYLAN") := as(<byte-string>, test-dir);
   assert-false(installed?(pkg));
-  install-package(pkg);
+  install(pkg);
   assert-true(installed?(pkg));
   let lid-path = merge-locators(as(<file-system-file-locator>,
                                    "pkg/json/1.2.3/src/json.lid"),

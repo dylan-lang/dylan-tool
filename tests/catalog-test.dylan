@@ -66,7 +66,7 @@ define test test-catalog ()
   let http = find-package(cat, "http", string-to-version("2.10.0"));
   assert-true(http);
   assert-equal("MIT", http.license-type);
-  assert-equal("opendylan", http.dependencies[2].package-name);
+  assert-equal("opendylan", http.deps[2].package-name);
 end;
 
 define test test-find-latest-version ()
