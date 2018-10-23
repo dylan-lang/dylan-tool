@@ -5,6 +5,11 @@ Module: dylan-tool
 // problems right now so this should be a pretty simple way to get
 // workspaces and packages working.
 
+// TODO:
+// * Remove redundancy in 'update' command. It processes (shared?) dependencies
+//   and writes registry files multiple times.
+// * Don't write the registry file if it hasn't changed.
+
 define constant $workspace-file = "workspace.json";
 
 define function main () => (status :: <int>)
@@ -113,25 +118,17 @@ define function update-deps (conf :: <config>)
     // TODO: in a perfect world this wouldn't install any deps that
     // are also active packages. It doesn't cause a problem though,
     // as long as the registry points to the right place.
-    pkg/install-deps(pkg);
+    pkg/install-deps(pkg /* , skip: conf.active-package-names */);
   end;
 end;
 
 // Create/update a single registry directory having an entry for each
 // library in each active package and all transitive dependencies.
 define function update-registry (conf :: <config>)
-  // TODO: This uses the same shortcut as in update-deps.
-  let cat = pkg/load-catalog();
-  let pkgs = make(<istr-map>);
   for (pkg-name in conf.active-package-names)
-    let pkg = pkg/find-package(cat, pkg-name, pkg/$latest);
-    if (pkg)
-      update-registry-for-package(conf, pkg, #f, #t);
-      pkg/do-resolved-deps(pkg, curry(update-registry-for-package, conf));
-    else
-      format-out("Active package %s not found in catalog; not creating registry"
-                   " files for its deps.\n", pkg);
-    end;
+    let pkg = pkg/read-package-file(active-package-file(conf, pkg-name));
+    update-registry-for-package(conf, pkg, #f, #t);
+    pkg/do-resolved-deps(pkg, curry(update-registry-for-package, conf));
   end;
 end;
 
@@ -176,6 +173,7 @@ define function update-registry-for-lid
   let generic = subdirectory-locator(conf.registry-directory, "generic");
   let reg-file = merge-locators(as(<file-locator>, lib-name), generic);
   ensure-directories-exist(generic);
+  format-out("Writing %s\n", reg-file);
   with-open-file(stream = reg-file, direction: #"output", if-exists?: #"overwrite")
     format(stream, "abstract:/" "/dylan/%s\n", // Split string to work around dylan-mode bug.
            relative-locator(lid-path, conf.workspace-directory));
