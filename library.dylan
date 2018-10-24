@@ -23,7 +23,9 @@ define module dylan-tool
   use file-system,
     import: { do-directory,
               ensure-directories-exist,
+              file-exists?,
               <file-system-file-locator>,
+              root-directories,
               with-open-file,
               working-directory };
   use format,
@@ -35,6 +37,9 @@ define module dylan-tool
   use locators,
     import: { <directory-locator>,
               <file-locator>,
+              <locator>,
+              locator-as-string,
+              locator-directory,
               merge-locators,
               relative-locator,
               subdirectory-locator };

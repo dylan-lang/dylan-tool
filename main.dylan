@@ -50,6 +50,7 @@ end function main;
 // Update the workspace based on the workspace config or signal an error.
 define function update ()
   let config = load-workspace-config($workspace-file);
+  format-out("Workspace directory is %s\n", config.workspace-directory);
   update-active-packages(config);
   update-deps(config);
   update-registry(config);
@@ -67,10 +68,7 @@ define class <config> (<any>)
 end;
 
 define function load-workspace-config (filename :: <str>) => (c :: <config>)
-  // TODO: search up directory tree to find nearest workspace file.
-  let workspace-dir = working-directory();
-  let path = merge-locators(as(<file-system-file-locator>, $workspace-file),
-                            workspace-dir);
+  let path = find-workspace-file(working-directory());
   with-open-file(stream = path, if-does-not-exist: #"error")
     let object = json/parse(stream, strict?: #f, table-class: <istr-map>);
     if (~instance?(object, <map>))
@@ -80,8 +78,30 @@ define function load-workspace-config (filename :: <str>) => (c :: <config>)
     end;
     make(<config>,
          active: object["active"],
-         workspace-directory: workspace-dir)
+         workspace-directory: locator-directory(path))
   end
+end;
+
+// Search up from `dir` to find $workspace-file.
+define function find-workspace-file
+   (dir :: <directory-locator>) => (file :: false-or(<file-locator>))
+  if (~root-directory?(dir))
+    let path = merge-locators(as(<file-system-file-locator>, $workspace-file), dir);
+    if (file-exists?(path))
+      path
+    else
+      find-workspace-file(locator-directory(dir))
+    end
+  end
+end;
+
+// TODO: Put something like this in system:file-system?  It seems
+// straight-forward once you figure it out, but it took a few tries to
+// figure out that root-directories returned locators, not strings,
+// and it seems to depend on locators being ==, which I'm not even
+// sure of. It seems to work.
+define function root-directory? (loc :: <locator>)
+  member?(loc, root-directories())
 end;
 
 define function active-package-names (conf :: <config>) => (names :: <seq>)
