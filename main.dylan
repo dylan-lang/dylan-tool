@@ -8,7 +8,9 @@ Module: dylan-tool
 // TODO:
 // * Remove redundancy in 'update' command. It processes (shared?) dependencies
 //   and writes registry files multiple times.
-// * Don't write the registry file if it hasn't changed.
+// * Display the number of registry files updated and the number unchanged.
+//   It gives reassuring feedback that something went right when there's no
+//   other output.
 
 define constant $workspace-file = "workspace.json";
 
@@ -189,13 +191,19 @@ define function update-registry-for-lid
     (conf :: <config>, lid-path :: <file-locator>)
   let lib-name = library-from-lid(lid-path);
   let platform = lowercase(as(<str>, os/$platform-name));
-  let generic = subdirectory-locator(conf.registry-directory, platform);
-  let reg-file = merge-locators(as(<file-locator>, lib-name), generic);
-  fs/ensure-directories-exist(generic);
-  format-out("Writing %s\n", reg-file);
-  fs/with-open-file(stream = reg-file, direction: #"output", if-exists?: #"overwrite")
-    format(stream, "abstract:/" "/dylan/%s\n", // Split string to work around dylan-mode bug.
-           relative-locator(lid-path, conf.workspace-directory));
+  let directory = subdirectory-locator(conf.registry-directory, platform);
+  let reg-file = merge-locators(as(<file-locator>, lib-name), directory);
+  fs/ensure-directories-exist(directory);
+  let content = fs/with-open-file(stream = reg-file)
+                  read-to-end(stream)
+                end;
+  let relative-path = relative-locator(lid-path, conf.workspace-directory);
+  let new-content = format-to-string("abstract://dylan/%s\n", relative-path);
+  if (new-content ~= content)
+    format-out("Writing %s\n", reg-file);
+    fs/with-open-file(stream = reg-file, direction: #"output", if-exists?: #"overwrite")
+      write(stream, new-content);
+    end;
   end;
 end;
 

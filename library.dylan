@@ -23,7 +23,7 @@ define module dylan-tool
   use file-system,
     prefix: "fs/";
   use format,
-    import: { format };
+    import: { format, format-to-string };
   use format-out,
     import: { format-out, format-err };
   use json,
@@ -45,7 +45,7 @@ define module dylan-tool
   use regular-expressions,
     import: { regex-parser };      // #regex:"..."
   use streams,
-    import: { read-line };
+    import: { read-line, read-to-end, write };
   use strings,
     import: { lowercase,
               starts-with?,
