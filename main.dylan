@@ -185,12 +185,8 @@ end;
 define function update-registry-for-lid
     (conf :: <config>, lid-path :: <file-locator>)
   let lib-name = library-from-lid(lid-path);
-  // TODO: I suspect the best thing is to write all registry files in
-  // the platform-specific directory for the current architecture
-  // rather than trying to figure out whether they should go in
-  // "/generic/" or not. But for now this only works with generic
-  // libraries.
-  let generic = subdirectory-locator(conf.registry-directory, "generic");
+  let platform = lowercase(as(<str>, os/$platform-name));
+  let generic = subdirectory-locator(conf.registry-directory, platform);
   let reg-file = merge-locators(as(<file-locator>, lib-name), generic);
   fs/ensure-directories-exist(generic);
   format-out("Writing %s\n", reg-file);

@@ -11,7 +11,7 @@ define library dylan-tool
   use regular-expressions;
   use strings;
   use system,
-    import: { file-system, locators };
+    import: { file-system, locators, operating-system };
   use uncommon-dylan,
     import: { uncommon-dylan, uncommon-utils };
 end;
@@ -37,6 +37,8 @@ define module dylan-tool
               merge-locators,
               relative-locator,
               subdirectory-locator };
+  use operating-system,
+    prefix: "os/";
   use pacman,
     prefix: "pkg/";
   use print;
@@ -45,7 +47,8 @@ define module dylan-tool
   use streams,
     import: { read-line };
   use strings,
-    import: { starts-with?,
+    import: { lowercase,
+              starts-with?,
               ends-with?,
               string-equal? => str=,
               string-equal-ic? => istr= };
