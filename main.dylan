@@ -193,14 +193,14 @@ define function update-registry-for-lid
   let platform = lowercase(as(<str>, os/$platform-name));
   let directory = subdirectory-locator(conf.registry-directory, platform);
   let reg-file = merge-locators(as(<file-locator>, lib-name), directory);
-  fs/ensure-directories-exist(directory);
-  let content = fs/with-open-file(stream = reg-file)
+  let content = fs/with-open-file(stream = reg-file, if-does-not-exist: #f)
                   read-to-end(stream)
                 end;
   let relative-path = relative-locator(lid-path, conf.workspace-directory);
   let new-content = format-to-string("abstract://dylan/%s\n", relative-path);
   if (new-content ~= content)
     format-out("Writing %s\n", reg-file);
+    fs/ensure-directories-exist(directory);
     fs/with-open-file(stream = reg-file, direction: #"output", if-exists?: #"overwrite")
       write(stream, new-content);
     end;
