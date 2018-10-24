@@ -69,6 +69,9 @@ end;
 
 define function load-workspace-config (filename :: <str>) => (c :: <config>)
   let path = find-workspace-file(fs/working-directory());
+  if (~path)
+    error("Workspace file not found. Current directory isn't under a workspace directory?");
+  end;
   fs/with-open-file(stream = path, if-does-not-exist: #"error")
     let object = json/parse(stream, strict?: #f, table-class: <istr-map>);
     if (~instance?(object, <map>))
@@ -90,7 +93,7 @@ define function find-workspace-file
     if (fs/file-exists?(path))
       path
     else
-      find-workspace-file(locator-directory(dir))
+      locator-directory(dir) & find-workspace-file(locator-directory(dir))
     end
   end
 end;
