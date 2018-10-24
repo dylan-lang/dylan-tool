@@ -21,13 +21,7 @@ define module dylan-tool
     import: { <command-line-parser> => cli/<parser>,
               make-command-line-parser => cli/make-parser };
   use file-system,
-    import: { do-directory,
-              ensure-directories-exist,
-              file-exists?,
-              <file-system-file-locator>,
-              root-directories,
-              with-open-file,
-              working-directory };
+    prefix: "fs/";
   use format,
     import: { format };
   use format-out,

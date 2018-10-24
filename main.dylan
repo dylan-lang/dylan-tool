@@ -68,8 +68,8 @@ define class <config> (<any>)
 end;
 
 define function load-workspace-config (filename :: <str>) => (c :: <config>)
-  let path = find-workspace-file(working-directory());
-  with-open-file(stream = path, if-does-not-exist: #"error")
+  let path = find-workspace-file(fs/working-directory());
+  fs/with-open-file(stream = path, if-does-not-exist: #"error")
     let object = json/parse(stream, strict?: #f, table-class: <istr-map>);
     if (~instance?(object, <map>))
       error("invalid workspace file %s, must be a single JSON object", path);
@@ -86,8 +86,8 @@ end;
 define function find-workspace-file
    (dir :: <directory-locator>) => (file :: false-or(<file-locator>))
   if (~root-directory?(dir))
-    let path = merge-locators(as(<file-system-file-locator>, $workspace-file), dir);
-    if (file-exists?(path))
+    let path = merge-locators(as(fs/<file-system-file-locator>, $workspace-file), dir);
+    if (fs/file-exists?(path))
       path
     else
       find-workspace-file(locator-directory(dir))
@@ -101,7 +101,7 @@ end;
 // and it seems to depend on locators being ==, which I'm not even
 // sure of. It seems to work.
 define function root-directory? (loc :: <locator>)
-  member?(loc, root-directories())
+  member?(loc, fs/root-directories())
 end;
 
 define function active-package-names (conf :: <config>) => (names :: <seq>)
@@ -175,11 +175,11 @@ define method update-registry-for-package (conf, pkg, dep, installed?)
               // ., .., .git, etc.  Could be too broad a brush, but it's hard to imagine
               // putting Dylan code in .foo directories?
               if (~starts-with?(name, "."))
-                do-directory(doit, subdirectory-locator(dir, name));
+                fs/do-directory(doit, subdirectory-locator(dir, name));
               end;
           end;
         end;
-  do-directory(doit, pkg-dir);
+  fs/do-directory(doit, pkg-dir);
 end;
 
 define function update-registry-for-lid
@@ -192,16 +192,16 @@ define function update-registry-for-lid
   // libraries.
   let generic = subdirectory-locator(conf.registry-directory, "generic");
   let reg-file = merge-locators(as(<file-locator>, lib-name), generic);
-  ensure-directories-exist(generic);
+  fs/ensure-directories-exist(generic);
   format-out("Writing %s\n", reg-file);
-  with-open-file(stream = reg-file, direction: #"output", if-exists?: #"overwrite")
+  fs/with-open-file(stream = reg-file, direction: #"output", if-exists?: #"overwrite")
     format(stream, "abstract:/" "/dylan/%s\n", // Split string to work around dylan-mode bug.
            relative-locator(lid-path, conf.workspace-directory));
   end;
 end;
 
 define function library-from-lid (path :: <file-locator>) => (library-name :: <str>)
-  with-open-file(stream = path)
+  fs/with-open-file(stream = path)
     let whitespace = #regex:"[ \t]";
     let line = #f;
     block (return)
