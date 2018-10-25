@@ -43,9 +43,11 @@ define function main () => (status :: <int>)
         update();
     end select;
     0
+/* TODO: turn this into a 'let handler' that can be turned off by a --debug flag.
   exception (err :: <error>)
     format-err("Error: %s\n", err);
     1
+*/
   end
 end function main;
 
@@ -74,7 +76,7 @@ define function load-workspace-config (filename :: <str>) => (c :: <config>)
   if (~path)
     error("Workspace file not found. Current directory isn't under a workspace directory?");
   end;
-  fs/with-open-file(stream = path, if-does-not-exist: #"error")
+  fs/with-open-file(stream = path, if-does-not-exist: #"signal")
     let object = json/parse(stream, strict?: #f, table-class: <istr-map>);
     if (~instance?(object, <map>))
       error("invalid workspace file %s, must be a single JSON object", path);
@@ -193,18 +195,28 @@ define function update-registry-for-lid
   let platform = lowercase(as(<str>, os/$platform-name));
   let directory = subdirectory-locator(conf.registry-directory, platform);
   let reg-file = merge-locators(as(<file-locator>, lib-name), directory);
-  let content = fs/with-open-file(stream = reg-file, if-does-not-exist: #f)
-                  read-to-end(stream)
-                end;
   let relative-path = relative-locator(lid-path, conf.workspace-directory);
   let new-content = format-to-string("abstract://dylan/%s\n", relative-path);
-  if (new-content ~= content)
+  if (new-content ~= file-content(reg-file))
+    fs/ensure-directories-exist(reg-file);
     format-out("Writing %s\n", reg-file);
-    fs/ensure-directories-exist(directory);
     fs/with-open-file(stream = reg-file, direction: #"output", if-exists?: #"overwrite")
       write(stream, new-content);
     end;
   end;
+end;
+
+// Read the full contents of a file and return it as a string.
+// If the file doesn't exist return #f. (I thought if-does-not-exist: #f
+// was supposed to accomplish this without the need for block/exception.)
+define function file-content (path :: <locator>) => (s :: false-or(<str>))
+  block ()
+    fs/with-open-file(stream = path, if-does-not-exist: #"signal")
+      read-to-end(stream)
+    end
+  exception (e :: fs/<file-does-not-exist-error>)
+    #f
+  end
 end;
 
 define function library-from-lid (path :: <file-locator>) => (library-name :: <str>)
