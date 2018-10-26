@@ -76,11 +76,6 @@ Version 1.0.0 will primarily work with packages at HEAD since that's
 the way everyone currently expects to work on Dylan.  Better support
 for numbered versions can come later.
 
-* Workspace file should only need to be a list of packages to work
-  on and their deps should be looked up in the catalog if not listed
-  in the workspace file. Putting deps in the workspace file is
-  mainly useful for NEW projects.
-
 * Deps of the form "pkg/*" should just be "pkg", meaning the latest
   version.
 
