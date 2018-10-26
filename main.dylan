@@ -80,9 +80,12 @@ define function load-workspace-config (filename :: <str>) => (c :: <config>)
   fs/with-open-file(stream = path, if-does-not-exist: #"signal")
     let object = json/parse(stream, strict?: #f, table-class: <istr-map>);
     if (~instance?(object, <map>))
-      error("invalid workspace file %s, must be a single JSON object", path);
+      error("Invalid workspace file %s, must be a single JSON object", path);
     elseif (~element(object, "active", default: #f))
-      error("invalid workspace file %s, missing required key 'active'", path);
+      error("Invalid workspace file %s, missing required key 'active'", path);
+    elseif (~instance?(object["active"], <map>))
+      error("Invalid workspace file %s, the 'active' element must be a map"
+              " from package name to {...}.", path);
     end;
     make(<config>,
          active: object["active"],

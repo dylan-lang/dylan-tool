@@ -22,18 +22,14 @@ single JSON object. Example:
 
     {
         "active": {
-            "dylan-tool": {
-                "url": "git@github.com:cgay/dylan-tool"
-                "branch": "version-1.0.0"
-            },
-            "pacman": {
-                "url": "git@github.com:cgay/pacman"
-            },
-            "uncommon-dylan": {
-                "url": "git@github.com:cgay/uncommon-dylan"
-            }
+            "dylan-tool": {},
+            "pacman": {},
+            "uncommon-dylan": {}
         }
     }
+
+(Note: There are currently no options so each package name simply maps
+to an empty dictionary: `{}`.)
 
 The "active" attribute describes the set of packages under active
 development in this workspace. Assuming git as the source control
@@ -45,14 +41,13 @@ After initial checkout the user may create a new branch or perform
 whatever git operations are necessary.
 
 Each key under "active" specifies a package that will be under active
-development. These should match the name of an existing repository on
-github. They are cloned into the workspace directory if a directory by
-the same name doesn't already exist.
-
-Each active package must have a "url" attribute with the git
-repository URL to use for initial checkout. It may also have a
-"branch" attribute to specify the git branch to select. The default is
-"master".
+development. If you're working on existing packages then these should
+match the name of an existing package in the Catalog, and if a
+subdirectory by this name doesn't exist in the workspace file's
+directory, dylan-tool will do the initial checkout for you. If you're
+creating a new package then you'll need to create the directory
+yourself, create a pkg.json file inside it, and then run `dylan-tool
+update` and it will fetch the package's dependencies for you.
 
 ## The Registry
 
