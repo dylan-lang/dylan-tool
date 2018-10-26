@@ -292,7 +292,7 @@ end;
 
 // The package manager will never modify anything outside this
 // directory unless explicitly requested (e.g., via a directory passed
-// to download-package).
+// to download).
 define function package-manager-directory
     () => (dir :: <directory-locator>)
   subdirectory-locator(dylan-directory(), $pkg-dir-name)
@@ -305,13 +305,17 @@ define function message
   apply(printf, pattern, args)
 end;
 
-define function read-package-file (file :: <file-locator>) => (pkg :: <pkg>)
+define function read-package-file (file :: <file-locator>) => (pkg :: false-or(<pkg>))
   message("Reading package file %s\n", file);
-  with-open-file (stream = file)
-    let json = json/parse(stream, table-class: <istr-map>, strict?: #f);
-    make(<pkg>,
-         name: json["name"],
-         deps: map-as(<dep-vec>, string-to-dep, json["deps"]),
-         version: element(json, "version", default: $latest))
+  block ()
+    with-open-file (stream = file)
+      let json = json/parse(stream, table-class: <istr-map>, strict?: #f);
+      make(<pkg>,
+           name: json["name"],
+           deps: map-as(<dep-vec>, string-to-dep, json["deps"]),
+           version: element(json, "version", default: $latest))
+    end
+  exception (e :: <file-does-not-exist-error>)
+    #f
   end
 end;

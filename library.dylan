@@ -67,6 +67,7 @@ define module %pacman
     import: { delete-directory,
               directory-contents,
               directory-empty?,
+              <file-does-not-exist-error>,
               <file-system-file-locator>,
               <pathname>,
               with-open-file };
