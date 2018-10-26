@@ -1,9 +1,9 @@
 {
     "name": "dylan-tool",
-    "deps": [ "command-line-parser/*",
-              "json/*",
-              "pacman/*",
-              "regular-expressions/*",
-              "uncommon-dylan/*" ],
+    "deps": [ "command-line-parser head",
+              "json head",
+              "pacman head",
+              "regular-expressions head",
+              "uncommon-dylan head" ],
     "location": "git@github.com:cgay/dylan-tool"
 }

@@ -134,8 +134,24 @@ define function registry-directory (conf :: <config>) => (d :: <directory-locato
   subdirectory-locator(conf.workspace-directory, "registry")
 end;
 
+// Download active packages into the workspace directory if the
+// package directories don't already exist.
 define function update-active-packages (conf :: <config>)
-  // TODO: clone active packages if directory doesn't exist.
+  for (attrs keyed-by pkg-name in conf.active-packages)
+    let pkg-dir = active-package-directory(conf, pkg-name);
+    if (fs/file-exists?(pkg-dir))
+      format-out("Active package %s (exists, not downloading)\n", pkg-name);
+    else
+      let cat = pkg/load-catalog();
+      let pkg = pkg/find-package(cat, pkg-name, pkg/$head)
+                  | pkg/find-package(cat, pkg-name, pkg/$latest);
+      if (pkg)
+        pkg/download(pkg, pkg-dir);
+      else
+        format-out("WARNING: Skipping active package %s, not found in catalog.\n", pkg-name);
+      end;
+    end;
+  end;
 end;
 
 // Update dep packages if needed.
