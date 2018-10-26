@@ -160,9 +160,9 @@ define function json-to-catalog
         // case when the package was added.
         catalog-error("Duplicate catalog entry %=", pkg-name);
       end;
-      let versions = make(<istr-map>); // version string -> <pkg>
+      let packages = make(<istr-map>); // version string -> <pkg>
       let entry = make(<entry>,
-                       versions: versions,
+                       versions: packages,
                        synopsis: entry-attrs["synopsis"],
                        description: entry-attrs["description"],
                        contact: entry-attrs["contact"],
@@ -171,13 +171,18 @@ define function json-to-catalog
                        keywords: element(entry-attrs, "keywords", default: #f));
       entries[pkg-name] := entry;
       for (version-attrs keyed-by version in entry-attrs["versions"])
-        if (element(versions, version, default: #f))
+        if (element(packages, version, default: #f))
           catalog-error("Duplicate package version: %s %s", pkg-name, version);
         end;
-        versions[version] :=
+        let version = string-to-version(version);
+        if (version = $latest)
+          catalog-error("Version 'latest' is not a valid package version in the catalog."
+                          " It's only valid for lookup. Did you mean 'head'?");
+        end;
+        packages[version] :=
           make(<pkg>,
                name: pkg-name,
-               version: string-to-version(version),
+               version: version,
                deps: map-as(<dep-vec>, string-to-dep, version-attrs["deps"]),
                location: version-attrs["location"],
                entry: entry);
@@ -231,9 +236,6 @@ define method find-package
 end;
 
 // Signal <catalog-error> if there are any problems found in the catalog.
-//
-// TODO: verify (on load) that there aren't two entries for the same version number
-//       or the same package name with different capitalization.
 define function validate-catalog (cat :: <catalog>) => ()
   for (entry keyed-by pkg-name in cat.entries)
     for (pkg keyed-by vstring in entry.versions)

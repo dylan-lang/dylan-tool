@@ -1,6 +1,14 @@
 Module: %pacman
 Synopsis: Package download and installation
 
+// TODO:
+//  * wrap libgit2 instead of shelling out to git.
+//  * ^^ or not. Perhaps it doesn't really make sense to use arbitrary
+//    URLs as the package location. That likely requires every user to
+//    have access credentials for all the servers those URLs point to.
+//    It's probably necessary to have a single location (with mirrors)
+//    into which we stuff a tarball or zip file. How does Quicklisp do
+//    it?
 
 define constant $src-dir-name = "src";
 
@@ -28,28 +36,21 @@ end;
 // Download and unpack `pkg` into `dest-dir` or signal <package-error>
 // (for example due to a network or file-system error). Dependencies
 // are not downloaded.
-define sealed generic download
-    (pkg :: <pkg>, dest-dir :: <directory-locator>) => ();
-
-define method download
+define function download
     (pkg :: <pkg>, dest-dir :: <directory-locator>) => ()
-  let url = pkg.location;
   // Dispatch based on the transport type: git, mercurial, tarball, ...
-  %download(transport-from-url(url), url, dest-dir);
+  %download(package-transport(pkg), pkg.location, dest-dir);
 end;
 
-// TODO: when downloading for installation (as opposed to for
-//       development, e.g., into a workspace) just do a shallow clone
-//       of a specific branch.  #key shallow?
+define generic %download
+    (transport :: <transport>, location :: <str>, dest-dir :: <directory-locator>);
+
 define method %download
-    (transport :: <git-transport>, url :: <str>, dest-dir :: <directory-locator>)
+    (transport :: <git-transport>, location :: <str>, dest-dir :: <directory-locator>)
  => ()
-  // TODO: for git packages, how to handle branches? Require branch
-  // "version-1.2.3" to exist?
-  let branch = "master";
-  // TODO: wrap libgit2
+  // TODO: add --quiet, once debugged
   let command = sprintf("git clone --recurse-submodules --branch=%s -- %s %s",
-			branch, url, as(<str>, dest-dir));
+                        branch, location, dest-dir);
   let (exit-code, #rest more)
     = os/run(command,
              output: "/tmp/git-clone-stdout.log", // temp
@@ -62,9 +63,6 @@ define method %download
   end;
 end;
 
-// Using this constant works around https://github.com/dylan-lang/dylan-mode/issues/27.
-define constant $github-url = "https://github.com";
-
 // For now I'm assuming file://... is git because it doesn't seem to
 // allow a trailing ".git" in the URL to disambiguate. Not sure if
 // Mercurial or others can use "file:" URLs.
@@ -74,12 +72,20 @@ define constant $github-url = "https://github.com";
 //   ssh://blah-de-blah/repo.git 
 //define constant $git-transport-re = re/compile(file://
 
-define function transport-from-url
-    (url :: <str>) => (transport :: <transport>)
-  if (#t /* TODO */ | starts-with?(url, $github-url))
-    make(<git-transport>)
+define function package-transport
+    (pkg :: <pkg>) => (transport :: <transport>)
+  // TODO: don't assume github. If it's not general enough to detect
+  // which transport to use based on the package location we might
+  // have to specify the transport explicitly in the catalog and
+  // package files.
+  if (find-substring(pkg.location, "github"))
+    let branch = "master";
+    if (pkg.version ~= $head)
+      branch := sprintf("version-%s", version-to-string(pkg.version));
+    end;
+    make(<git-transport>, branch: branch)
   else
-    package-error("unrecognized package source URL: %=", url);
+    package-error("unrecognized package source URL: %=", pkg.location);
   end
 end;
 

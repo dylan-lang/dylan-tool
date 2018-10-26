@@ -96,7 +96,8 @@ define module %pacman
   use streams,
     import: { read-to-end, <stream> };
   use strings,
-    import: { lowercase,
+    import: { find-substring,
+              lowercase,
               starts-with?,
               string-equal-ic? => istr= };
   use table-extensions,

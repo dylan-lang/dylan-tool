@@ -110,12 +110,20 @@ define method print-object (v :: <version>, stream :: <stream>) => ()
          version-to-string(v));
 end;
 
-define function version-to-string
-    (v :: <version>) => (_ :: <str>)
-  if (v = $latest)
-    "latest"
-  else
-    sprintf("%d.%d.%d", v.major, v.minor, v.patch)
+// $latest refers to the latest numbered version of a package.
+define class <latest> (<version>, <singleton-object>) end;
+define constant $latest :: <latest> = make(<latest>, major: -1, minor: -1, patch: -1);
+
+// $head refers to the bleeding edge devhead version, which has no number.
+// Usually the "master" branch in git terms.
+define class <head> (<version>, <singleton-object>) end;
+define constant $head :: <head> = make(<head>, major: 0, minor: 0, patch: 0);
+
+define function version-to-string (v :: <version>) => (_ :: <str>)
+  select (v)
+    $latest => "latest";
+    $head => "head";
+    otherwise => sprintf("%d.%d.%d", v.major, v.minor, v.patch)
   end
 end;
 
@@ -123,22 +131,18 @@ define constant $version-regex = #regex:{^(\d+)\.(\d+)\.(\d+)$};
 
 define function string-to-version
     (input :: <str>) => (_ :: <version>)
-  if (istr=(input, "latest"))
-    $latest
-  else
-    let (_, maj, min, pat) = re/search-strings($version-regex, input);
-    maj | package-error("invalid version spec: %=", input);
-    make(<version>,
-         major: string-to-integer(maj),
-         minor: string-to-integer(min),
-         patch: string-to-integer(pat))
+  select (input by istr=)
+    "latest"  => $latest;
+    "head"    => $head;
+    otherwise =>
+      let (_, maj, min, pat) = re/search-strings($version-regex, input);
+      maj | package-error("invalid version spec: %=", input);
+      make(<version>,
+           major: string-to-integer(maj),
+           minor: string-to-integer(min),
+           patch: string-to-integer(pat))
   end
 end;
-
-define class <latest> (<version>, <singleton-object>)
-end;
-
-define constant $latest :: <latest> = make(<latest>, major: -1, minor: -1, patch: -1);
 
 define method \= (v1 :: <version>, v2 :: <version>) => (_ :: <bool>)
   v1.major == v2.major
@@ -147,12 +151,17 @@ define method \= (v1 :: <version>, v2 :: <version>) => (_ :: <bool>)
 end;
 
 define method \< (v1 :: <version>, v2 :: <version>) => (_ :: <bool>)
-  v1 ~= $latest
-  & (v2 = $latest
-       | v1.major < v2.major
-       | (v1.major == v2.major
-            & (v1.minor < v2.minor
-                 | (v1.minor == v2.minor & v1.patch < v2.patch))))
+  case
+    v1 = $head   => #f;
+    v1 = $latest => v2 = $head;
+    v2 = $head   => v1 ~= $head;
+    v2 = $latest => (v1 ~= $head & v1 ~= $latest);
+    otherwise =>
+      v1.major < v2.major
+        | (v1.major == v2.major
+             & (v1.minor < v2.minor
+                  | (v1.minor == v2.minor & v1.patch < v2.patch)))
+  end
 end;
   
 
@@ -273,6 +282,7 @@ end;
 
 // Install git packages.
 define class <git-transport> (<transport>)
+  constant slot branch :: <str> = "master", init-keyword: branch:;
 end;
 
 // TODO: mercurial, tarballs, ...
@@ -296,7 +306,6 @@ define function read-package-file (file :: <file-locator>) => (pkg :: <pkg>)
   message("Reading package file %s\n", file);
   with-open-file (stream = file)
     let json = json/parse(stream, table-class: <istr-map>, strict?: #f);
-    message("deps = %s\n", json["deps"]);
     make(<pkg>,
          name: json["name"],
          deps: map-as(<dep-vec>, string-to-dep, json["deps"]),
