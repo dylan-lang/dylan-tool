@@ -69,3 +69,49 @@ accurately.  The registry points to the active packages in the
 workspace directory but points to the installation directory
 (`${DYLAN}/pkg/...`) for all other dependencies. 
 
+## TODO List
+
+This only lists important items. There are TODOs in the code as well,
+but mostly for smaller or less important items. Some of the items on
+this list are more for pacman than dylan-tool.
+
+### For 1.0.0
+
+Version 1.0.0 will primarily work with packages at HEAD since that's
+the way everyone currently expects to work on Dylan.  Better support
+for numbered versions can come later.
+
+* Auto-install active workspace packages rather than having to
+  manually clone them.
+
+* Workspace file should only need to be a list of packages to work
+  on and their deps should be looked up in the catalog if not listed
+  in the workspace file. Putting deps in the workspace file is
+  mainly useful for NEW projects.
+
+* Deps of the form "pkg/*" should just be "pkg", meaning the latest
+  version.
+
+* Auto-create the workspace file from list of package names. For
+  example, "dylan-tool new pkg1 pkg2".
+
+* Auto-download the catalog from github rather than expecting it to be
+  local.
+
+### After 1.0.0
+
+* Separate the dylan-tool command and the workspace library so that
+  the latter can be re-used by deft. (Perhaps put the dylan-tool
+  command-line in the tests/ subdirectory so it can be used as a
+  manual test, if I decide deft is the way to go.)
+
+* Integrate pacman and workspace tool into Deft.
+
+* Think about whether and how it makes sense to integrate knowledge of
+  packages and versioned dependencies into Open Dylan itself.
+
+* Remove the assumption that git (and specifically github) is where
+  all packages reside. Support tarballs and/or zip files.
+
+* Improve version dependency specs. Can get inspiration from Cargo
+  here.
