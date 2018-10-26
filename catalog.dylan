@@ -174,15 +174,17 @@ define function json-to-catalog
         if (element(packages, version, default: #f))
           catalog-error("Duplicate package version: %s %s", pkg-name, version);
         end;
-        let version = string-to-version(version);
-        if (version = $latest)
+        // Note that the following will err on invalid version
+        // strings, which is intentional.
+        let ver = string-to-version(version);
+        if (ver = $latest)
           catalog-error("Version 'latest' is not a valid package version in the catalog."
                           " It's only valid for lookup. Did you mean 'head'?");
         end;
         packages[version] :=
           make(<pkg>,
                name: pkg-name,
-               version: version,
+               version: ver,
                deps: map-as(<dep-vec>, string-to-dep, version-attrs["deps"]),
                location: version-attrs["location"],
                entry: entry);
@@ -272,7 +274,7 @@ define function package-versions
     (cat :: <catalog>, pkg-name :: <str>) => (pkgs :: <pkg-vec>)
   let entry = element(cat.entries, pkg-name, default: #f);
   if (entry)
-    map-as(<pkg-vec>, identity, entry.versions)
+    map-as(<pkg-vec>, identity, value-sequence(entry.versions))
   else
     #[]
   end;

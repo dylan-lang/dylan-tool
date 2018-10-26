@@ -55,6 +55,7 @@ define module pacman
     version,
 
     <version>,
+    $head,
     $latest,
     major,
     minor,

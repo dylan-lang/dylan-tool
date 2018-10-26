@@ -50,7 +50,7 @@ define method %download
  => ()
   // TODO: add --quiet, once debugged
   let command = sprintf("git clone --recurse-submodules --branch=%s -- %s %s",
-                        branch, location, dest-dir);
+                        transport.branch, location, dest-dir);
   let (exit-code, #rest more)
     = os/run(command,
              output: "/tmp/git-clone-stdout.log", // temp

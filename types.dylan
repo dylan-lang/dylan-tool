@@ -12,6 +12,9 @@ end;
 define constant $uncategorized = "Uncategorized";
 define constant $pkg-dir-name = "pkg";
 
+define constant $head-name = "head";
+define constant $latest-name = "latest";
+
 define constant <dep-vec> = limited(<vector>, of: <dep>);
 define constant <pkg-vec> = limited(<vector>, of: <pkg>);
 
@@ -121,8 +124,8 @@ define constant $head :: <head> = make(<head>, major: 0, minor: 0, patch: 0);
 
 define function version-to-string (v :: <version>) => (_ :: <str>)
   select (v)
-    $latest => "latest";
-    $head => "head";
+    $head     => $head-name;
+    $latest   => $latest-name;
     otherwise => sprintf("%d.%d.%d", v.major, v.minor, v.patch)
   end
 end;
@@ -132,8 +135,8 @@ define constant $version-regex = #regex:{^(\d+)\.(\d+)\.(\d+)$};
 define function string-to-version
     (input :: <str>) => (_ :: <version>)
   select (input by istr=)
-    "latest"  => $latest;
-    "head"    => $head;
+    $head-name   => $head;
+    $latest-name => $latest;
     otherwise =>
       let (_, maj, min, pat) = re/search-strings($version-regex, input);
       maj | package-error("invalid version spec: %=", input);
@@ -199,8 +202,7 @@ end;
 
 // TODO: I like the dependency syntax/semantics used by Cargo. Will
 //       probably switch to those, but it can wait because for now we
-//       mostly can use 'latest'. Might be more complex than
-//       necessary?
+//       mostly can use 'head'. Might be more complex than necessary?
 define function dep-to-string (dep :: <dep>) => (_ :: <str>)
   let name = dep.package-name;
   let minv = dep.min-version;
@@ -222,9 +224,9 @@ define constant $dependency-regex :: <regex>
   = begin
       let rev = #str:"(\d+\.\d+\.\d+)";
       let range = concat(rev, "-", rev);
-      let version-spec = concat(#str:"(\*|([<=>])?", rev, "|", range, ")");
+      let version-spec = concat(#str:"(head|\*|([<=>])?", rev, "|", range, ")");
       // groups: 1:name, 2:vspec, 3:[<=>], 4: v1, 5:v1, 6:v2
-      let pattern = concat("^([A-Za-z][A-Za-z0-9-]*)(?:/", version-spec, ")?$");
+      let pattern = concat("^([A-Za-z][A-Za-z0-9-]*)(?: ", version-spec, ")?$");
       re/compile(pattern)
     end;
 
@@ -234,11 +236,12 @@ define function string-to-dep
   let (whole, name, vspec, binop, v1a, v1b, v2) = re/search-strings($dependency-regex, input);
   if (~whole)
     // TODO: add doc link explaining dependency syntax.
-    package-error("Invalid dependency spec: %=", input)
+    package-error("Invalid dependency spec: %=", input);
   end;
   let (minv, maxv) = #f;
   case
     vspec = "*" => #f;
+    vspec = $head-name => #f;
     v2 =>
       minv := v1b;
       maxv := v2;
