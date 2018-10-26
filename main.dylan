@@ -55,9 +55,9 @@ end function main;
 // Update the workspace based on the workspace config or signal an error.
 define function update ()
   let config = load-workspace-config($workspace-file);
-  format-out("Workspace directory is %s\n", config.workspace-directory);
+  format-out("Workspace directory is %s.\n", config.workspace-directory);
   update-active-packages(config);
-  update-deps(config);
+  update-active-package-deps(config);
   update-registry(config);
 end;
 
@@ -142,7 +142,7 @@ define function update-active-packages (conf :: <config>)
     // Download the package if necessary.
     let pkg-dir = active-package-directory(conf, pkg-name);
     if (fs/file-exists?(pkg-dir))
-      format-out("Active package %s exists, not downloading\n", pkg-name);
+      format-out("Active package %s exists, not downloading.\n", pkg-name);
     else
       let cat = pkg/load-catalog();
       let pkg = pkg/find-package(cat, pkg-name, pkg/$head)
@@ -155,25 +155,24 @@ define function update-active-packages (conf :: <config>)
         format-out("WARNING: Create a pkg.json file for it and run update again to update deps.\n");
       end;
     end;
-    // Update the package deps.
-    let pkg = pkg/read-package-file(active-package-file(conf, pkg-name));
-    if (pkg)
-      format-out("Installing deps for package %s\n", pkg-name);
-      pkg/install-deps(pkg);
-    else
-      format-out("WARNING: No pkg.json file found for active package %s\n", pkg-name);
-    end;
   end;
 end;
 
 // Update dep packages if needed.
-define function update-deps (conf :: <config>)
+define function update-active-package-deps (conf :: <config>)
   for (pkg-name in conf.active-package-names)
+    // Update the package deps.
     let pkg = pkg/read-package-file(active-package-file(conf, pkg-name));
-    // TODO: in a perfect world this wouldn't install any deps that
-    // are also active packages. It doesn't cause a problem though,
-    // as long as the registry points to the right place.
-    pkg/install-deps(pkg /* , skip: conf.active-package-names */);
+    if (pkg)
+      format-out("Installing deps for package %s.\n", pkg-name);
+      // TODO: in a perfect world this wouldn't install any deps that
+      // are also active packages. It doesn't cause a problem though,
+      // as long as the registry points to the right place.
+      pkg/install-deps(pkg /* , skip: conf.active-package-names */);
+    else
+      format-out("WARNING: No pkg.json file found for active package %s."
+                   " Not installing deps.\n", pkg-name);
+    end;
   end;
 end;
 
@@ -182,8 +181,13 @@ end;
 define function update-registry (conf :: <config>)
   for (pkg-name in conf.active-package-names)
     let pkg = pkg/read-package-file(active-package-file(conf, pkg-name));
-    update-registry-for-package(conf, pkg, #f, #t);
-    pkg/do-resolved-deps(pkg, curry(update-registry-for-package, conf));
+    if (pkg)
+      update-registry-for-package(conf, pkg, #f, #t);
+      pkg/do-resolved-deps(pkg, curry(update-registry-for-package, conf));
+    else
+      format-out("WARNING: No pkg.json file found for active package %s."
+                   " Not creating registry file.\n", pkg-name);
+    end;
   end;
 end;
 
@@ -227,7 +231,7 @@ define function update-registry-for-lid
   let new-content = format-to-string("abstract://dylan/%s\n", relative-path);
   if (new-content ~= file-content(reg-file))
     fs/ensure-directories-exist(reg-file);
-    format-out("Writing %s\n", reg-file);
+    format-out("Writing %s.\n", reg-file);
     fs/with-open-file(stream = reg-file, direction: #"output", if-exists?: #"overwrite")
       write(stream, new-content);
     end;
