@@ -6,6 +6,7 @@ Module: dylan-tool
 // workspaces and packages working.
 
 // TODO:
+// * Add a --verbose flag and hide much of the output when non-verbose.
 // * Remove redundancy in 'update' command. It processes (shared?) dependencies
 //   and writes registry files multiple times.
 // * Display the number of registry files updated and the number unchanged.
@@ -138,9 +139,10 @@ end;
 // package directories don't already exist.
 define function update-active-packages (conf :: <config>)
   for (attrs keyed-by pkg-name in conf.active-packages)
+    // Download the package if necessary.
     let pkg-dir = active-package-directory(conf, pkg-name);
     if (fs/file-exists?(pkg-dir))
-      format-out("Active package %s (exists, not downloading)\n", pkg-name);
+      format-out("Active package %s exists, not downloading\n", pkg-name);
     else
       let cat = pkg/load-catalog();
       let pkg = pkg/find-package(cat, pkg-name, pkg/$head)
@@ -149,7 +151,17 @@ define function update-active-packages (conf :: <config>)
         pkg/download(pkg, pkg-dir);
       else
         format-out("WARNING: Skipping active package %s, not found in catalog.\n", pkg-name);
+        format-out("WARNING: If this is a new or private project then this is normal.\n");
+        format-out("WARNING: Create a pkg.json file for it and run update again to update deps.\n");
       end;
+    end;
+    // Update the package deps.
+    let pkg = pkg/read-package-file(active-package-file(conf, pkg-name));
+    if (pkg)
+      format-out("Installing deps for package %s\n", pkg-name);
+      pkg/install-deps(pkg);
+    else
+      format-out("WARNING: No pkg.json file found for active package %s\n", pkg-name);
     end;
   end;
 end;
