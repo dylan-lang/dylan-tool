@@ -81,7 +81,7 @@ define function package-transport
   if (find-substring(pkg.location, "github"))
     let branch = "master";
     if (pkg.version ~= $head)
-      branch := sprintf("version-%s", version-to-string(pkg.version));
+      branch := sprintf("v%s", version-to-string(pkg.version));
     end;
     make(<git-transport>, branch: branch)
   else
