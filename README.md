@@ -79,9 +79,6 @@ for numbered versions can come later.
 * Deps of the form "pkg/*" should just be "pkg", meaning the latest
   version.
 
-* Auto-create the workspace file from list of package names. For
-  example, "dylan-tool new pkg1 pkg2".
-
 * Auto-download the catalog from github rather than expecting it to be
   local.
 
