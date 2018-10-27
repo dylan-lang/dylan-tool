@@ -18,7 +18,7 @@ hand and the need to use git submodules to track dependencies.
     describes where to find other packages, will be installed under
     `${DYLAN}/pkg/`.
    
-1.  Clone and build this project:
+1.  Clone and build the `dylan-tool` project:
 
         $ git clone https://github.com/cgay/dylan-tool
         $ cd dylan-tool
@@ -26,8 +26,8 @@ hand and the need to use git submodules to track dependencies.
         $ cp _build/bin/dylan-tool <somewhere-on-your-PATH>
       
 1.  Create a new workspace. For example if you wanted to work on the
-    http code you might want to have both the 'http' and 'uri' as
-    active packages:
+    http code you might want to have both 'http' and 'uri' as active
+    packages:
 
         $ dylan-tool new web-stuff http uri
 
@@ -40,7 +40,7 @@ hand and the need to use git submodules to track dependencies.
 
 1.  Build your code:
 
-        $ dylan-compiler -build http
+        $ dylan-compiler -build http-server-example
 
 If you want to create a new package, rather than doing development on
 one that already exists, you must manually add it to the
@@ -106,10 +106,12 @@ cloning and creating registry files for each used library.
 The main purpose of specifying active packages is so that `dylan-tool`
 can checkout those packages into the workspace directory and create
 the registry files for you accurately.  The registry points to the
-active packages in the workspace directory but points to the
-installation directory (`${DYLAN}/pkg/...`) for all other
-dependencies. (You might want to take a look at that directory after
-several packages have been installed.)
+workspace directory for active package libries but points to the
+installation directory, `${DYLAN}/pkg/...`, for all other
+dependencies.
+
+`dylan-tool` scans each active package for LID files and writes a
+registry file for each one.
 
 **Note:** If you use the same workspace directory on multiple
 platforms (e.g., a network mounted directory or shared by a virtual
