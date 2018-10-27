@@ -17,31 +17,38 @@ define constant $workspace-file = "workspace.json";
 
 define function main () => (status :: <int>)
   block (return)
+    let app = locator-name(as(<file-locator>, application-name()));
     let parser = make(cli/<parser>,
                       min-positional-options: 2,
                       max-positional-options: 2);
     let args = application-arguments();
-    if (args.size = 0)
-      format-err("Usage: %s <subcommand> ...", application-name());
-      return(2);
-    end;
+    local method usage()
+            format-err("Usage: %s install pkg version\n", app);
+            format-err("       %s new workspace-name [pkg...]\n", app);
+            format-err("       %s update\n", app);
+            return(2);
+          end;
+    args.size > 0 | usage();
     let cmd = args[0];
     select (cmd by str=)
       "install" =>
         // Install a specific package.
-        if (args.size ~= 2)
-          format-err("Usage: %s install <pkg>\n", application-name());
-          return(2);
-        end;
+        args.size = 3 | usage();
         let pkg-name = args[1];
-        let pkg = pkg/find-package(pkg/load-catalog(), pkg-name, pkg/$latest);
+        let vstring = args[2];
+        let pkg = pkg/find-package(pkg/load-catalog(), pkg-name, vstring);
         if (~pkg)
           error("Package %s not found.", pkg-name);
         end;
         pkg/install(pkg);
+      "new" =>                  // Create a new workspace.
+        args.size >= 2 | usage();
+        apply(new, app, args[1], slice(args, 2, #f));
       "update" =>
-        // Update the workspace based on config file.
-        update();
+        args.size = 1 | usage();
+        update();        // Update the workspace based on config file.
+      otherwise =>
+        usage();
     end select;
     0
 /* TODO: turn this into a 'let handler' that can be turned off by a --debug flag.
@@ -51,6 +58,41 @@ define function main () => (status :: <int>)
 */
   end
 end function main;
+
+define function str-parser (s :: <str>) => (s :: <str>) s end;
+
+// Pulled out into a constant because it ruins code formatting.
+define constant $workspace-file-format-string = #str:[{
+    "active": {
+%s
+    }
+}
+];
+
+define function new (app :: <str>, workspace-name :: <str>, #rest pkg-names)
+  let workspace-file = find-workspace-file(fs/working-directory());
+  if (workspace-file)
+    error("You appear to already be in a workspace directory: %s", workspace-file);
+  end;
+  let workspace-dir = subdirectory-locator(fs/working-directory(), workspace-name);
+  let workspace-file = as(<file-locator>, "workspace.json");
+  let workspace-path = merge-locators(workspace-file, workspace-dir);
+  if (fs/file-exists?(workspace-dir))
+    error("Directory already exists: %s", workspace-dir);
+  end;
+  fs/ensure-directories-exist(workspace-path);
+  fs/with-open-file (stream = workspace-path,
+                     direction: #"output",
+                     if-does-not-exist: #"create")
+    if (pkg-names.size = 0)
+      pkg-names := #["<package-name-here>"];
+    end;
+    format(stream, $workspace-file-format-string,
+           join(pkg-names, "\n", key: curry(format-to-string, "        %=: {}")));
+  end;
+  format-out("Wrote workspace file to %s.\n", workspace-path);
+  format-out("You may now run '%s update' in the new directory.\n", app);
+end;
 
 // Update the workspace based on the workspace config or signal an error.
 define function update ()

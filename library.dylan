@@ -34,6 +34,7 @@ define module dylan-tool
               <locator>,
               locator-as-string,
               locator-directory,
+              locator-name,
               merge-locators,
               relative-locator,
               subdirectory-locator };
@@ -55,4 +56,6 @@ define module dylan-tool
   use table-extensions,
     import: { <case-insensitive-string-table> => <istr-map> };
   use uncommon-dylan;
+  use uncommon-utils,
+    import: { slice };
 end;
