@@ -134,9 +134,6 @@ Version 1.0.0 will primarily work with packages at HEAD since that's
 the way everyone currently expects to work on Dylan.  Better support
 for numbered versions can come later.
 
-* Deps of the form "pkg/*" should just be "pkg", meaning the latest
-  version.
-
 * Auto-download the catalog from github rather than expecting it to be
   local.
 
