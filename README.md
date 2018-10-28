@@ -14,9 +14,10 @@ hand and the need to use git submodules to track dependencies.
    
         $ export DYLAN=${HOME}/dylan
    
-    Dylan packages, including the "pacman-catalog" package which
-    describes where to find other packages, will be installed under
-    `${DYLAN}/pkg/`.
+    Dylan packages, including the
+    [pacman-catalog](https://github.com/cgay/pacman-catalog) package
+    which describes where to find other packages, will be installed
+    under `${DYLAN}/pkg/`.
    
 1.  Clone and build the `dylan-tool` project:
 
@@ -127,7 +128,7 @@ This only lists important items. There are TODOs in the code as well,
 but mostly for smaller or less important items. Some of the items on
 this list are more for pacman than dylan-tool.
 
-### For 1.0.0
+### For 0.1.0
 
 Version 1.0.0 will primarily work with packages at HEAD since that's
 the way everyone currently expects to work on Dylan.  Better support
@@ -139,7 +140,9 @@ for numbered versions can come later.
 * Auto-download the catalog from github rather than expecting it to be
   local.
 
-### After 1.0.0
+* Put all non-opendylan packages in the Catalog at version "head".
+
+### After 0.1.0
 
 * Separate the dylan-tool command and the workspace library so that
   the latter can be re-used by deft. (Perhaps put the dylan-tool
