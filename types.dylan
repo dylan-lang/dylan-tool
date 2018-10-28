@@ -82,7 +82,7 @@ define method \= (p1 :: <pkg>, p2 :: <pkg>) => (_ :: <bool>)
   istr=(p1.name, p2.name) & p1.version = p2.version
 end;
 
-define constant $pkg-name-regex = #regex:{^[A-Za-z][A-Za-z0-9-]*$};
+define constant $pkg-name-regex = #regex:{^[A-Za-z][A-Za-z0-9.-]*$};
 
 define function validate-package-name (name :: <str>) => ()
   re/search-strings($pkg-name-regex, name)
