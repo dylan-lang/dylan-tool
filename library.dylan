@@ -41,7 +41,7 @@ define module dylan-tool
   use operating-system,
     prefix: "os/";
   use pacman,
-    prefix: "pkg/";
+    prefix: "pm/";
   use print;
   use regular-expressions,
     import: { regex-parser };      // #regex:"..."

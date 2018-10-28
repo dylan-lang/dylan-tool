@@ -36,11 +36,11 @@ define function main () => (status :: <int>)
         args.size = 3 | usage();
         let pkg-name = args[1];
         let vstring = args[2];
-        let pkg = pkg/find-package(pkg/load-catalog(), pkg-name, vstring);
+        let pkg = pm/find-package(pm/load-catalog(), pkg-name, vstring);
         if (~pkg)
           error("Package %s not found.", pkg-name);
         end;
-        pkg/install(pkg);
+        pm/install(pkg);
       "new" =>                  // Create a new workspace.
         args.size >= 2 | usage();
         apply(new, app, args[1], slice(args, 2, #f));
@@ -189,11 +189,11 @@ define function update-active-packages (conf :: <config>)
     if (fs/file-exists?(pkg-dir))
       format-out("Active package %s exists, not downloading.\n", pkg-name);
     else
-      let cat = pkg/load-catalog();
-      let pkg = pkg/find-package(cat, pkg-name, pkg/$head)
-                  | pkg/find-package(cat, pkg-name, pkg/$latest);
+      let cat = pm/load-catalog();
+      let pkg = pm/find-package(cat, pkg-name, pm/$head)
+                  | pm/find-package(cat, pkg-name, pm/$latest);
       if (pkg)
-        pkg/download(pkg, pkg-dir);
+        pm/download(pkg, pkg-dir);
       else
         format-out("WARNING: Skipping active package %s, not found in catalog.\n", pkg-name);
         format-out("WARNING: If this is a new or private project then this is normal.\n");
@@ -207,13 +207,13 @@ end;
 define function update-active-package-deps (conf :: <config>)
   for (pkg-name in conf.active-package-names)
     // Update the package deps.
-    let pkg = pkg/read-package-file(active-package-file(conf, pkg-name));
+    let pkg = pm/read-package-file(active-package-file(conf, pkg-name));
     if (pkg)
       format-out("Installing deps for package %s.\n", pkg-name);
       // TODO: in a perfect world this wouldn't install any deps that
       // are also active packages. It doesn't cause a problem though,
       // as long as the registry points to the right place.
-      pkg/install-deps(pkg /* , skip: conf.active-package-names */);
+      pm/install-deps(pkg /* , skip: conf.active-package-names */);
     else
       format-out("WARNING: No pkg.json file found for active package %s."
                    " Not installing deps.\n", pkg-name);
@@ -225,10 +225,10 @@ end;
 // library in each active package and all transitive dependencies.
 define function update-registry (conf :: <config>)
   for (pkg-name in conf.active-package-names)
-    let pkg = pkg/read-package-file(active-package-file(conf, pkg-name));
+    let pkg = pm/read-package-file(active-package-file(conf, pkg-name));
     if (pkg)
       update-registry-for-package(conf, pkg, #f, #t);
-      pkg/do-resolved-deps(pkg, curry(update-registry-for-package, conf));
+      pm/do-resolved-deps(pkg, curry(update-registry-for-package, conf));
     else
       format-out("WARNING: No pkg.json file found for active package %s."
                    " Not creating registry file.\n", pkg-name);
@@ -243,10 +243,10 @@ define method update-registry-for-package (conf, pkg, dep, installed?)
     error("Attempt to update registry for dependency %s, which"
             " is not yet installed. This may be a bug.", dep);
   end;
-  let pkg-dir = if (active-package?(conf, pkg.pkg/name))
-                  active-package-directory(conf, pkg.pkg/name)
+  let pkg-dir = if (active-package?(conf, pkg.pm/name))
+                  active-package-directory(conf, pkg.pm/name)
                 else
-                  pkg/source-directory(pkg)
+                  pm/source-directory(pkg)
                 end;
   local method doit (dir, name, type)
           select (type)
