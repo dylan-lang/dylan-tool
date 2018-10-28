@@ -164,7 +164,8 @@ define function json-to-catalog
       let entry = make(<entry>,
                        versions: packages,
                        synopsis: entry-attrs["synopsis"],
-                       description: entry-attrs["description"],
+                       description: element(entry-attrs, "description", default: #f)
+                                      | entry-attrs["synopsis"],
                        contact: entry-attrs["contact"],
                        license-type: entry-attrs["license-type"],
                        category: element(entry-attrs, "category", default: #f),
