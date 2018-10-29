@@ -66,6 +66,15 @@ define class <entry> (<any>)
   constant slot keywords :: <seq> = #[], init-keyword: keywords:;
 end;
 
+define function package-names (cat :: <catalog>) => (names :: <seq>)
+  key-sequence(cat.entries)
+end;
+
+define function find-entry
+    (cat :: <catalog>, pkg-name :: <str>) => (e :: false-or(<entry>))
+  element(cat.entries, pkg-name, default: #f)
+end;
+
 define method to-table (e :: <entry>) => (t :: <istr-map>)
   let v = make(<istr-map>);
   for (pkg keyed-by vstring in e.versions)
@@ -81,56 +90,66 @@ define method to-table (e :: <entry>) => (t :: <istr-map>)
         "versions" => v)
 end;
 
-// A datastore backed by a json file on disk. The json encoding is a
-// top-level dictionary mapping package names to package objects,
-// which are themselves encoded as json dictionaries. Almost all
-// fields are required.
-define class <json-file-storage> (<storage>)
-  constant slot pathname :: <pathname>, required-init-keyword: pathname:;
-end;
+define constant $catalog-pkg :: <pkg> =
+  make(<pkg>,
+       name: "pacman-catalog",
+       version: $head,
+       location: "git@github.com:cgay/pacman-catalog");
 
-// TODO: for now we assume the catalog is a local file. should be fetched from some URL.
-//define constant $catalog-url :: <uri> = "http://github.com/dylan-lang/package-catalog/catalog.json"
-
-define constant $local-catalog-filename :: <str> = "catalog.json";
-
-define function local-cache
-    () => (_ :: <json-file-storage>)
-  let path = merge-locators(as(<file-system-file-locator>, $local-catalog-filename),
-                            package-manager-directory());
-  make(<json-file-storage>, pathname: path)
-end;
+define constant $local-catalog-filename :: <str> = "local-catalog.json";
 
 // Loading the catalog once per session should be enough, so cache it here.
 define variable *catalog* :: false-or(<catalog>) = #f;
 
-define method load-catalog () => (_ :: <catalog>)
-  // TODO: handle type errors (e.g., from assumptions that the json is valid)
-  //       and return <catalog-error>.
-  // TODO: Use $catalog-url if local cache out of date, and update local cache.
-  //       If we can't reach $catalog-url, fall-back to local cache.
-  *catalog* | (*catalog* := %load-catalog(local-cache()))
+// TODO: handle type errors (e.g., from assumptions that the json is valid)
+//       and return <catalog-error>.
+define function load-catalog () => (c :: <catalog>)
+  let local-path = merge-locators(as(<file-locator>, $local-catalog-filename),
+                                  package-manager-directory());
+  *catalog*
+  | (*catalog* := begin
+                    if (install($catalog-pkg, force?: #f)
+                          | too-old?(local-path))
+                      copy-to-local-cache($catalog-pkg, local-path);
+                    end;
+                    load-local-catalog(local-path)
+                  end)
 end;
 
-// Load a json-encoded catalog from file.
-define method %load-catalog
-    (store :: <json-file-storage>) => (_ :: <catalog>)
-  with-open-file(stream = store.pathname,
-                 direction: #"input",
-                 if-does-not-exist: #f)
+define function too-old? (path :: <file-locator>) => (o :: <bool>)
+  #t                            // TODO
+end;
+
+define function copy-to-local-cache (pkg :: <pkg>, local-path :: <file-locator>)
+  let pkg-path = merge-locators(as(<file-locator>, "catalog.json"),
+                                source-directory(pkg));
+  with-open-file (input = pkg-path)
+    with-open-file (output = local-path,
+                    direction: #"output",
+                    if-exists: #"overwrite")
+      write(output, read-to-end(input))
+    end;
+  end;
+end;
+
+define function load-local-catalog (path :: <file-locator>) => (c :: <catalog>)
+  with-open-file(stream = path,
+                 direction: #"input" /*,  I thought this was supposed to work:
+                 if-does-not-exist: #f */)
     let (cat, num-pkgs, num-versions) = read-json-catalog(stream);
     message("Loaded %d package%s with %d version%s from %s.\n",
             num-pkgs, iff(num-pkgs == 1, "", "s"),
             num-versions, iff(num-versions == 1, "", "s"),
-            store.pathname);
+            path);
     validate-catalog(cat);
     cat
   end
+/*
   | begin
-      message("WARNING: No package catalog found in %s. Using empty catalog.\n",
-              store.pathname);
+      message("WARNING: No package catalog found in %s. Using empty catalog.\n", path);
       make(<catalog>)
     end
+*/
 end;
 
 define function read-json-catalog
@@ -189,44 +208,37 @@ define function json-to-catalog
   values(make(<catalog>, entries: entries), entries.size, num-pkgs)
 end function json-to-catalog;
 
-define method store-catalog
-    (cat :: <catalog>, store :: <json-file-storage>) => ()
-  with-open-file(stream = store.pathname,
-                 direction: #"output",
-                 if-exists: #"overwrite")
-    write-json-catalog(cat, stream)
-  end;
-end;
-
-define function write-json-catalog
-    (cat :: <catalog>, stream :: <stream>) => ()
-  let t = table(<istr-map>,
-                $catalog-attrs-key => table(<str-map>,
-                                            "unused" => "for now"));
-  for (entry keyed-by pkg-name in cat.entries)
-    t[pkg-name] := to-table(entry)
-  end;
-  json/encode(stream, t);
-end;
-
 define method find-package
     (cat :: <catalog>, name :: <str>, ver :: <str>) => (pkg :: false-or(<pkg>))
   find-package(cat, name, string-to-version(ver))
 end;
 
+// Find the latest numbered version of a package.
+define method find-package
+    (cat :: <catalog>, name :: <str>, ver :: <latest>) => (p :: false-or(<pkg>))
+  let entry = element(cat.entries, name, default: #f);
+  if (entry & entry.versions.size > 0)
+    let newest-first = sort(value-sequence(entry.versions),
+                            test: method (p1 :: <pkg>, p2 :: <pkg>)
+                                    p1.version > p2.version
+                                  end);
+    let latest = newest-first[0];
+    // The concept of "latest" doesn't mean much if it always returns
+    // the "head" version, which is latest by definition. So make sure
+    // to only return the "head" version if there are no numbered
+    // versions.
+    if (latest.version = $head & newest-first.size > 1)
+      latest := newest-first[1];
+    end;
+    latest
+  end
+end;
+
 define method find-package
     (cat :: <catalog>, name :: <str>, ver :: <version>) => (p :: false-or(<pkg>))
   let entry = element(cat.entries, name, default: #f);
-  if (entry & entry.versions.size > 0)
-    if (ver = $latest)
-      let newest-first = sort(value-sequence(entry.versions),
-                              test: method (p1 :: <pkg>, p2 :: <pkg>)
-                                      p1.version > p2.version
-                                    end);
-      newest-first[0]
-    else
-      element(entry.versions, version-to-string(ver), default: #f)
-    end
+  if (entry)
+    element(entry.versions, version-to-string(ver), default: #f)
   end
 end;
 
@@ -269,6 +281,6 @@ define function package-versions
   if (entry)
     map-as(<pkg-vec>, identity, value-sequence(entry.versions))
   else
-    #[]
+    as(<pkg-vec>, #[])
   end;
 end;

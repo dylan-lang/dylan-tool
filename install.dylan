@@ -7,8 +7,8 @@ Synopsis: Package download and installation
 //    URLs as the package location. That likely requires every user to
 //    have access credentials for all the servers those URLs point to.
 //    It's probably necessary to have a single location (with mirrors)
-//    into which we stuff a tarball or zip file. How does Quicklisp do
-//    it?
+//    into which we stuff a tarball or zip file. What do other package
+//    managers do?
 
 define constant $src-dir-name = "src";
 
@@ -94,10 +94,12 @@ end;
 // package is re-installed.  If `deps?` is true , also install
 // dependencies recursively. The `force?` argument applies to
 // dependency installations also.
-define sealed generic install (pkg :: <pkg>, #key force?, deps?) => ();
+define sealed generic install
+  (pkg :: <pkg>, #key force?, deps?) => (installed? :: <bool>);
 
 define method install
-    (pkg :: <pkg>, #key force? :: <bool>, deps? :: <bool> = #t) => ()
+    (pkg :: <pkg>, #key force? :: <bool>, deps? :: <bool> = #t)
+ => (installed? :: <bool>)
   if (deps?)
     install-deps(pkg, force?: force?);
   end;
@@ -109,7 +111,8 @@ define method install
     message("Package %s is already installed.\n", pkg);
   else
     download(pkg, source-directory(pkg));
-  end;
+    #t
+  end
 end;
 
 define method install-deps (pkg :: <pkg>, #key force? :: <bool>)

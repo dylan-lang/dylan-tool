@@ -26,11 +26,16 @@ end library pacman;
 
 define module pacman
   export
-    <catalog>,
-    <catalog-error>,
-    find-package,
     load-catalog,
-    store-catalog,
+    <catalog-error>,
+
+    <catalog>,
+    find-entry,
+    find-package,
+    package-names,
+
+    <entry>,
+    versions, synopsis, description, contact, license-type, category, keywords,
 
     <package-error>,
     download,
@@ -96,7 +101,7 @@ define module %pacman
               regex-pattern => re/pattern,
               regex-search-strings => re/search-strings };
   use streams,
-    import: { read-to-end, <stream> };
+    import: { read-to-end, <stream>, write };
   use strings,
     import: { find-substring,
               lowercase,
@@ -114,8 +119,6 @@ define module %pacman
   // For the test suite.
   export
     <dep-vec>,
-    entries,
-    license-type,
     str-parser,                 // #str:...
 
     string-to-version, version-to-string,
@@ -123,6 +126,5 @@ define module %pacman
     satisfies?,
 
     read-json-catalog,
-    validate-catalog,
-    write-json-catalog;
+    validate-catalog;
 end module %pacman;

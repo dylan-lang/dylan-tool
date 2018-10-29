@@ -52,16 +52,12 @@ define function dylan-directory
 end;
 
 // <pkg> represents a specific version of a package.
-// TODO:
-//   * add slot libraries :: <seq> ? Or just put library names in the
-//     keywords list?
 define class <pkg> (<any>)
   constant slot name :: <str>, required-init-keyword: name:;
   constant slot version :: <version>, required-init-keyword: version:;
-  constant slot deps :: <dep-vec> = #[], init-keyword: deps:;
+  constant slot deps :: <dep-vec> = as(<dep-vec>, #[]), init-keyword: deps:;
   constant slot entry :: false-or(<entry>) = #f, init-keyword: entry:;
-  // Where the package can be downloaded from. (Details TBD. Could be
-  // type <url>?)
+  // Where the package can be downloaded from.
   constant slot location :: false-or(<str>) = #f, init-keyword: location:;
 end;
 
@@ -272,10 +268,6 @@ end;
 define sealed class <catalog> (<any>)
   // package name -> <entry>
   constant slot entries :: <istr-map>, required-init-keyword: entries:;
-end;
-
-// A place to store catalog data.
-define abstract class <storage> (<any>)
 end;
 
 // Something that knows how to grab a package off the net and unpack
