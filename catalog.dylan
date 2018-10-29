@@ -1,12 +1,6 @@
 Module: %pacman
 
 /*
-TODO:
-* do we specify package dependencies explicitly, or just
-  let them be found via the .lid files?
-* can the catalog itself (the pacman-catalog package) be installed like
-  any other package and loaded from the install directory? 
-
 json catalog format:
 
 * Order within a json object is never guaranteed.
@@ -54,8 +48,6 @@ define method license-type (p :: <pkg>) => (s :: <str>) p.entry.license-type end
 define method category     (p :: <pkg>) => (s :: <str>) p.entry.category end;
 define method keywords     (p :: <pkg>) => (s :: <seq>) p.entry.keywords end;
 
-// TODO:
-//   * make description optional and default to synopsis.
 define class <entry> (<any>)
   // Map from version number string to <pkg>. Each package contains
   // the data that can change with each version, plus a back-pointer
