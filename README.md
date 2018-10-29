@@ -107,7 +107,7 @@ cloning and creating registry files for each used library.
 The main purpose of specifying active packages is so that `dylan-tool`
 can checkout those packages into the workspace directory and create
 the registry files for you accurately.  The registry points to the
-workspace directory for active package libries but points to the
+workspace directory for active package libraries but points to the
 installation directory, `${DYLAN}/pkg/...`, for all other
 dependencies.
 
@@ -121,6 +121,12 @@ platforms so that the correct platform-specific registry entries are
 created. `dylan-tool` makes no attempt to figure out which packages
 are "generic" and which are platform-specific, so it always writes
 platform-specific registry files.
+
+## Bugs
+
+If you have a feature request, thing something should be designed
+differently, or find bugs, file a bug report
+[here](https://github.com/cgay/dylan-tool/issues).
 
 ## TODO List
 
