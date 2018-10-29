@@ -26,6 +26,7 @@ define function main () => (status :: <int>)
             format-err("Usage: %s install pkg version\n", app);
             format-err("       %s new workspace-name [pkg...]\n", app);
             format-err("       %s update\n", app);
+            format-err("       %s list\n", app);
             return(2);
           end;
     args.size > 0 | usage();
@@ -41,6 +42,8 @@ define function main () => (status :: <int>)
           error("Package %s not found.", pkg-name);
         end;
         pm/install(pkg);
+      "list" =>
+        list-catalog();
       "new" =>                  // Create a new workspace.
         args.size >= 2 | usage();
         apply(new, app, args[1], slice(args, 2, #f));
@@ -58,6 +61,19 @@ define function main () => (status :: <int>)
 */
   end
 end function main;
+
+// List all package names, synopsis, and latest available numbered version.
+//
+// TODO: show installed version, if any.
+define function list-catalog ()
+  let cat = pm/load-catalog();
+  for (pkg-name in sort(pm/package-names(cat)))
+    let entry = pm/find-entry(cat, pkg-name);
+    let latest = pm/find-package(cat, pkg-name, pm/$latest);
+    format-out("%s (latest: %s) - %s\n",
+               pkg-name, pm/version(latest), pm/synopsis(entry));
+  end;
+end;
 
 define function str-parser (s :: <str>) => (s :: <str>) s end;
 
