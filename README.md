@@ -142,6 +142,10 @@ for numbered versions can come later.
 
 * Put all non-opendylan packages in the Catalog at version "head".
 
+* Improve output a bit. For example, don't display git clone output
+  but do log all events somewhere for debugging purposes. Maybe have
+  a `--verbose` flag.
+
 ### After 0.1.0
 
 * Separate the dylan-tool command and the workspace library so that
