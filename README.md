@@ -50,8 +50,8 @@ steps:
 
 1.  Create a new directory for your package in the workspace directory.
 1.  Create a `pkg.json` file that lists your package dependencies
-    (deps). It should be straight-forward to copy from one in an
-    existing package.
+    (deps). You could copy from
+    [this one](https://github.com/cgay/dylan-tool/blob/master/pkg.json).
 1.  Add the package name to the "active" list in the `workspace.json`
     file.
 1.  Run `dylan-tool update` to install the deps and update the registry.
