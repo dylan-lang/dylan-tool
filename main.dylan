@@ -16,22 +16,22 @@ Module: dylan-tool
 define constant $workspace-file = "workspace.json";
 
 define function main () => (status :: <int>)
-  block (return)
+  block (exit)
     let app = locator-name(as(<file-locator>, application-name()));
-    let parser = make(cli/<parser>,
-                      min-positional-options: 2,
-                      max-positional-options: 2);
-    let args = application-arguments();
-    local method usage()
+    local method usage (#key status :: <int> = 2)
             format-err("Usage: %s install pkg version\n", app);
             format-err("       %s new workspace-name [pkg...]\n", app);
             format-err("       %s update\n", app);
             format-err("       %s list\n", app);
-            return(2);
+            exit(status);
           end;
-    args.size > 0 | usage();
-    let cmd = args[0];
-    select (cmd by str=)
+    let args = application-arguments();
+    if (member?("--help", args, test: istr=)
+          | member?("-h", args, test: istr=))
+      usage(status: 0);
+    end;
+    let subcmd = args[0];
+    select (subcmd by istr=)
       "install" =>
         // Install a specific package.
         args.size = 3 | usage();
@@ -241,9 +241,18 @@ end;
 // library in each active package and all transitive dependencies.
 define function update-registry (conf :: <config>)
   for (pkg-name in conf.active-package-names)
-    let pkg = pm/read-package-file(active-package-file(conf, pkg-name));
+    let pkg-file = active-package-file(conf, pkg-name);
+    let pkg = pm/read-package-file(pkg-file);
+    if (~pkg)
+      format-out("WARNING: No package found in %s, falling back to catalog"
+                   " to find deps.\n", pkg-file);
+      let cat = pm/load-catalog();
+      pkg := pm/find-package(cat, pkg-name, pm/$head)
+               | pm/find-package(cat, pkg-name, pm/$latest);
+    end;
     if (pkg)
-      update-registry-for-package(conf, pkg, #f, #t);
+      let pkg-dir = active-package-directory(conf, pkg-name);
+      update-registry-for-directory(conf, pkg-dir);
       pm/do-resolved-deps(pkg, curry(update-registry-for-package, conf));
     else
       format-out("WARNING: No pkg.json file found for active package %s."
@@ -252,9 +261,9 @@ define function update-registry (conf :: <config>)
   end;
 end;
 
-// Dig around in each package to find its libraries and create
-// registry files for them.
-define method update-registry-for-package (conf, pkg, dep, installed?)
+// Dig around in each `pkg`s directory to find the libraries it
+// defines and create registry files for them.
+define function update-registry-for-package (conf, pkg, dep, installed?)
   if (~installed?)
     error("Attempt to update registry for dependency %s, which"
             " is not yet installed. This may be a bug.", dep);
@@ -264,6 +273,12 @@ define method update-registry-for-package (conf, pkg, dep, installed?)
                 else
                   pm/source-directory(pkg)
                 end;
+  update-registry-for-directory(conf, pkg-dir);
+end;
+
+// Find all the .lid files in `pkg-dir` and create registry files for
+// the corresponding libraries.
+define function update-registry-for-directory (conf, pkg-dir)
   local method doit (dir, name, type)
           select (type)
             #"file" =>

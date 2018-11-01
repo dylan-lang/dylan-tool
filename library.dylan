@@ -3,7 +3,6 @@ Module: dylan-user
 define library dylan-tool
   use collections,
     import: { table-extensions };
-  use command-line-parser;
   use io,
     import: { format, format-out, print, streams };
   use json;
@@ -17,9 +16,6 @@ define library dylan-tool
 end;
 
 define module dylan-tool
-  use command-line-parser,
-    import: { <command-line-parser> => cli/<parser>,
-              make-command-line-parser => cli/make-parser };
   use file-system,
     prefix: "fs/";
   use format,

@@ -147,6 +147,9 @@ for numbered versions can come later.
 
 * Add a --help option.
 
+* When updating the registry, if no pkg.json file is found fall back
+  to the deps specified in the catalog, if there's a catalog entry.
+
 * Show installed versions (if any) in the 'list' command.
 
 * Add a --installed option to the 'list' command.
