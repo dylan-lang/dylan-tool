@@ -18,6 +18,11 @@ hand and the need to use git submodules to track dependencies.
     [pacman-catalog](https://github.com/cgay/pacman-catalog) package
     which describes where to find other packages, will be installed
     under `${DYLAN}/pkg/`.
+    
+    **Note:** Don't ever put files you want to keep in the
+    `${DYLAN}/pkg/` directory. The expectation should be that anything
+    in this directory may be deleted at any time by the package
+    manager.
    
 1.  Clone and build the `dylan-tool` project:
 
@@ -145,6 +150,10 @@ for numbered versions can come later.
 * Show installed versions (if any) in the 'list' command.
 
 * Add a --installed option to the 'list' command.
+
+* Push my changes to uncommon-dylan, since dylan-tool depends on it.
+
+* Do I need to create pkg.json files?
 
 * Put all non-opendylan packages in the Catalog at version "head".
 
