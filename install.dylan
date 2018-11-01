@@ -175,8 +175,7 @@ define function installed-versions (pkg-name :: <str>) => (versions :: <seq>)
       block ()
         add!(versions, string-to-version(name))
       exception (_ :: <package-error>)
-        // TODO: Delete this. I just want to see the feedback for now.
-        message("Ignoring error parsing filename %= as a version.\n", name);
+        // ignore error
       end;
     end;
   end;
