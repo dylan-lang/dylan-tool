@@ -147,7 +147,7 @@ define function resolve (dep :: <dep>) => (pkg :: <pkg>, installed? :: <bool>)
   let pkg-name = dep.package-name;
   block (return)
     // See if an installed version works.
-    for (version in installed-versions(dep.package-name)) // Sorted newest to oldest.
+    for (version in installed-versions(dep.package-name, head?: #t)) // newest to oldest
       if (satisfies?(dep, version))
         let pkg = find-package(cat, pkg-name, version);
         if (pkg)
@@ -164,20 +164,29 @@ define function resolve (dep :: <dep>) => (pkg :: <pkg>, installed? :: <bool>)
   end block;
 end;
 
-define function installed-versions (pkg-name :: <str>) => (versions :: <seq>)
+// Return all versions of `pkg-name` that are installed, sorted newest
+// to oldest. If `head?` is true, include the "head" version.
+define function installed-versions
+    (pkg-name :: <str>, #key head?) => (versions :: <seq>)
   let pkg-dir = subdirectory-locator(package-manager-directory(),
                                      lowercase(pkg-name));
-  let files = directory-contents(pkg-dir);
+  let files = block ()
+                directory-contents(pkg-dir)
+              exception (e :: <file-system-error>)
+                #[]
+              end;
   let versions = make(<stretchy-vector>);
   for (file in files)
     if (instance?(file, <directory-locator>))
       let name = locator-name(file);
-      block ()
-        add!(versions, string-to-version(name))
-      exception (_ :: <package-error>)
-        // ignore error
+      if (head? | lowercase(name) ~= $head-name)
+        block ()
+          add!(versions, string-to-version(name))
+        exception (_ :: <package-error>)
+          // ignore error
+        end;
       end;
     end;
   end;
-  versions
+  sort(versions, test: \>)
 end;
