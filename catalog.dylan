@@ -22,47 +22,47 @@ json catalog format:
 
 */
 
-define constant $catalog-attrs-key :: <str> = "__catalog_attributes";
+define constant $catalog-attrs-key :: <string> = "__catalog_attributes";
 
 define class <catalog-error> (<package-error>)
 end;
 
-define function catalog-error (fmt :: <str>, #rest args)
+define function catalog-error (fmt :: <string>, #rest args)
   error(make(<catalog-error>,
              format-string: fmt,
              format-arguments: args));
 end;
 
 // Forward various methods from pkg to the cataleg entry that contains it.
-define generic synopsis     (a :: <any>) => (s :: <str>);
-define generic description  (a :: <any>) => (s :: <str>);
-define generic contact      (a :: <any>) => (s :: <str>);
-define generic license-type (a :: <any>) => (s :: <str>);
-define generic category     (a :: <any>) => (s :: <str>);
-define generic keywords     (a :: <any>) => (s :: <seq>);
+define generic synopsis     (a :: <object>) => (s :: <string>);
+define generic description  (a :: <object>) => (s :: <string>);
+define generic contact      (a :: <object>) => (s :: <string>);
+define generic license-type (a :: <object>) => (s :: <string>);
+define generic category     (a :: <object>) => (s :: <string>);
+define generic keywords     (a :: <object>) => (s :: <seq>);
 
-define method synopsis     (p :: <pkg>) => (s :: <str>) p.entry.synopsis end;
-define method description  (p :: <pkg>) => (s :: <str>) p.entry.description end;
-define method contact      (p :: <pkg>) => (s :: <str>) p.entry.contact end;
-define method license-type (p :: <pkg>) => (s :: <str>) p.entry.license-type end;
-define method category     (p :: <pkg>) => (s :: <str>) p.entry.category end;
+define method synopsis     (p :: <pkg>) => (s :: <string>) p.entry.synopsis end;
+define method description  (p :: <pkg>) => (s :: <string>) p.entry.description end;
+define method contact      (p :: <pkg>) => (s :: <string>) p.entry.contact end;
+define method license-type (p :: <pkg>) => (s :: <string>) p.entry.license-type end;
+define method category     (p :: <pkg>) => (s :: <string>) p.entry.category end;
 define method keywords     (p :: <pkg>) => (s :: <seq>) p.entry.keywords end;
 
-define class <entry> (<any>)
+define class <entry> (<object>)
   // Map from version number string to <pkg>. Each package contains
   // the data that can change with each version, plus a back-pointer
   // to the <entry> that contains it.
-  constant slot versions :: <istr-map>, required-init-keyword: versions:;
+  constant slot versions :: <istring-table>, required-init-keyword: versions:;
 
-  constant slot synopsis :: <str>, required-init-keyword: synopsis:;
-  constant slot description :: <str>, required-init-keyword: description:;
+  constant slot synopsis :: <string>, required-init-keyword: synopsis:;
+  constant slot description :: <string>, required-init-keyword: description:;
 
   // Who to contact with questions about this package.
-  constant slot contact :: <str>, required-init-keyword: contact:;
+  constant slot contact :: <string>, required-init-keyword: contact:;
 
   // License type for this package, e.g. "MIT" or "BSD".
-  constant slot license-type :: <str>, required-init-keyword: license-type:;
-  constant slot category :: <str> = $uncategorized, init-keyword: category:;
+  constant slot license-type :: <string>, required-init-keyword: license-type:;
+  constant slot category :: <string> = $uncategorized, init-keyword: category:;
   constant slot keywords :: <seq> = #[], init-keyword: keywords:;
 end;
 
@@ -71,16 +71,16 @@ define function package-names (cat :: <catalog>) => (names :: <seq>)
 end;
 
 define function find-entry
-    (cat :: <catalog>, pkg-name :: <str>) => (e :: false-or(<entry>))
+    (cat :: <catalog>, pkg-name :: <string>) => (e :: false-or(<entry>))
   element(cat.entries, pkg-name, default: #f)
 end;
 
-define method to-table (e :: <entry>) => (t :: <istr-map>)
-  let v = make(<istr-map>);
+define method to-table (e :: <entry>) => (t :: <istring-table>)
+  let v = make(<istring-table>);
   for (pkg keyed-by vstring in e.versions)
     v[vstring] := to-table(pkg);
   end;
-  table(<istr-map>,
+  table(<istring-table>,
         "synopsis" => e.synopsis,
         "description" => e.description,
         "contact" => e.contact,
@@ -96,7 +96,7 @@ define constant $catalog-pkg :: <pkg> =
        version: $head,
        location: "git@github.com:cgay/pacman-catalog");
 
-define constant $local-catalog-filename :: <str> = "local-catalog.json";
+define constant $local-catalog-filename :: <string> = "local-catalog.json";
 
 // Loading the catalog once per session should be enough, so cache it here.
 define variable *catalog* :: false-or(<catalog>) = #f;
@@ -155,15 +155,15 @@ end;
 define function read-json-catalog
     (stream :: <stream>, #key table-class)
  => (_ :: <catalog>, pkgs :: <int>, versions :: <int>)
-  let json = json/parse(stream, table-class: table-class | <str-map>,
+  let json = json/parse(stream, table-class: table-class | <string-table>,
                         strict?: #f); // allow comments
   json-to-catalog(json)
 end;
 
 define function json-to-catalog
-    (json :: <str-map>) => (cat :: <catalog>, num-groups :: <int>, num-pkgs :: <int>)
+    (json :: <string-table>) => (cat :: <catalog>, num-groups :: <int>, num-pkgs :: <int>)
   let num-pkgs = 0;
-  let entries = make(<istr-map>);
+  let entries = make(<istring-table>);
   for (entry-attrs keyed-by pkg-name in json)
     if (pkg-name ~= $catalog-attrs-key) // unused for now
       if (element(entry-attrs, pkg-name, default: #f))
@@ -171,7 +171,7 @@ define function json-to-catalog
         // case when the package was added.
         catalog-error("Duplicate catalog entry %=", pkg-name);
       end;
-      let packages = make(<istr-map>); // version string -> <pkg>
+      let packages = make(<istring-table>); // version string -> <pkg>
       let entry = make(<entry>,
                        versions: packages,
                        synopsis: entry-attrs["synopsis"],
@@ -209,13 +209,13 @@ define function json-to-catalog
 end function json-to-catalog;
 
 define method find-package
-    (cat :: <catalog>, name :: <str>, ver :: <str>) => (pkg :: false-or(<pkg>))
+    (cat :: <catalog>, name :: <string>, ver :: <string>) => (pkg :: false-or(<pkg>))
   find-package(cat, name, string-to-version(ver))
 end;
 
 // Find the latest numbered version of a package.
 define method find-package
-    (cat :: <catalog>, name :: <str>, ver :: <latest>) => (p :: false-or(<pkg>))
+    (cat :: <catalog>, name :: <string>, ver :: <latest>) => (p :: false-or(<pkg>))
   let entry = element(cat.entries, name, default: #f);
   if (entry & entry.versions.size > 0)
     let newest-first = sort(value-sequence(entry.versions),
@@ -235,7 +235,7 @@ define method find-package
 end;
 
 define method find-package
-    (cat :: <catalog>, name :: <str>, ver :: <version>) => (p :: false-or(<pkg>))
+    (cat :: <catalog>, name :: <string>, ver :: <version>) => (p :: false-or(<pkg>))
   let entry = element(cat.entries, name, default: #f);
   if (entry)
     element(entry.versions, version-to-string(ver), default: #f)
@@ -276,7 +276,7 @@ define function validate-deps (cat :: <catalog>, pkg :: <pkg>) => ()
 end;
 
 define function package-versions
-    (cat :: <catalog>, pkg-name :: <str>) => (pkgs :: <pkg-vec>)
+    (cat :: <catalog>, pkg-name :: <string>) => (pkgs :: <pkg-vec>)
   let entry = element(cat.entries, pkg-name, default: #f);
   if (entry)
     map-as(<pkg-vec>, identity, value-sequence(entry.versions))

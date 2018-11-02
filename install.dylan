@@ -13,7 +13,7 @@ Synopsis: Package download and installation
 define constant $src-dir-name = "src";
 
 // Directory in which all versions of a package are installed.
-define function package-directory (pkg-name :: <str>) => (_ :: <directory-locator>)
+define function package-directory (pkg-name :: <string>) => (_ :: <directory-locator>)
   subdirectory-locator(package-manager-directory(), lowercase(pkg-name))
 end;
 
@@ -43,10 +43,10 @@ define function download
 end;
 
 define generic %download
-    (transport :: <transport>, location :: <str>, dest-dir :: <directory-locator>);
+    (transport :: <transport>, location :: <string>, dest-dir :: <directory-locator>);
 
 define method %download
-    (transport :: <git-transport>, location :: <str>, dest-dir :: <directory-locator>)
+    (transport :: <git-transport>, location :: <string>, dest-dir :: <directory-locator>)
  => ()
   // TODO: add --quiet, once debugged
   let command = sprintf("git clone --recurse-submodules --branch=%s -- %s %s",
@@ -78,7 +78,8 @@ define function package-transport
   // which transport to use based on the package location we might
   // have to specify the transport explicitly in the catalog and
   // package files.
-  if (find-substring(pkg.location, "github"))
+  if (find-substring(pkg.location, "github")
+        | starts-with?(pkg.location, "file://"))
     let branch = "master";
     if (pkg.version ~= $head)
       branch := sprintf("v%s", version-to-string(pkg.version));
@@ -129,7 +130,7 @@ end;
 // installed. The return value of `fn`, if any, is ignored.
 //
 // TODO: detect dep circularities
-define function do-resolved-deps (pkg :: <pkg>, fn :: <func>) => ()
+define function do-resolved-deps (pkg :: <pkg>, fn :: <fn>) => ()
   for (dep in pkg.deps)
     let (pkg, installed?) = resolve(dep);
     do-resolved-deps(pkg, fn);
@@ -167,7 +168,7 @@ end;
 // Return all versions of `pkg-name` that are installed, sorted newest
 // to oldest. If `head?` is true, include the "head" version.
 define function installed-versions
-    (pkg-name :: <str>, #key head?) => (versions :: <seq>)
+    (pkg-name :: <string>, #key head?) => (versions :: <seq>)
   let pkg-dir = subdirectory-locator(package-manager-directory(),
                                      lowercase(pkg-name));
   let files = block ()

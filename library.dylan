@@ -98,6 +98,7 @@ define module %pacman
     import: { print-object, *print-escape?* };
   use regular-expressions,
     import: { <regex>,
+              regex-parser,
               compile-regex => re/compile,
               regex-pattern => re/pattern,
               regex-search-strings => re/search-strings };
@@ -107,10 +108,9 @@ define module %pacman
     import: { find-substring,
               lowercase,
               starts-with?,
-              string-equal-ic? => istr= };
+              string-equal-ic? => istring= };
   use table-extensions,
-    import: { table,
-              <case-insensitive-string-table> => <istr-map> };
+    import: { table };
   use uncommon-dylan;
   use uncommon-utils,
     import: { elt, iff, <singleton-object>, value-sequence };
@@ -120,7 +120,8 @@ define module %pacman
   // For the test suite.
   export
     <dep-vec>,
-    str-parser,                 // #str:...
+    entries,
+    string-parser,                 // #string:...
 
     string-to-version, version-to-string,
     string-to-dep, dep-to-string,

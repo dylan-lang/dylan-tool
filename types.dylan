@@ -1,13 +1,7 @@
 Module: %pacman
 
-// This enables the #str: prefix to "parse" raw string literals.
-define function str-parser (s :: <str>) => (_ :: <str>) s end;
-
-// TODO: move this to the regular-expressions library.
-// Enables #regex:{...} syntax.
-define function regex-parser (s :: <str>) => (_ :: <regex>)
-  re/compile(s)
-end;
+// This enables the #string: prefix to "parse" raw string literals.
+define function string-parser (s :: <string>) => (_ :: <string>) s end;
 
 define constant $uncategorized = "Uncategorized";
 define constant $pkg-dir-name = "pkg";
@@ -21,7 +15,7 @@ define constant <pkg-vec> = limited(<vector>, of: <pkg>);
 define class <package-error> (<simple-error>)
 end;
 
-define function package-error (msg :: <str>, #rest args)
+define function package-error (msg :: <string>, #rest args)
   error(make(<package-error>, format-string: msg, format-arguments: args));
 end;
 
@@ -52,13 +46,13 @@ define function dylan-directory
 end;
 
 // <pkg> represents a specific version of a package.
-define class <pkg> (<any>)
-  constant slot name :: <str>, required-init-keyword: name:;
+define class <pkg> (<object>)
+  constant slot name :: <string>, required-init-keyword: name:;
   constant slot version :: <version>, required-init-keyword: version:;
   constant slot deps :: <dep-vec> = as(<dep-vec>, #[]), init-keyword: deps:;
   constant slot entry :: false-or(<entry>) = #f, init-keyword: entry:;
   // Where the package can be downloaded from.
-  constant slot location :: false-or(<str>) = #f, init-keyword: location:;
+  constant slot location :: false-or(<string>) = #f, init-keyword: location:;
 end;
 
 define method initialize (pkg :: <pkg>, #key name) => ()
@@ -75,12 +69,12 @@ end;
 // A package with the same name and version is guaranteed to have all
 // other attributes the same.
 define method \= (p1 :: <pkg>, p2 :: <pkg>) => (_ :: <bool>)
-  istr=(p1.name, p2.name) & p1.version = p2.version
+  istring=(p1.name, p2.name) & p1.version = p2.version
 end;
 
 define constant $pkg-name-regex = #regex:{^[A-Za-z][A-Za-z0-9.-]*$};
 
-define function validate-package-name (name :: <str>) => ()
+define function validate-package-name (name :: <string>) => ()
   re/search-strings($pkg-name-regex, name)
   | package-error("invalid package name: %=", name);
 end;
@@ -88,13 +82,13 @@ end;
 // Convert to table for outputing as JSON. Only deps and location are
 // needed because version and name are encoded higher up in the JSON
 // object structure.
-define method to-table (pkg :: <pkg>) => (t :: <istr-map>)
-  table(<istr-map>,
+define method to-table (pkg :: <pkg>) => (t :: <istring-table>)
+  table(<istring-table>,
         "deps" => map(dep-to-string, pkg.deps),
         "location" => pkg.location)
 end;
 
-define class <version> (<any>)
+define class <version> (<object>)
   constant slot major :: <int>, required-init-keyword: major:;
   constant slot minor :: <int>, required-init-keyword: minor:;
   constant slot patch :: <int>, required-init-keyword: patch:;
@@ -118,7 +112,7 @@ define constant $latest :: <latest> = make(<latest>, major: -1, minor: -1, patch
 define class <head> (<version>, <singleton-object>) end;
 define constant $head :: <head> = make(<head>, major: 0, minor: 0, patch: 0);
 
-define function version-to-string (v :: <version>) => (_ :: <str>)
+define function version-to-string (v :: <version>) => (_ :: <string>)
   select (v)
     $head     => $head-name;
     $latest   => $latest-name;
@@ -129,17 +123,20 @@ end;
 define constant $version-regex = #regex:{^(\d+)\.(\d+)\.(\d+)$};
 
 define function string-to-version
-    (input :: <str>) => (_ :: <version>)
-  select (input by istr=)
+    (input :: <string>) => (_ :: <version>)
+  select (input by istring=)
     $head-name   => $head;
     $latest-name => $latest;
     otherwise =>
       let (_, maj, min, pat) = re/search-strings($version-regex, input);
       maj | package-error("invalid version spec: %=", input);
-      make(<version>,
-           major: string-to-integer(maj),
-           minor: string-to-integer(min),
-           patch: string-to-integer(pat))
+      maj := string-to-integer(maj);
+      min := string-to-integer(min);
+      pat := string-to-integer(pat);
+      if (maj < 0 | min < 0 | pat < 0 | (maj + min + pat = 0))
+        package-error("invalid version spec: %=", input);
+      end;
+      make(<version>, major: maj, minor: min, patch: pat)
   end
 end;
 
@@ -168,8 +165,8 @@ end;
 // version of a package specify min-version = max-version.  If neither min- nor
 // max-version is supplied then any version of the package is considered to fulfill
 // the dependency.
-define class <dep> (<any>)
-  constant slot package-name :: <str>, required-init-keyword: package-name:;
+define class <dep> (<object>)
+  constant slot package-name :: <string>, required-init-keyword: package-name:;
   constant slot min-version :: false-or(<version>) = #f, init-keyword: min-version:;
   constant slot max-version :: false-or(<version>) = #f, init-keyword: max-version:;
 end;
@@ -191,7 +188,7 @@ define method print-object (dep :: <dep>, stream :: <stream>) => ()
 end;
 
 define method \= (d1 :: <dep>, d2 :: <dep>) => (_ :: <bool>)
-  istr=(d1.package-name, d2.package-name)
+  istring=(d1.package-name, d2.package-name)
   & d1.min-version = d2.min-version
   & d1.max-version = d2.max-version
 end;
@@ -199,7 +196,7 @@ end;
 // TODO: I like the dependency syntax/semantics used by Cargo. Will
 //       probably switch to those, but it can wait because for now we
 //       mostly can use 'head'. Might be more complex than necessary?
-define function dep-to-string (dep :: <dep>) => (_ :: <str>)
+define function dep-to-string (dep :: <dep>) => (_ :: <string>)
   let name = dep.package-name;
   let minv = dep.min-version;
   let maxv = dep.max-version;
@@ -218,9 +215,9 @@ end;
 // define constant $package-name-regex :: <regex> = #regex:{([a-zA-Z][a-zA-Z0-9-]*)};
 define constant $dependency-regex :: <regex>
   = begin
-      let rev = #str:"(\d+\.\d+\.\d+)";
+      let rev = #string:"(\d+\.\d+\.\d+)";
       let range = concat(rev, "-", rev);
-      let version-spec = concat(#str:"(head|\*|([<=>])?", rev, "|", range, ")");
+      let version-spec = concat(#string:"(head|\*|([<=>])?", rev, "|", range, ")");
       // groups: 1:name, 2:vspec, 3:[<=>], 4: v1, 5:v1, 6:v2
       let pattern = concat("^([A-Za-z][A-Za-z0-9-]*)(?: ", version-spec, ")?$");
       re/compile(pattern)
@@ -228,7 +225,7 @@ define constant $dependency-regex :: <regex>
 
 // Parse a dependency spec as generated by `dep-to-string`.
 define function string-to-dep
-    (input :: <str>) => (d :: <dep>)
+    (input :: <string>) => (d :: <dep>)
   let (whole, name, vspec, binop, v1a, v1b, v2) = re/search-strings($dependency-regex, input);
   if (~whole)
     // TODO: add doc link explaining dependency syntax.
@@ -265,19 +262,19 @@ end;
 
 
 // The catalog knows what packages (and versions thereof) exist.
-define sealed class <catalog> (<any>)
+define sealed class <catalog> (<object>)
   // package name -> <entry>
-  constant slot entries :: <istr-map>, required-init-keyword: entries:;
+  constant slot entries :: <istring-table>, required-init-keyword: entries:;
 end;
 
 // Something that knows how to grab a package off the net and unpack
 // it into a directory.
-define abstract class <transport> (<any>)
+define abstract class <transport> (<object>)
 end;
 
 // Install git packages.
 define class <git-transport> (<transport>)
-  constant slot branch :: <str> = "master", init-keyword: branch:;
+  constant slot branch :: <string> = "master", init-keyword: branch:;
 end;
 
 // TODO: mercurial, tarballs, ...
@@ -293,7 +290,7 @@ end;
 // Display a message on stdout. Abstracted here so we can easily change all
 // output, or log it or whatever.
 define function message
-    (pattern :: <str>, #rest args) => ()
+    (pattern :: <string>, #rest args) => ()
   apply(printf, pattern, args)
 end;
 
@@ -301,7 +298,7 @@ define function read-package-file (file :: <file-locator>) => (pkg :: false-or(<
   message("Reading package file %s\n", file);
   block ()
     with-open-file (stream = file)
-      let json = json/parse(stream, table-class: <istr-map>, strict?: #f);
+      let json = json/parse(stream, table-class: <istring-table>, strict?: #f);
       make(<pkg>,
            name: json["name"],
            deps: map-as(<dep-vec>, string-to-dep, json["deps"]),

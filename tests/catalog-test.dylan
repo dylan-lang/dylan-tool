@@ -1,7 +1,7 @@
 Module: pacman-test
 
 define constant $catalog-text =
-  #str:({
+  #string:({
     "__catalog_attributes": {"unused": "for now"},
     "http": {
       "contact": "zippy",
@@ -12,11 +12,11 @@ define constant $catalog-text =
       "keywords": [ "http" ],
       "versions": {
         "1.0.0": {
-          "deps": [ "uri/4.0.9", "opendylan/2014.2.2" ],
+          "deps": [ "uri 4.0.9", "opendylan 2014.2.2" ],
           "location": "https://github.com/dylan-lang/http"
         },
         "2.10.0": {
-          "deps": [ "strings/2.3.4", "uri/6.1.0", "opendylan/2018.0.2" ],
+          "deps": [ "strings 2.3.4", "uri 6.1.0", "opendylan 2018.0.2" ],
           "location": "https://github.com/dylan-lang/http"
         }
       }
@@ -30,11 +30,11 @@ define constant $catalog-text =
       "keywords": [ "parser", "config", "serialize" ],
       "versions": {
         "1.0.0": {
-          "deps": [ "opendylan/2014.1.0" ],
+          "deps": [ "opendylan 2014.1.0" ],
           "location": "https://github.com/dylan-lang/json"
         },
         "3.1234.100": {
-          "deps": [ "strings/3.4.5", "opendylan/2018.8.8" ],
+          "deps": [ "strings 3.4.5", "opendylan 2018.8.8" ],
           "location": "https://github.com/dylan-lang/json"
         }
       }
