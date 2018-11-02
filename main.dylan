@@ -84,7 +84,7 @@ define function list-catalog (#key all? :: <bool>)
   end;
 end;
 
-define function str-parser (s :: <str>) => (s :: <str>) s end;
+define function str-parser (s :: <string>) => (s :: <string>) s end;
 
 // Pulled out into a constant because it ruins code formatting.
 define constant $workspace-file-format-string = #str:[{
@@ -94,7 +94,7 @@ define constant $workspace-file-format-string = #str:[{
 }
 ];
 
-define function new (app :: <str>, workspace-name :: <str>, #rest pkg-names)
+define function new (app :: <string>, workspace-name :: <string>, #rest pkg-names)
   let workspace-file = find-workspace-file(fs/working-directory());
   if (workspace-file)
     error("You appear to already be in a workspace directory: %s", workspace-file);
@@ -134,23 +134,23 @@ end;
 //         registry/
 //         active-package-1/
 //         active-package-2/
-define class <config> (<any>)
+define class <config> (<object>)
   constant slot active-packages :: <istr-map>, required-init-keyword: active:;
   constant slot workspace-directory :: <directory-locator>, required-init-keyword: workspace-directory:;
 end;
 
-define function load-workspace-config (filename :: <str>) => (c :: <config>)
+define function load-workspace-config (filename :: <string>) => (c :: <config>)
   let path = find-workspace-file(fs/working-directory());
   if (~path)
     error("Workspace file not found. Current directory isn't under a workspace directory?");
   end;
   fs/with-open-file(stream = path, if-does-not-exist: #"signal")
     let object = json/parse(stream, strict?: #f, table-class: <istr-map>);
-    if (~instance?(object, <map>))
+    if (~instance?(object, <table>))
       error("Invalid workspace file %s, must be a single JSON object", path);
     elseif (~element(object, "active", default: #f))
       error("Invalid workspace file %s, missing required key 'active'", path);
-    elseif (~instance?(object["active"], <map>))
+    elseif (~instance?(object["active"], <table>))
       error("Invalid workspace file %s, the 'active' element must be a map"
               " from package name to {...}.", path);
     end;
@@ -187,17 +187,17 @@ define function active-package-names (conf :: <config>) => (names :: <seq>)
 end;
 
 define function active-package-directory
-    (conf :: <config>, pkg-name :: <str>) => (d :: <directory-locator>)
+    (conf :: <config>, pkg-name :: <string>) => (d :: <directory-locator>)
   subdirectory-locator(conf.workspace-directory, pkg-name)
 end;
 
 define function active-package-file
-    (conf :: <config>, pkg-name :: <str>) => (f :: <file-locator>)
+    (conf :: <config>, pkg-name :: <string>) => (f :: <file-locator>)
   merge-locators(as(<file-locator>, "pkg.json"),
                  active-package-directory(conf, pkg-name))
 end;
 
-define function active-package? (conf :: <config>, pkg-name :: <str>) => (_ :: <bool>)
+define function active-package? (conf :: <config>, pkg-name :: <string>) => (_ :: <bool>)
   member?(pkg-name, conf.active-package-names, test: istr=)
 end;
 
@@ -309,7 +309,7 @@ end;
 define function update-registry-for-lid
     (conf :: <config>, lid-path :: <file-locator>)
   let lib-name = library-from-lid(lid-path);
-  let platform = lowercase(as(<str>, os/$platform-name));
+  let platform = lowercase(as(<string>, os/$platform-name));
   let directory = subdirectory-locator(conf.registry-directory, platform);
   let reg-file = merge-locators(as(<file-locator>, lib-name), directory);
   let relative-path = relative-locator(lid-path, conf.workspace-directory);
@@ -326,7 +326,7 @@ end;
 // Read the full contents of a file and return it as a string.
 // If the file doesn't exist return #f. (I thought if-does-not-exist: #f
 // was supposed to accomplish this without the need for block/exception.)
-define function file-content (path :: <locator>) => (s :: false-or(<str>))
+define function file-content (path :: <locator>) => (s :: false-or(<string>))
   block ()
     fs/with-open-file(stream = path, if-does-not-exist: #"signal")
       read-to-end(stream)
@@ -336,7 +336,7 @@ define function file-content (path :: <locator>) => (s :: false-or(<str>))
   end
 end;
 
-define function library-from-lid (path :: <file-locator>) => (library-name :: <str>)
+define function library-from-lid (path :: <file-locator>) => (library-name :: <string>)
   fs/with-open-file(stream = path)
     let whitespace = #regex:"[ \t]";
     let line = #f;
