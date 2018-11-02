@@ -53,5 +53,5 @@ define module dylan-tool
     import: { <case-insensitive-string-table> => <istr-map> };
   use uncommon-dylan;
   use uncommon-utils,
-    import: { slice };
+    import: { iff, slice };
 end;

@@ -19,10 +19,10 @@ define function main () => (status :: <int>)
   block (exit)
     let app = locator-name(as(<file-locator>, application-name()));
     local method usage (#key status :: <int> = 2)
-            format-err("Usage: %s install pkg version\n", app);
-            format-err("       %s new workspace-name [pkg...]\n", app);
-            format-err("       %s update\n", app);
-            format-err("       %s list\n", app);
+            format-err("Usage: %s install pkg version         -- install a package\n", app);
+            format-err("       %s new workspace-name [pkg...] -- make a new workspace\n", app);
+            format-err("       %s update       -- bring workspace up-to-date with workspace.json file\n", app);
+            format-err("       %s list [--all] -- list installed packages\n", app);
             exit(status);
           end;
     let args = application-arguments();
@@ -43,7 +43,7 @@ define function main () => (status :: <int>)
         end;
         pm/install(pkg);
       "list" =>
-        list-catalog();
+        list-catalog(all?: member?("--all", args, test: istr=));
       "new" =>                  // Create a new workspace.
         args.size >= 2 | usage();
         apply(new, app, args[1], slice(args, 2, #f));
@@ -62,16 +62,25 @@ define function main () => (status :: <int>)
   end
 end function main;
 
-// List all package names, synopsis, and latest available numbered version.
-//
-// TODO: show installed version, if any.
-define function list-catalog ()
+// List installed package names, synopsis, versions, etc. If `all` is
+// true, show all packages.
+define function list-catalog (#key all? :: <bool>)
   let cat = pm/load-catalog();
   for (pkg-name in sort(pm/package-names(cat)))
+    let versions = pm/installed-versions(pkg-name, head?: #f);
+    let latest-installed = versions.size > 0 & versions[0];
     let entry = pm/find-entry(cat, pkg-name);
     let latest = pm/find-package(cat, pkg-name, pm/$latest);
-    format-out("%s (latest: %s) - %s\n",
-               pkg-name, pm/version(latest), pm/synopsis(entry));
+    let needs-update? = latest-installed & latest
+                          & (pm/version(latest) ~= pm/$head)
+                          & (latest-installed < pm/version(latest));
+    if (all? | latest-installed)
+      format-out("%s%s (latest: %s) - %s\n",
+                 pkg-name,
+                 iff(needs-update?, "*", ""),
+                 pm/version(latest),
+                 pm/synopsis(entry));
+    end;
   end;
 end;
 
