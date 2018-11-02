@@ -145,10 +145,6 @@ Version 1.0.0 will primarily work with packages at HEAD since that's
 the way everyone currently expects to work on Dylan.  Better support
 for numbered versions can come later.
 
-* Show installed versions (if any) in the 'list' command.
-
-* Add a --installed option to the 'list' command.
-
 * Push my changes to uncommon-dylan, since dylan-tool depends on it.
 
 * Put all non-opendylan packages in the Catalog at version "head".
