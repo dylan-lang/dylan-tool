@@ -40,7 +40,8 @@ define module dylan-tool
     prefix: "pm/";
   use print;
   use regular-expressions,
-    import: { regex-parser };      // #regex:"..."
+    import: { regex-parser },      // #regex:"..."
+    rename: { regex-search-strings => re/search-strings };
   use streams,
     import: { read-line, read-to-end, write };
   use strings,
@@ -48,10 +49,9 @@ define module dylan-tool
               starts-with?,
               ends-with?,
               string-equal? => str=,
-              string-equal-ic? => istr= };
-  use table-extensions,
-    import: { <case-insensitive-string-table> => <istr-map> };
+              string-equal-ic? => istr=,
+              strip };
   use uncommon-dylan;
   use uncommon-utils,
-    import: { iff, slice };
-end;
+    import: { err, iff, inc!, slice };
+end module dylan-tool;

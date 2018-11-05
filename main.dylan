@@ -13,6 +13,13 @@ Module: dylan-tool
 //   It gives reassuring feedback that something went right when there's no
 //   other output.
 
+define function tool-error
+    (format-string :: <string>, #rest args)
+  error(make(<simple-error>,
+             format-string: format-string,
+             format-arguments: args));
+end;
+
 define constant $workspace-file = "workspace.json";
 
 define function main () => (status :: <int>)
@@ -135,7 +142,7 @@ end;
 //         active-package-1/
 //         active-package-2/
 define class <config> (<object>)
-  constant slot active-packages :: <istr-map>, required-init-keyword: active:;
+  constant slot active-packages :: <istring-table>, required-init-keyword: active:;
   constant slot workspace-directory :: <directory-locator>, required-init-keyword: workspace-directory:;
 end;
 
@@ -145,7 +152,7 @@ define function load-workspace-config (filename :: <string>) => (c :: <config>)
     error("Workspace file not found. Current directory isn't under a workspace directory?");
   end;
   fs/with-open-file(stream = path, if-does-not-exist: #"signal")
-    let object = json/parse(stream, strict?: #f, table-class: <istr-map>);
+    let object = json/parse(stream, strict?: #f, table-class: <istring-table>);
     if (~instance?(object, <table>))
       error("Invalid workspace file %s, must be a single JSON object", path);
     elseif (~element(object, "active", default: #f))
@@ -285,8 +292,9 @@ define function update-registry-for-package (conf, pkg, dep, installed?)
   update-registry-for-directory(conf, pkg-dir);
 end;
 
-// Find all the .lid files in `pkg-dir` and create registry files for
-// the corresponding libraries.
+// Find all the .lid files in `pkg-dir` that are marked as being for
+// the current platform and create registry files for the
+// corresponding libraries.
 define function update-registry-for-directory (conf, pkg-dir)
   local method doit (dir, name, type)
           select (type)
@@ -301,6 +309,7 @@ define function update-registry-for-directory (conf, pkg-dir)
               if (~starts-with?(name, "."))
                 fs/do-directory(doit, subdirectory-locator(dir, name));
               end;
+            #"link" => #f;
           end;
         end;
   fs/do-directory(doit, pkg-dir);
@@ -308,17 +317,23 @@ end;
 
 define function update-registry-for-lid
     (conf :: <config>, lid-path :: <file-locator>)
-  let lib-name = library-from-lid(lid-path);
+  let lid = parse-lid-file(lid-path);
   let platform = lowercase(as(<string>, os/$platform-name));
-  let directory = subdirectory-locator(conf.registry-directory, platform);
-  let reg-file = merge-locators(as(<file-locator>, lib-name), directory);
-  let relative-path = relative-locator(lid-path, conf.workspace-directory);
-  let new-content = format-to-string("abstract://dylan/%s\n", relative-path);
-  if (new-content ~= file-content(reg-file))
-    fs/ensure-directories-exist(reg-file);
-    format-out("Writing %s.\n", reg-file);
-    fs/with-open-file(stream = reg-file, direction: #"output", if-exists?: #"overwrite")
-      write(stream, new-content);
+  let lid-platforms = element(lid, #"platforms", default: #f);
+  if (lid-platforms & ~member?(platform, lid-platforms, test: str=))
+    format-err("Skipped, not %s: %s\n", platform, lid-path);
+  else
+    let directory = subdirectory-locator(conf.registry-directory, platform);
+    let lib = lid[#"library"][0];
+    let reg-file = merge-locators(as(<file-locator>, lib), directory);
+    let relative-path = relative-locator(lid-path, conf.workspace-directory);
+    let new-content = format-to-string("abstract:/" "/dylan/%s\n", relative-path);
+    if (new-content ~= file-content(reg-file))
+      fs/ensure-directories-exist(reg-file);
+      fs/with-open-file(stream = reg-file, direction: #"output", if-exists?: #"overwrite")
+        write(stream, new-content);
+      end;
+      format-out("Wrote %s\n", reg-file);
     end;
   end;
 end;
@@ -336,20 +351,63 @@ define function file-content (path :: <locator>) => (s :: false-or(<string>))
   end
 end;
 
-define function library-from-lid (path :: <file-locator>) => (library-name :: <string>)
+define constant $keyword-line-regex = #regex:"^([a-zA-Z0-9-]+):[ \t]+(.+)$";
+
+// Parse a .lid file into an table mapping keyword symbols to
+// sequences of values. e.g., #"files" => #["foo.dylan", "bar.dylan"]
+define function parse-lid-file (path :: <file-locator>) => (lid :: <table>)
+  parse-lid-file-into(path, make(<table>))
+end;
+
+define function parse-lid-file-into (path :: <file-locator>, lid :: <table>) => (lid :: <table>)
+  let line-number = 0;
+  let prev-key = #f;
   fs/with-open-file(stream = path)
-    let whitespace = #regex:"[ \t]";
     let line = #f;
-    block (return)
-      while (line := read-line(stream, on-end-of-stream: #f))
-        let parts = split(line, whitespace, remove-if-empty?: #t);
-        if (parts.size > 1 & istr=(parts[0], "library:"))
-          return(parts[1])
+    while (line := read-line(stream, on-end-of-stream: #f))
+      inc!(line-number);
+      if (strip(line) ~= ""     // tolerate blank lines
+            & ~starts-with?(strip(line), "//"))
+        if (starts-with?(line, " ") | starts-with?(line, "\t"))
+          // Continuation line
+          if (prev-key)
+            let value = strip(line);
+            if (~empty?(value))
+              lid[prev-key] := add!(lid[prev-key], value);
+            end;
+          else
+            format-err("Skipped unexpected continuation line %s:%d\n",
+                       path, line-number);
+          end;
+        else
+          // Keyword line
+          let (whole, keyword, value) = re/search-strings($keyword-line-regex, line);
+          if (whole)
+            value := strip(value);
+            let key = as(<symbol>, keyword);
+            if (key = #"LID")
+              let path = merge-locators(as(<file-locator>, value), locator-directory(path));
+              parse-lid-file-into(path, lid);
+              prev-key := #f;
+            else
+              lid[key] := vector(value);
+              prev-key := key;
+            end;
+          else
+            format-err("Skipped invalid syntax line %s:%d: %=\n",
+                       path, line-number, line);
+          end;
         end;
       end;
-      error("No library found in %s", path);
     end;
   end;
-end;
+  if (~element(lid, #"library", default: #f))
+    tool-error("LID file %s has no Library: property.", path);
+  end;
+  if (~element(lid, #"files", default: #f))
+    format-err("LID file %s has no Files: property.\n", path);
+  end;
+  lid
+end function parse-lid-file-into;
 
 exit-application(main());
