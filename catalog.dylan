@@ -108,16 +108,25 @@ define function load-catalog () => (c :: <catalog>)
                                   package-manager-directory());
   *catalog*
   | (*catalog* := begin
-                    if (install($catalog-pkg, force?: #f)
-                          | too-old?(local-path))
+                    if (install($catalog-pkg, force?: too-old?(local-path)))
                       copy-to-local-cache($catalog-pkg, local-path);
                     end;
                     load-local-catalog(local-path)
                   end)
 end;
 
-define function too-old? (path :: <file-locator>) => (o :: <bool>)
-  #t                            // TODO
+define constant $catalog-freshness :: <duration> = make(<duration>, hours: 1);
+
+define function too-old? (path :: <file-locator>) => (old? :: <bool>)
+  block ()
+    let mod-time = file-property(path, #"modification-date");
+    let now = current-date();
+    now - mod-time > $catalog-freshness
+  exception (e :: <file-system-error>)
+    // TODO: catch <file-does-not-exist-error> instead
+    // https://github.com/dylan-lang/opendylan/issues/1147
+    #t
+  end
 end;
 
 define function copy-to-local-cache (pkg :: <pkg>, local-path :: <file-locator>)

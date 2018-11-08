@@ -11,7 +11,7 @@ define library pacman
   use collections,
     import: { table-extensions };
   use system,
-    import: { file-system, locators, operating-system };
+    import: { date, file-system, locators, operating-system };
   use io,
     import: { format, format-out, print, streams };
   use json;
@@ -68,10 +68,13 @@ define module pacman
 end module pacman;
 
 define module %pacman
+  use date,
+    import: { current-date, <duration> };
   use file-system,
     import: { delete-directory,
               directory-contents,
               directory-empty?,
+              file-property,
               <file-system-error>,
               <file-does-not-exist-error>,
               <file-system-file-locator>,
