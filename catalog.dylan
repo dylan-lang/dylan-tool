@@ -94,7 +94,7 @@ define constant $catalog-pkg :: <pkg> =
   make(<pkg>,
        name: "pacman-catalog",
        version: $head,
-       location: "git@github.com:cgay/pacman-catalog");
+       location: "https://github.com/cgay/pacman-catalog");
 
 define constant $local-catalog-filename :: <string> = "local-catalog.json";
 
