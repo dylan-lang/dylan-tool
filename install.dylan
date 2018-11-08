@@ -94,7 +94,9 @@ end;
 // is true the existing package is removed, if present, and the
 // package is re-installed.  If `deps?` is true , also install
 // dependencies recursively. The `force?` argument applies to
-// dependency installations also.
+// dependency installations also, if any. Returns #t if an
+// installation was performed or #f if the package was already
+// installed and `force?` was #f.
 define sealed generic install
   (pkg :: <pkg>, #key force?, deps?) => (installed? :: <bool>);
 
