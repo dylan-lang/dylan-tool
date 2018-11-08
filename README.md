@@ -129,7 +129,7 @@ platform-specific registry files.
 
 ## Bugs
 
-If you have a feature request, thing something should be designed
+If you have a feature request, think something should be designed
 differently, or find bugs, file a bug report
 [here](https://github.com/cgay/dylan-tool/issues).
 
@@ -148,6 +148,24 @@ for numbered versions can come later.
 * Improve output a bit. For example, don't display git clone output
   but do log all events somewhere for debugging purposes. Maybe have
   a `--verbose` flag.
+  
+* Make a standard workspace for developing Open Dylan itself, such
+  that it doesn't require the use of any submodules.
+  
+  - Multiple LIDs end up being written to the same registry file
+    because they define the same library but don't specify platform.
+    They weren't in the registry so I didn't add a Platforms: line.
+    
+  - Why didn't collection-extensions get checked out?:
+    Wrote /home/cgay/dylan/opendylan.workspace/registry/x86_64-linux/testworks-specs
+    No such file or directory: Can't start listing of /home/cgay/dylan/pkg/collection-extensions/head/src/
+    No such file or directory: Can't start listing of /home/cgay/dylan/pkg/collection-extensions/head/src/
+    Breaking into debugger.
+    Trace/breakpoint trap
+    Removing the 'head' directory above fixed it. Pretty sure this is from when I C-c'd out
+    the first time because I was prompted to enter my ssh key. Need to be resilient to C-c.
+    Write a "done" file, when the package download is complete?
+
 
 ### After 0.1.0
 
