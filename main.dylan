@@ -6,7 +6,6 @@ Module: dylan-tool
 // workspaces and packages working.
 
 // TODO:
-// * Add a --verbose flag and hide much of the output when non-verbose.
 // * Remove redundancy in 'update' command. It processes (shared?) dependencies
 //   and writes registry files multiple times.
 // * Display the number of registry files updated and the number unchanged.
@@ -20,16 +19,39 @@ define function tool-error
              format-arguments: args));
 end;
 
+define function print (format-string, #rest args)
+  apply(format, *stdout*, format-string, args);
+  write(*stdout*, "\n");
+  // OD doesn't currently have an option for flushing output after \n.
+  flush(*stdout*);
+end;
+
+// May be changed via the --verbose flag.
+define variable *verbose* :: <bool> = #f;
+
+define function vprint (format-string, #rest args)
+  if (*verbose*)
+    apply(print, format-string, args);
+  end;
+end;
+
+define function debug (format-string, #rest args)
+  apply(print, format-string, args)
+end;
+
 define constant $workspace-file = "workspace.json";
 
 define function main () => (status :: <int>)
   block (exit)
+    // TODO: command parsing is ad-hoc because command-line-parser
+    //       doesn't do well with subcommands. Needs improvement.
     let app = locator-name(as(<file-locator>, application-name()));
     local method usage (#key status :: <int> = 2)
-            format-err("Usage: %s install pkg version         -- install a package\n", app);
-            format-err("       %s new workspace-name [pkg...] -- make a new workspace\n", app);
-            format-err("       %s update       -- bring workspace up-to-date with workspace.json file\n", app);
-            format-err("       %s list [--all] -- list installed packages\n", app);
+            print("Usage: %s install pkg version         -- install a package", app);
+            print("       %s new workspace-name [pkg...] -- make a new workspace", app);
+            print("       %s update       -- bring workspace up-to-date with workspace.json file", app);
+            print("       %s list [--all] -- list installed packages", app);
+            print("  Note: a --verbose flag may be added to any subcommand.");
             exit(status);
           end;
     let args = application-arguments();
@@ -38,6 +60,10 @@ define function main () => (status :: <int>)
       usage(status: 0);
     end;
     let subcmd = args[0];
+    let more-args = slice(args, 1, #f);
+    if (member?("--verbose", more-args, test: istr=))
+      *verbose* := #t;
+    end;
     select (subcmd by istr=)
       "install" =>
         // Install a specific package.
@@ -63,7 +89,7 @@ define function main () => (status :: <int>)
     0
 /* TODO: turn this into a 'let handler' that can be turned off by a --debug flag.
   exception (err :: <error>)
-    format-err("Error: %s\n", err);
+    print("Error: %s", err);
     1
 */
   end
@@ -82,11 +108,11 @@ define function list-catalog (#key all? :: <bool>)
                           & (pm/version(latest) ~= pm/$head)
                           & (latest-installed < pm/version(latest));
     if (all? | latest-installed)
-      format-out("%s%s (latest: %s) - %s\n",
-                 pkg-name,
-                 iff(needs-update?, "*", ""),
-                 pm/version(latest),
-                 pm/synopsis(entry));
+      print("%s%s (latest: %s) - %s",
+            pkg-name,
+            iff(needs-update?, "*", ""),
+            pm/version(latest),
+            pm/synopsis(entry));
     end;
   end;
 end;
@@ -120,16 +146,16 @@ define function new (app :: <string>, workspace-name :: <string>, #rest pkg-name
       pkg-names := #["<package-name-here>"];
     end;
     format(stream, $workspace-file-format-string,
-           join(pkg-names, "\n", key: curry(format-to-string, "        %=: {}")));
+           join(pkg-names, ",\n", key: curry(format-to-string, "        %=: {}")));
   end;
-  format-out("Wrote workspace file to %s.\n", workspace-path);
-  format-out("You may now run '%s update' in the new directory.\n", app);
+  print("Wrote workspace file to %s.", workspace-path);
+  print("You may now run '%s update' in the new directory.", app);
 end;
 
 // Update the workspace based on the workspace config or signal an error.
 define function update ()
   let config = load-workspace-config($workspace-file);
-  format-out("Workspace directory is %s.\n", config.workspace-directory);
+  print("Workspace directory is %s.", config.workspace-directory);
   update-active-packages(config);
   update-active-package-deps(config);
   update-registry(config);
@@ -219,7 +245,7 @@ define function update-active-packages (conf :: <config>)
     // Download the package if necessary.
     let pkg-dir = active-package-directory(conf, pkg-name);
     if (fs/file-exists?(pkg-dir))
-      format-out("Active package %s exists, not downloading.\n", pkg-name);
+      vprint("Active package %s exists, not downloading.", pkg-name);
     else
       let cat = pm/load-catalog();
       let pkg = pm/find-package(cat, pkg-name, pm/$head)
@@ -227,9 +253,9 @@ define function update-active-packages (conf :: <config>)
       if (pkg)
         pm/download(pkg, pkg-dir);
       else
-        format-out("WARNING: Skipping active package %s, not found in catalog.\n", pkg-name);
-        format-out("WARNING: If this is a new or private project then this is normal.\n");
-        format-out("WARNING: Create a pkg.json file for it and run update again to update deps.\n");
+        print("WARNING: Skipping active package %s, not found in catalog.", pkg-name);
+        print("WARNING: If this is a new or private project then this is normal.");
+        print("WARNING: Create a pkg.json file for it and run update again to update deps.");
       end;
     end;
   end;
@@ -237,18 +263,20 @@ end;
 
 // Update dep packages if needed.
 define function update-active-package-deps (conf :: <config>)
+  debug(" *** update-active-package-deps");
   for (pkg-name in conf.active-package-names)
+    debug(" ***   pkg-name = %=", pkg-name);
     // Update the package deps.
     let pkg = pm/read-package-file(active-package-file(conf, pkg-name));
     if (pkg)
-      format-out("Installing deps for package %s.\n", pkg-name);
+      print("Installing deps for package %s.", pkg-name);
       // TODO: in a perfect world this wouldn't install any deps that
       // are also active packages. It doesn't cause a problem though,
       // as long as the registry points to the right place.
       pm/install-deps(pkg /* , skip: conf.active-package-names */);
     else
-      format-out("WARNING: No pkg.json file found for active package %s."
-                   " Not installing deps.\n", pkg-name);
+      print("WARNING: No pkg.json file found for active package %s."
+              " Not installing deps.", pkg-name);
     end;
   end;
 end;
@@ -260,8 +288,8 @@ define function update-registry (conf :: <config>)
     let pkg-file = active-package-file(conf, pkg-name);
     let pkg = pm/read-package-file(pkg-file);
     if (~pkg)
-      format-out("WARNING: No package found in %s, falling back to catalog"
-                   " to find deps.\n", pkg-file);
+      print("WARNING: No package found in %s, falling back to catalog"
+              " to find deps.", pkg-file);
       let cat = pm/load-catalog();
       pkg := pm/find-package(cat, pkg-name, pm/$head)
                | pm/find-package(cat, pkg-name, pm/$latest);
@@ -271,8 +299,8 @@ define function update-registry (conf :: <config>)
       update-registry-for-directory(conf, pkg-dir);
       pm/do-resolved-deps(pkg, curry(update-registry-for-package, conf));
     else
-      format-out("WARNING: No pkg.json file found for active package %s."
-                   " Not creating registry file.\n", pkg-name);
+      print("WARNING: No pkg.json file found for active package %s."
+              " Not creating registry files.", pkg-name);
     end;
   end;
 end;
@@ -307,7 +335,8 @@ define function update-registry-for-directory (conf, pkg-dir)
               // ., .., .git, etc.  Could be too broad a brush, but it's hard to imagine
               // putting Dylan code in .foo directories?
               if (~starts-with?(name, "."))
-                fs/do-directory(doit, subdirectory-locator(dir, name));
+                let subdir = subdirectory-locator(dir, name);
+                fs/do-directory(doit, subdir);
               end;
             #"link" => #f;
           end;
@@ -321,19 +350,21 @@ define function update-registry-for-lid
   let platform = lowercase(as(<string>, os/$platform-name));
   let lid-platforms = element(lid, #"platforms", default: #f);
   if (lid-platforms & ~member?(platform, lid-platforms, test: str=))
-    format-err("Skipped, not %s: %s\n", platform, lid-path);
+    vprint("Skipped, not %s: %s", platform, lid-path);
   else
     let directory = subdirectory-locator(conf.registry-directory, platform);
     let lib = lid[#"library"][0];
     let reg-file = merge-locators(as(<file-locator>, lib), directory);
     let relative-path = relative-locator(lid-path, conf.workspace-directory);
     let new-content = format-to-string("abstract:/" "/dylan/%s\n", relative-path);
-    if (new-content ~= file-content(reg-file))
+    let old-content = file-content(reg-file);
+    if (new-content ~= old-content)
+      debug(" *** old-content = %=\n     new-content = %=", old-content, new-content);
       fs/ensure-directories-exist(reg-file);
       fs/with-open-file(stream = reg-file, direction: #"output", if-exists?: #"overwrite")
         write(stream, new-content);
       end;
-      format-out("Wrote %s\n", reg-file);
+      print("Wrote %s", reg-file);
     end;
   end;
 end;
@@ -347,6 +378,7 @@ define function file-content (path :: <locator>) => (s :: false-or(<string>))
       read-to-end(stream)
     end
   exception (e :: fs/<file-does-not-exist-error>)
+    debug(" *** couldn't read %s", path);
     #f
   end
 end;
@@ -376,8 +408,7 @@ define function parse-lid-file-into (path :: <file-locator>, lid :: <table>) => 
               lid[prev-key] := add!(lid[prev-key], value);
             end;
           else
-            format-err("Skipped unexpected continuation line %s:%d\n",
-                       path, line-number);
+            vprint("Skipped unexpected continuation line %s:%d", path, line-number);
           end;
         else
           // Keyword line
@@ -394,8 +425,7 @@ define function parse-lid-file-into (path :: <file-locator>, lid :: <table>) => 
               prev-key := key;
             end;
           else
-            format-err("Skipped invalid syntax line %s:%d: %=\n",
-                       path, line-number, line);
+            vprint("Skipped invalid syntax line %s:%d: %=", path, line-number, line);
           end;
         end;
       end;
@@ -405,7 +435,7 @@ define function parse-lid-file-into (path :: <file-locator>, lid :: <table>) => 
     tool-error("LID file %s has no Library: property.", path);
   end;
   if (~element(lid, #"files", default: #f))
-    format-err("LID file %s has no Files: property.\n", path);
+    print("LID file %s has no Files: property.", path);
   end;
   lid
 end function parse-lid-file-into;

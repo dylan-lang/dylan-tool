@@ -4,7 +4,7 @@ define library dylan-tool
   use collections,
     import: { table-extensions };
   use io,
-    import: { format, format-out, print, streams };
+    import: { format, standard-io, streams };
   use json;
   use pacman;
   use regular-expressions;
@@ -20,8 +20,6 @@ define module dylan-tool
     prefix: "fs/";
   use format,
     import: { format, format-to-string };
-  use format-out,
-    import: { format-out, format-err };
   use json,
     import: { parse-json => json/parse };
   use locators,
@@ -38,12 +36,17 @@ define module dylan-tool
     prefix: "os/";
   use pacman,
     prefix: "pm/";
-  use print;
   use regular-expressions,
     import: { regex-parser },      // #regex:"..."
     rename: { regex-search-strings => re/search-strings };
+  use standard-io,
+    import: { *standard-output* => *stdout*,
+              *standard-error* => *stderr* };
   use streams,
-    import: { read-line, read-to-end, write };
+    import: { force-output => flush,
+              read-line,
+              read-to-end,
+              write };
   use strings,
     import: { lowercase,
               starts-with?,
