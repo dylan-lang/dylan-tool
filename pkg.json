@@ -1,5 +1,5 @@
 {
     "name": "pacman",
     "deps": [ "json head", "regular-expressions head", "uncommon-dylan head" ],
-    "location": "git@github.com:cgay/pacman"
+    "location": "https://github.com/cgay/pacman"
 }
