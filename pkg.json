@@ -5,5 +5,5 @@
               "pacman head",
               "regular-expressions head",
               "uncommon-dylan head" ],
-    "location": "git@github.com:cgay/dylan-tool"
+    "location": "https://github.com/cgay/dylan-tool"
 }
