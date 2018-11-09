@@ -332,11 +332,12 @@ define function update-registry-for-directory (conf, pkg-dir)
                 update-registry-for-lid(conf, lid-path);
               end;
             #"directory" =>
-              // ., .., .git, etc.  Could be too broad a brush, but it's hard to imagine
-              // putting Dylan code in .foo directories?
-              if (~starts-with?(name, "."))
-                let subdir = subdirectory-locator(dir, name);
-                fs/do-directory(doit, subdir);
+              // Skip git submodules; their use is a vestige of
+              // pre-package manager setups and it causes registry
+              // entries to be written twice. We don't want the
+              // submodule library, we want the package library.
+              if (~member?(".git", locator-path(dir), test: str=))
+                fs/do-directory(doit, subdirectory-locator(dir, name));
               end;
             #"link" => #f;
           end;

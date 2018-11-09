@@ -29,6 +29,7 @@ define module dylan-tool
               locator-as-string,
               locator-directory,
               locator-name,
+              locator-path,
               merge-locators,
               relative-locator,
               subdirectory-locator };
