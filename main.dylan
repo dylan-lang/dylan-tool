@@ -35,9 +35,11 @@ define function vprint (format-string, #rest args)
   end;
 end;
 
+/*
 define function debug (format-string, #rest args)
-  apply(print, format-string, args)
+  apply(print, concat("*** ", format-string), args)
 end;
+*/
 
 define constant $workspace-file = "workspace.json";
 
@@ -263,9 +265,7 @@ end;
 
 // Update dep packages if needed.
 define function update-active-package-deps (conf :: <config>)
-  debug(" *** update-active-package-deps");
   for (pkg-name in conf.active-package-names)
-    debug(" ***   pkg-name = %=", pkg-name);
     // Update the package deps.
     let pkg = pm/read-package-file(active-package-file(conf, pkg-name));
     if (pkg)
@@ -283,6 +283,9 @@ end;
 
 // Create/update a single registry directory having an entry for each
 // library in each active package and all transitive dependencies.
+// This traverses package directories to find .lid files. Note that it
+// assumes that .lid files that have no "Platforms:" section are
+// generic, and writes a registry file for them.
 define function update-registry (conf :: <config>)
   for (pkg-name in conf.active-package-names)
     let pkg-file = active-package-file(conf, pkg-name);
@@ -320,37 +323,76 @@ define function update-registry-for-package (conf, pkg, dep, installed?)
   update-registry-for-directory(conf, pkg-dir);
 end;
 
-// Find all the .lid files in `pkg-dir` that are marked as being for
+define constant $path-key = #"__path";
+
+// Find all the LID files in `pkg-dir` that are marked as being for
 // the current platform and create registry files for the
-// corresponding libraries.
+// corresponding libraries. First do a pass over the entire directory
+// reading lid files, then write registry files for the ones that
+// aren't included in other LID files. (This avoids writing the same
+// registry file twice for the same library without resorting to
+// putting "Platforms: none" in LID files that are included in other
+// LID files.)
 define function update-registry-for-directory (conf, pkg-dir)
+  let lib2lid = make(<istring-table>);  // library-name => list(lid-data)
   local method doit (dir, name, type)
           select (type)
             #"file" =>
               if (ends-with?(name, ".lid"))
                 let lid-path = merge-locators(as(<file-locator>, name), dir);
-                update-registry-for-lid(conf, lid-path);
+                let lid = parse-lid-file(lid-path);
+                let libs = element(lid, #"library", default: #f);
+                let lib = ~empty?(libs) & libs[0];
+                if (~lib)
+                  print("Skipping %s, it has no Library: line.", lid-path);
+                end;
+                let lids = element(lib2lid, lib, default: #[]);
+                lib2lid[lib] := add(lids, lid);
               end;
             #"directory" =>
               // Skip git submodules; their use is a vestige of
               // pre-package manager setups and it causes registry
               // entries to be written twice. We don't want the
               // submodule library, we want the package library.
-              if (~member?(".git", locator-path(dir), test: str=))
-                fs/do-directory(doit, subdirectory-locator(dir, name));
+              let subdir = subdirectory-locator(dir, name);
+              if (name ~= ".git" & ~git-submodule?(subdir))
+                fs/do-directory(doit, subdir);
               end;
             #"link" => #f;
           end;
         end;
   fs/do-directory(doit, pkg-dir);
+
+  for (lids keyed-by lib in lib2lid) // lids should never have > ~3 elements
+    for (lid1 in lids)
+      // Check if any of the other LIDs for this library include lid1.
+      let included? = #f;
+      for (lid2 in lids, while: ~included?)
+        if (lid1 ~== lid2)
+          let sublid = element(lid2, #"LID", default: #f);
+          if (sublid & as(<string>, lid1[$path-key]) = as(<string>, sublid[$path-key]))
+            included? := #t;
+          end;
+        end;
+      end for;
+      if (~included?)
+        update-registry-for-lid(conf, lid1);
+      end;
+    end for;
+  end;
+end function update-registry-for-directory;
+
+define function git-submodule? (dir :: <directory-locator>) => (_ :: <bool>)
+  let dot-git = merge-locators(as(<file-locator>, ".git"), dir);
+  fs/file-exists?(dot-git)
 end;
 
-define function update-registry-for-lid
-    (conf :: <config>, lid-path :: <file-locator>)
-  let lid = parse-lid-file(lid-path);
+define function update-registry-for-lid (conf :: <config>, lid :: <table>)
+  let lid-path :: <file-locator> = lid[$path-key];
   let platform = lowercase(as(<string>, os/$platform-name));
   let lid-platforms = element(lid, #"platforms", default: #f);
-  if (lid-platforms & ~member?(platform, lid-platforms, test: str=))
+  if (lid-platforms & (member?("none", lid-platforms, test: istr=)
+                         | ~member?(platform, lid-platforms, test: str=)))
     vprint("Skipped, not %s: %s", platform, lid-path);
   else
     let directory = subdirectory-locator(conf.registry-directory, platform);
@@ -360,39 +402,50 @@ define function update-registry-for-lid
     let new-content = format-to-string("abstract:/" "/dylan/%s\n", relative-path);
     let old-content = file-content(reg-file);
     if (new-content ~= old-content)
-      debug(" *** old-content = %=\n     new-content = %=", old-content, new-content);
       fs/ensure-directories-exist(reg-file);
       fs/with-open-file(stream = reg-file, direction: #"output", if-exists?: #"overwrite")
         write(stream, new-content);
       end;
-      print("Wrote %s", reg-file);
+      print("Wrote %s (%s)", reg-file, lid-path);
     end;
   end;
 end;
 
-// Read the full contents of a file and return it as a string.
-// If the file doesn't exist return #f. (I thought if-does-not-exist: #f
-// was supposed to accomplish this without the need for block/exception.)
+// Read the full contents of a file and return it as a string.  If the
+// file doesn't exist return #f. (I thought if-does-not-exist: #f was
+// supposed to accomplish this without the need for block/exception.)
 define function file-content (path :: <locator>) => (s :: false-or(<string>))
   block ()
     fs/with-open-file(stream = path, if-does-not-exist: #"signal")
       read-to-end(stream)
     end
   exception (e :: fs/<file-does-not-exist-error>)
-    debug(" *** couldn't read %s", path);
     #f
   end
 end;
 
 define constant $keyword-line-regex = #regex:"^([a-zA-Z0-9-]+):[ \t]+(.+)$";
 
-// Parse a .lid file into an table mapping keyword symbols to
-// sequences of values. e.g., #"files" => #["foo.dylan", "bar.dylan"]
+// Parse the contents of `path` into a newly created `<table>` and
+// return the table.
 define function parse-lid-file (path :: <file-locator>) => (lid :: <table>)
   parse-lid-file-into(path, make(<table>))
 end;
 
+// Parse the contents of `path` into `lid`. Every LID keyword is
+// turned into a symbol and used as the table key, and the data
+// associated with that keyword is stored as a vector of strings, even
+// if it is known to accept only a single value. There is one
+// exception: the keyword "LID:" is recursively parsed into another
+// `<table>` and included directly. For example,
+//
+//   #"library" => #["http"]
+//   #"files"   => #["foo.dylan", "bar.dylan"]
+//   #"LID"     => {<table>}
+//
+// The `path` is stored in the table under the key `$path-key`.
 define function parse-lid-file-into (path :: <file-locator>, lid :: <table>) => (lid :: <table>)
+  lid[$path-key] := path;
   let line-number = 0;
   let prev-key = #f;
   fs/with-open-file(stream = path)
@@ -400,7 +453,7 @@ define function parse-lid-file-into (path :: <file-locator>, lid :: <table>) => 
     while (line := read-line(stream, on-end-of-stream: #f))
       inc!(line-number);
       if (strip(line) ~= ""     // tolerate blank lines
-            & ~starts-with?(strip(line), "//"))
+            & ~starts-with?(strip(line), "/" "/"))
         if (starts-with?(line, " ") | starts-with?(line, "\t"))
           // Continuation line
           if (prev-key)
@@ -418,8 +471,11 @@ define function parse-lid-file-into (path :: <file-locator>, lid :: <table>) => 
             value := strip(value);
             let key = as(<symbol>, keyword);
             if (key = #"LID")
-              let path = merge-locators(as(<file-locator>, value), locator-directory(path));
-              parse-lid-file-into(path, lid);
+              // Note that we parse included LIDs twice. Once when the
+              // directory traversal finds them directly and once
+              // here. It's not worth optimizing.
+              let sub-path = merge-locators(as(<file-locator>, value), locator-directory(path));
+              lid[#"LID"] := parse-lid-file-into(sub-path, make(<table>));
               prev-key := #f;
             else
               lid[key] := vector(value);
@@ -430,15 +486,24 @@ define function parse-lid-file-into (path :: <file-locator>, lid :: <table>) => 
           end;
         end;
       end;
-    end;
+    end while;
   end;
   if (~element(lid, #"library", default: #f))
     tool-error("LID file %s has no Library: property.", path);
   end;
-  if (~element(lid, #"files", default: #f))
+  if (empty?(lid-files(lid)))
     print("LID file %s has no Files: property.", path);
   end;
   lid
 end function parse-lid-file-into;
+
+define function lid-files (lid :: <table>) => (files :: <seq>)
+  element(lid, #"files", default: #f)
+  | begin
+      let sub = element(lid, #"LID", default: #f);
+      (sub & element(sub, #"files", default: #f))
+        | #[]
+    end
+end;
 
 exit-application(main());

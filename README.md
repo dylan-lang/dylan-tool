@@ -141,20 +141,21 @@ this list are more for pacman than dylan-tool.
 
 ### For 0.1.0
 
-Version 1.0.0 will primarily work with packages at HEAD since that's
+Version 0.1.0 will primarily work with packages at HEAD since that's
 the way everyone currently expects to work on Dylan.  Better support
 for numbered versions can come later.
 
 * Improve output a bit. For example, don't display git clone output
-  but do log all events somewhere for debugging purposes. Maybe have
-  a `--verbose` flag.
+  but do log all events somewhere for debugging purposes.
   
 * Make a standard workspace for developing Open Dylan itself, such
   that it doesn't require the use of any submodules.
   
-  - Multiple LIDs end up being written to the same registry file
-    because they define the same library but don't specify platform.
-    They weren't in the registry so I didn't add a Platforms: line.
+  - The airport examples are duplicated in documentation/ and
+    dylan-programming/ so they're written to the registry twice and
+    the last one "wins". Can one copy be deleted?  Make them into
+    their own package? (The main effect of this is some annoying
+    output when updating the workspace. Not urgent.)
     
   - Why didn't collection-extensions get checked out?:
     Wrote /home/cgay/dylan/opendylan.workspace/registry/x86_64-linux/testworks-specs
