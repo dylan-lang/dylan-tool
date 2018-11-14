@@ -6,7 +6,7 @@ define test install-test ()
                  version: string-to-version("0.0.2"),
                  deps: make(<dep-vec>, size: 0),
                  // Work around dylan-mode indentation bug...
-                 location: "git@github.com:cgay/pacman");
+                 location: "https:/" "/github.com/cgay/pacman");
   let test-dir = subdirectory-locator(temp-directory(), "test-install");
   let pkg-dir = subdirectory-locator(test-dir, "pkg");
   if (file-exists?(pkg-dir))

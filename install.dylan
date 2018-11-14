@@ -58,19 +58,10 @@ define method %download
              if-output-exists: #"append",
              if-error-exists: #"append");
   if (exit-code ~= 0)
-    package-error("git clone command (%=) failed with exit code %d.",
-                  command, exit-code);
+    package-error("git clone command failed with exit code %d. Command: %=",
+                  exit-code, command);
   end;
 end;
-
-// For now I'm assuming file://... is git because it doesn't seem to
-// allow a trailing ".git" in the URL to disambiguate. Not sure if
-// Mercurial or others can use "file:" URLs.
-// TODO:
-//   git@<domain>:org/repo.git or
-//   https://<domain>/org/repo.git or
-//   ssh://blah-de-blah/repo.git 
-//define constant $git-transport-re = re/compile(file://
 
 define function package-transport
     (pkg :: <pkg>) => (transport :: <transport>)
@@ -79,7 +70,7 @@ define function package-transport
   // have to specify the transport explicitly in the catalog and
   // package files.
   if (find-substring(pkg.location, "github")
-        | starts-with?(pkg.location, "file://"))
+        | starts-with?(pkg.location, "file:/" "/")) // work around indentation bug
     let branch = "master";
     if (pkg.version ~= $head)
       branch := sprintf("v%s", version-to-string(pkg.version));
