@@ -1,0 +1,12 @@
+[submodule "ext/pacman"]
+	path = ext/pacman
+	url = git@github.com:dylan-lang/pacman
+[submodule "ext/json"]
+	path = ext/json
+	url = git@github.com:dylan-lang/json
+[submodule "ext/regular-expressions"]
+	path = ext/regular-expressions
+	url = git@github.com:dylan-lang/regular-expressions
+[submodule "ext/uncommon-dylan"]
+	path = ext/uncommon-dylan
+	url = git@github.com:dylan-lang/uncommon-dylan
