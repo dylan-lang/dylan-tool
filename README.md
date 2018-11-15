@@ -1,11 +1,34 @@
 # Dylan Tool
 
-The "dylan" tool simplifies the creation of Dylan workspaces and
+## Overview
+
+The `dylan` tool simplifies the creation of Dylan workspaces and
 package management by using a config file to specify packages that are
 under active development and managing a single "registry" for the user
 in what should (hopefully) become a standard development setup for
 Dylan hackers. This should eliminate the need to manage registries by
 hand and the need to use git submodules to track dependencies.
+
+A key part of this tool is the package manager (tentatively named
+"pacman") and its catalog of packages, the "pacman-catalog"
+repository. For any package to be downloadable it must have an entry
+in pacman-catalog. The catalog entry specifies the location of the
+package and its dependencies, among other attributes.
+
+In addition, a package may have a `pkg.json` file in its top-level
+directory. This file, if it exists, overrides dependency information
+in the catalog. This is important when its necessary to add a
+dependency during new development, but unfortunately there is some
+duplication with the catalog here. Hopefully a better solution can be
+found.
+
+A "workspace" is just a directory containing a `workspace.json` file
+at top-level. The workspace file primarily specifies "active"
+packages. These are the packages you're actively developing, as
+opposed to packages installed in `${DYLAN}/pkg/`, which should never
+be modified since that directory is the package manager's domain and
+it might decide to delete anything there at any time, for example to
+reinstall it.
 
 ## Quick Start
 
@@ -28,21 +51,28 @@ hand and the need to use git submodules to track dependencies.
 
         $ git clone https://github.com/cgay/dylan-tool
         $ cd dylan-tool
-        $ dylan-compiler -build dylan-tool.lid
-        $ cp _build/bin/dylan-tool <somewhere-on-your-PATH>
+        $ make           # Creates "dylan" binary
+        $ export PATH=`pwd`/_build/bin:${PATH}
       
 1.  Create a new workspace. For example if you wanted to work on the
     http code you might want to have both 'http' and 'uri' as active
     packages:
 
-        $ dylan-tool new web-stuff http uri
+        $ dylan new web-stuff http uri
+        
+    This creates the web-stuff directory and web-stuff/workspace.json.
 
 1.  Run the 'update' command to install package dependencies, download
     the active packages (http and uri in the example above), and create
     a registry with everything you need:
    
         $ cd web-stuff
-        $ dylan-tool update
+        $ dylan update
+        
+    **Note:** It should be safe to modify `workspace.json` and run
+    `dylan update` at any time from anywhere inside the workspace
+    directory. It will only write to the registry and download/install
+    packages that haven't already been downloaded or installed.
 
 1.  Build your code:
 
@@ -50,28 +80,29 @@ hand and the need to use git submodules to track dependencies.
 
 If you want to create a new package, rather than doing development on
 one that already exists, you must manually add it to the
-`workspace.json` file and then run `dylan-tool update`. These are the
+`workspace.json` file and then run `dylan update`. These are the
 steps:
 
-1.  Create a new directory for your package in the workspace directory.
+1.  Create a new directory and git repo for your package in the
+    workspace directory.
 1.  Create a `pkg.json` file that lists your package dependencies
     (deps). You could copy from
     [this one](https://github.com/cgay/dylan-tool/blob/master/pkg.json).
 1.  Add the package name to the "active" list in the `workspace.json`
     file.
-1.  Run `dylan-tool update` to install the deps and update the registry.
+1.  Run `dylan update` to install the deps and update the registry.
 
-You may run `dylan-tool` commands from anywhere inside the workspace
-directory tree; it will search up to find the "workspace.json" file.
-In general you should build the code in the top-level workspace
-directory so that all the active packages are built into the same
-"_build" directory and so that `dylan-compiler` can find the
-auto-generated "registry" directory.
+You may run the `dylan` commands from anywhere inside the
+workspace directory tree; it will search up to find the
+"workspace.json" file.  In general you should run `dylan-compiler` in
+the top-level workspace directory so that all the active packages are
+built into the same "_build" directory and so that `dylan-compiler`
+can find the auto-generated "registry" directory.
 
 ## The Workspace File
 
-A workspace is described by a `workspace.json` file containing a
-single JSON object. Example:
+A workspace is defined by a `workspace.json` file containing a single
+JSON object. Example:
 
     {
         "active": {
@@ -81,8 +112,8 @@ single JSON object. Example:
         }
     }
 
-(Note: There are currently no options so each package name simply maps
-to an empty dictionary: `{}`.)
+(**Note:** There are currently no options so each package name simply
+maps to an empty dictionary: `{}`.)
 
 The "active" attribute describes the set of packages under active
 development in this workspace. Assuming git as the source control
@@ -98,9 +129,9 @@ development. If you're working on existing packages then these should
 match the name of an existing package in the
 [Catalog](https://github.com/cgay/pacman-catalog), and if a
 subdirectory by this name doesn't exist in the workspace file's
-directory, dylan-tool will do the initial checkout for you. If you're
-creating a new package then you'll need to create the directory
-yourself, create a pkg.json file inside it, and then run `dylan-tool
+directory, the `dylan` tool will do the initial checkout for you. If
+you're creating a new package then you'll need to create the directory
+yourself, create a pkg.json file inside it, and then run `dylan
 update` and it will fetch the package's dependencies for you.
 
 ## The Registry
@@ -109,22 +140,22 @@ Open Dylan uses "registries" to locate library sources. Setting up a
 development workspace historically involved a lot of manual git
 cloning and creating registry files for each used library.
 
-The main purpose of specifying active packages is so that `dylan-tool`
-can checkout those packages into the workspace directory and create
-the registry files for you accurately.  The registry points to the
-workspace directory for active package libraries but points to the
+The main purpose of specifying active packages is so that the `dylan`
+tool can checkout those packages into the workspace directory and
+create the registry files for you accurately.  The registry points to
+the workspace directory for active package libraries but points to the
 installation directory, `${DYLAN}/pkg/...`, for all other
 dependencies.
 
-`dylan-tool` scans each active package for LID files and writes a
+The `dylan` tool scans each active package for LID files and writes a
 registry file for each one.
 
 **Note:** If you use the same workspace directory on multiple
 platforms (e.g., a network mounted directory or shared by a virtual
-machine) you will need to run `dylan-tool update` on **both**
-platforms so that the correct platform-specific registry entries are
-created. `dylan-tool` makes no attempt to figure out which packages
-are "generic" and which are platform-specific, so it always writes
+machine) you will need to run `dylan update` on **both** platforms so
+that the correct platform-specific registry entries are created. The
+`dylan` tool makes no attempt to figure out which packages are
+"generic" and which are platform-specific, so it always writes
 platform-specific registry files.
 
 ## Bugs
