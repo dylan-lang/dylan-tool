@@ -1,7 +1,6 @@
 {
     "name": "dylan-tool",
-    "deps": [ "command-line-parser head",
-              "json head",
+    "deps": [ "json head",
               "pacman head",
               "regular-expressions head",
               "uncommon-dylan head" ],
