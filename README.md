@@ -34,49 +34,54 @@ reinstall it.
 
 1.  Make sure the `DYLAN` environment variable is set to wherever you
     do your Dylan hacking. For example:
-   
+
         $ export DYLAN=${HOME}/dylan
-   
+
     Dylan packages, including the
     [pacman-catalog](https://github.com/cgay/pacman-catalog) package
     which describes where to find other packages, will be installed
     under `${DYLAN}/pkg/`.
-    
+
     **Note:** Don't ever put files you want to keep in the
     `${DYLAN}/pkg/` directory. The expectation should be that anything
     in this directory may be deleted at any time by the package
     manager.
-   
+
 1.  Clone and build the `dylan-tool` project:
 
-        $ git clone --recursive https://github.com/dylan-lang/dylan-tool
+        $ git clone --recursive git@github.com:dylan-lang/dylan-tool
         $ cd dylan-tool
         $ dylan-compiler -build dylan-tool.lid
         $ export PATH=`pwd`/_build/bin:${PATH}
-      
+
 1.  Create a new workspace. For example if you want to work on the
     http library:
 
+        $ cd ${DYLAN}     # or wherever you want your workspace
         $ dylan-tool new ws.http http
-        
+
     This creates the ws.http directory and ws.http/workspace.json.
     Take a look at that file.
 
 1.  Run `dylan-tool update` to download the active packages (http in
     this case), install their dependencies, and create a registry with
     everything you need:
-   
-        $ cd ws.http && dylan-tool update
-        
+
+        $ cd ws.http
+        $ dylan-tool update
+
+    You should see some `git clone` output along with package and
+    registry updates.
+
     **Note:** It should be safe to modify `workspace.json` and run
     `dylan-tool update` at any time from anywhere inside the workspace
     directory. It will only write to the registry and download/install
     packages that haven't already been downloaded or installed.
 
-1.  Build and run your code:
+1.  Build and run your code (still in the ws.http directory):
 
-        $ dylan-compiler -build http-server-example
-        # _build/bin/http-server-example
+        $ dylan-compiler -build http-server-demo
+        $ _build/bin/http-server-demo
 
 If you want to create a new package, rather than doing development on
 one that already exists, you must manually add it to the
@@ -157,7 +162,7 @@ registry file for each one, with two exceptions:
    platform (e.g., x86_64-linux) isn't one of the values listed. (If
    there is no Platforms: keyword then the library is assumed to work
    on all platforms.)
-   
+
 1. If the .lid file is itself included in another LID file via the
    LID: keyword.
 
@@ -189,16 +194,16 @@ for numbered versions can come later.
 
 * Improve output a bit. For example, don't display git clone output
   but do log all events somewhere for debugging purposes.
-  
+
 * Make a standard workspace for developing Open Dylan itself, such
   that it doesn't require the use of any submodules.
-  
+
   - The airport examples are duplicated in documentation/ and
     dylan-programming/ so they're written to the registry twice and
     the last one "wins". Can one copy be deleted?  Make them into
     their own package? (The main effect of this is some annoying
     output when updating the workspace. Not urgent.)
-    
+
   - Why didn't collection-extensions get checked out?:
     Wrote /home/cgay/dylan/opendylan.workspace/registry/x86_64-linux/testworks-specs
     No such file or directory: Can't start listing of /home/cgay/dylan/pkg/collection-extensions/head/src/
