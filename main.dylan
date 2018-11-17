@@ -49,8 +49,8 @@ define function main () => (status :: <int>)
     //       doesn't do well with subcommands. Needs improvement.
     let app = locator-name(as(<file-locator>, application-name()));
     local method usage (#key status :: <int> = 2)
-            print("Usage: %s install pkg version         -- install a package", app);
-            print("       %s new workspace-name [pkg...] -- make a new workspace", app);
+            print("Usage: %s install pkg version       -- install a package", app);
+            print("       %s new workspace-name pkg... -- make a new workspace", app);
             print("       %s update       -- bring workspace up-to-date with workspace.json file", app);
             print("       %s list [--all] -- list installed packages", app);
             print("  Note: a --verbose flag may be added to any subcommand.");
@@ -62,14 +62,15 @@ define function main () => (status :: <int>)
       usage(status: 0);
     end;
     let subcmd = args[0];
-    let more-args = slice(args, 1, #f);
-    if (member?("--verbose", more-args, test: istr=))
+    let args = slice(args, 1, #f);
+    if (member?("--verbose", args, test: istr=))
+      args := remove(args, "--verbose", test: istr=);
       *verbose* := #t;
     end;
     select (subcmd by istr=)
       "install" =>
         // Install a specific package.
-        args.size = 3 | usage();
+        args.size = 2 | usage();
         let pkg-name = args[1];
         let vstring = args[2];
         let pkg = pm/find-package(pm/load-catalog(), pkg-name, vstring);
@@ -83,9 +84,10 @@ define function main () => (status :: <int>)
         args.size >= 2 | usage();
         apply(new, app, args[1], slice(args, 2, #f));
       "update" =>
-        args.size = 1 | usage();
+        args.size = 0 | usage();
         update();        // Update the workspace based on config file.
       otherwise =>
+        print("%= not recognized", subcmd);
         usage();
     end select;
     0
@@ -267,7 +269,7 @@ end;
 define function update-active-package-deps (conf :: <config>)
   for (pkg-name in conf.active-package-names)
     // Update the package deps.
-    let pkg = pm/read-package-file(active-package-file(conf, pkg-name));
+    let pkg = find-active-package(conf, pkg-name);
     if (pkg)
       print("Installing deps for package %s.", pkg-name);
       // TODO: in a perfect world this wouldn't install any deps that
@@ -275,10 +277,24 @@ define function update-active-package-deps (conf :: <config>)
       // as long as the registry points to the right place.
       pm/install-deps(pkg /* , skip: conf.active-package-names */);
     else
-      print("WARNING: No pkg.json file found for active package %s."
+      print("WARNING: No package definition found for active package %s."
               " Not installing deps.", pkg-name);
     end;
   end;
+end;
+
+define function find-active-package (conf :: <config>, pkg-name :: <string>) => (p :: pm/<pkg>)
+  let path = active-package-file(conf, pkg-name);
+  pm/read-package-file(path)
+    | begin
+        print("WARNING: No package found in %s, falling back to catalog.", path);
+        let cat = pm/load-catalog();
+        pm/find-package(cat, pkg-name, pm/$head)
+          | begin
+              print("WARNING: No %s HEAD version found, falling back to latest.", pkg-name);
+              pm/find-package(cat, pkg-name, pm/$latest)
+            end
+      end
 end;
 
 // Create/update a single registry directory having an entry for each
@@ -288,21 +304,13 @@ end;
 // generic, and writes a registry file for them.
 define function update-registry (conf :: <config>)
   for (pkg-name in conf.active-package-names)
-    let pkg-file = active-package-file(conf, pkg-name);
-    let pkg = pm/read-package-file(pkg-file);
-    if (~pkg)
-      print("WARNING: No package found in %s, falling back to catalog"
-              " to find deps.", pkg-file);
-      let cat = pm/load-catalog();
-      pkg := pm/find-package(cat, pkg-name, pm/$head)
-               | pm/find-package(cat, pkg-name, pm/$latest);
-    end;
+    let pkg = find-active-package(conf, pkg-name);
     if (pkg)
       let pkg-dir = active-package-directory(conf, pkg-name);
       update-registry-for-directory(conf, pkg-dir);
       pm/do-resolved-deps(pkg, curry(update-registry-for-package, conf));
     else
-      print("WARNING: No pkg.json file found for active package %s."
+      print("WARNING: No package definition found for active package %s."
               " Not creating registry files.", pkg-name);
     end;
   end;
@@ -313,7 +321,7 @@ end;
 define function update-registry-for-package (conf, pkg, dep, installed?)
   if (~installed?)
     error("Attempt to update registry for dependency %s, which"
-            " is not yet installed. This may be a bug.", dep);
+            " is not yet installed. This may be a bug.", pm/package-name(dep));
   end;
   let pkg-dir = if (active-package?(conf, pkg.pm/name))
                   active-package-directory(conf, pkg.pm/name)
