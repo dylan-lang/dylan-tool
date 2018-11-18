@@ -123,7 +123,7 @@ end;
 // installed. The return value of `fn`, if any, is ignored.
 //
 // TODO: detect dep circularities
-define function do-resolved-deps (pkg :: <pkg>, fn :: <fn>) => ()
+define function do-resolved-deps (pkg :: <pkg>, fn :: <func>) => ()
   for (dep in pkg.deps)
     let (pkg, installed?) = resolve(dep);
     do-resolved-deps(pkg, fn);
