@@ -109,7 +109,7 @@ Notes:
         list-catalog(all?: member?("--all", args, test: istr=));
       "new" =>                  // Create a new workspace.
         args.size >= 2 | usage();
-        apply(new, app, args[0], slice(args, 1, #f));
+        new(app, args[0], slice(args, 1, #f));
       "update" =>
         args.size = 0 | usage();
         update();        // Update the workspace based on config file.
@@ -156,7 +156,7 @@ define constant $workspace-file-format-string = #str:[{
 }
 ];
 
-define function new (app :: <string>, workspace-name :: <string>, #rest pkg-names)
+define function new (app :: <string>, workspace-name :: <string>, pkg-names :: <seq>)
   let workspace-file = find-workspace-file(fs/working-directory());
   if (workspace-file)
     error("You appear to already be in a workspace directory: %s", workspace-file);
@@ -173,6 +173,8 @@ define function new (app :: <string>, workspace-name :: <string>, #rest pkg-name
                      if-does-not-exist: #"create")
     if (pkg-names.size = 0)
       pkg-names := #["<package-name-here>"];
+    elseif (pkg-names.size = 1 & pkg-names[0] = "all")
+      pkg-names := as(<vector>, pm/package-names(pm/load-catalog()));
     end;
     format(stream, $workspace-file-format-string,
            join(pkg-names, ",\n", key: curry(format-to-string, "        %=: {}")));
