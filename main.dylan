@@ -11,6 +11,8 @@ Module: dylan-tool
 // * Display the number of registry files updated and the number unchanged.
 //   It gives reassuring feedback that something went right when there's no
 //   other output.
+// * The 'list' subcommand is showing a random set of packages in my ws.all
+//   workspace.
 
 define function tool-error
     (format-string :: <string>, #rest args)
@@ -35,11 +37,13 @@ define function vprint (format-string, #rest args)
   end;
 end;
 
-/*
+define variable *debug* :: <bool> = #f;
+
 define function debug (format-string, #rest args)
-  apply(print, concat("*** ", format-string), args)
+  *debug* & apply(print, concat("*** ", format-string), args)
 end;
-*/
+
+ignorable(debug);
 
 define constant $workspace-file = "workspace.json";
 
@@ -49,20 +53,43 @@ define function main () => (status :: <int>)
     //       doesn't do well with subcommands. Needs improvement.
     let app = locator-name(as(<file-locator>, application-name()));
     local method usage (#key status :: <int> = 2)
-            print("Usage: %s install pkg version       -- install a package", app);
-            print("       %s new workspace-name pkg... -- make a new workspace", app);
-            print("       %s update       -- bring workspace up-to-date with workspace.json file", app);
-            print("       %s list [--all] -- list installed packages", app);
-            print("  Note: a --verbose flag may be added to any subcommand.");
+            print(#str:"Usage:
+%s install <pkg> <version>
+    Install a package into ${DYLAN}/pkg. <version> may be a version
+    number of the form 1.2.3, 'latest' to install the latest numbered
+    version, or 'head'.
+
+%s list [--all]
+    List installed packages. With --all, list all packages in the
+    catalog along with the latest available version. (grep is your
+    friend here.)
+
+%s new <workspace> <pkg>...
+    Create a new workspace with the specified active packages. If the
+    single package 'all' is specified the workspace will contain all
+    packages found in the package catalog.
+
+%s update
+    Bring the current workspace up-to-date with the workspace.json file.
+    Install dependencies and update the registry for any new .lid files.
+
+Notes:
+  A --verbose flag may be added (anywhere) to see more detailed output.
+", app, app, app, app, app, app);
             exit(status);
           end;
     let args = application-arguments();
-    if (member?("--help", args, test: istr=)
+    if (args.size = 0
+          | member?("--help", args, test: istr=)
           | member?("-h", args, test: istr=))
       usage(status: 0);
     end;
     let subcmd = args[0];
     let args = slice(args, 1, #f);
+    if (member?("--debug", args, test: istr=))
+      args := remove(args, "--debug", test: istr=);
+      *debug* := #t;
+    end;
     if (member?("--verbose", args, test: istr=))
       args := remove(args, "--verbose", test: istr=);
       *verbose* := #t;
@@ -91,11 +118,9 @@ define function main () => (status :: <int>)
         usage();
     end select;
     0
-/* TODO: turn this into a 'let handler' that can be turned off by a --debug flag.
-  exception (err :: <error>)
+  exception (err :: <error>, test: method (_) ~*debug* end)
     print("Error: %s", err);
     1
-*/
   end
 end function main;
 
