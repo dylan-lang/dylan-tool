@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `dylan` tool simplifies the creation of Dylan workspaces and
+The `dylan-tool` simplifies the creation of Dylan workspaces and
 package management by using a config file to specify packages that are
 under active development and managing a single "registry" for the user
 in what should (hopefully) become a standard development setup for
@@ -38,9 +38,9 @@ reinstall it.
         $ export DYLAN=${HOME}/dylan
 
     Dylan packages, including the
-    [pacman-catalog](https://github.com/cgay/pacman-catalog) package
-    which describes where to find other packages, will be installed
-    under `${DYLAN}/pkg/`.
+    [pacman-catalog](https://github.com/dylan-lang/pacman-catalog)
+    package which describes where to find other packages, will be
+    installed under `${DYLAN}/pkg/`.
 
     **Note:** Don't ever put files you want to keep in the
     `${DYLAN}/pkg/` directory. The expectation should be that anything
@@ -61,7 +61,6 @@ reinstall it.
         $ dylan-tool new ws.http http
 
     This creates the ws.http directory and ws.http/workspace.json.
-    Take a look at that file.
 
 1.  Run `dylan-tool update` to download the active packages (http in
     this case), install their dependencies, and create a registry with
@@ -85,15 +84,15 @@ reinstall it.
 
 If you want to create a new package, rather than doing development on
 one that already exists, you must manually add it to the
-`workspace.json` file and then run `dylan-tool update`. These are the
-steps:
+`workspace.json` file (see below) and then run `dylan-tool
+update`. These are the steps:
 
 1.  Create a new directory and git repo for your package in the
     workspace directory. (Hint: use `make-dylan-app` to create a
     library skeleton.)
 1.  Create a `pkg.json` file that lists your package dependencies
-    (deps). You could copy from
-    [this one](https://github.com/cgay/dylan-tool/blob/master/pkg.json).
+    (deps). You could copy from [this
+    one](https://github.com/dylan-lang/dylan-tool/blob/master/pkg.json).
 1.  Add the package name to the "active" list in the `workspace.json`
     file.
 1.  Run `dylan-tool update` to install the deps and update the
@@ -101,10 +100,10 @@ steps:
 
 You may run the `dylan-tool` command from anywhere inside the
 workspace directory tree; it will search up to find the
-"workspace.json" file.  In general you should run `dylan-compiler` in
-the top-level workspace directory so that all the active packages are
-built into the same "_build" directory and so that `dylan-compiler`
-can find the auto-generated "registry" directory.
+"workspace.json" file.  In general you should invoke `dylan-compiler`
+in the top-level workspace directory so that all the active packages
+are built into the same "_build" directory and so that
+`dylan-compiler` can find the auto-generated "registry" directory.
 
 ## The Workspace File
 
@@ -130,17 +129,20 @@ control tool, and all repositories are currently on GitHub so you will
 need a GitHub account.)
 
 After initial checkout you may create a new branch or perform whatever
-git operations are necessary.
+git operations are necessary. If you decide to add a new dependency,
+just add it to the "deps" in `pkg.json` and run `dylan-tool update`
+again.
 
 Each key under "active" specifies a package that will be under active
 development. If you're working on existing packages then these should
 match the name of an existing package in the
-[Catalog](https://github.com/cgay/pacman-catalog), and if a
+[Catalog](https://github.com/dylan-lang/pacman-catalog), and if a
 subdirectory by this name doesn't exist in the workspace file's
 directory, `dylan-tool` will do the initial checkout for you. If
-you're creating a new package then you'll need to create the directory
-yourself, create a pkg.json file inside it, and then run `dylan-tool
-update` and it will fetch the package's dependencies for you.
+you're creating a new package then you'll need to create the
+subdirectory yourself, create a `pkg.json` file inside it, and then
+run `dylan-tool update` and it will fetch the package's dependencies
+for you.
 
 ## The Registry
 
