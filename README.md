@@ -55,18 +55,19 @@ reinstall it.
         $ export PATH=`pwd`/_build/bin:${PATH}
 
 1.  Create a new workspace. For example if you want to work on the
-    http library:
+    strigs library:
 
         $ cd ${DYLAN}     # or wherever you want your workspace
-        $ dylan-tool new ws.http http
+        $ dylan-tool new ws.strings strings
 
-    This creates the ws.http directory and ws.http/workspace.json.
+    This creates the ws.strings directory and
+    ws.strings/workspace.json.
 
-1.  Run `dylan-tool update` to download the active packages (http in
-    this case), install their dependencies, and create a registry with
-    everything you need:
+1.  Run `dylan-tool update` to download the active packages (strings
+    in this case), install their dependencies, and create a registry
+    with everything you need:
 
-        $ cd ws.http
+        $ cd ws.strings
         $ dylan-tool update
 
     You should see some `git clone` output along with package and
@@ -77,10 +78,10 @@ reinstall it.
     directory. It will only write to the registry and download/install
     packages that haven't already been downloaded or installed.
 
-1.  Build and run your code (still in the ws.http directory):
+1.  Build and run your code (still in the ws.strings directory):
 
-        $ dylan-compiler -build http-server-demo
-        $ _build/bin/http-server-demo
+        $ dylan-compiler -build strings-test-suite-app
+        $ _build/bin/strings-test-suite-app
 
 If you want to create a new package, rather than doing development on
 one that already exists, you must manually add it to the
