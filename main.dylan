@@ -109,7 +109,7 @@ Notes:
         list-catalog(all?: member?("--all", args, test: istr=));
       "new" =>                  // Create a new workspace.
         args.size >= 2 | usage();
-        apply(new, app, args[1], slice(args, 2, #f));
+        apply(new, app, args[0], slice(args, 1, #f));
       "update" =>
         args.size = 0 | usage();
         update();        // Update the workspace based on config file.
