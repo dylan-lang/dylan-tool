@@ -299,12 +299,18 @@ define function read-package-file (file :: <file-locator>) => (pkg :: false-or(<
   block ()
     with-open-file (stream = file)
       let json = json/parse(stream, table-class: <istring-table>, strict?: #f);
+      let name = element(json, "name", default: #f)
+        | package-error("Invalid package file %s: expected a 'name' field.", file);
+      let deps = element(json, "deps", default: #f)
+        | package-error("Invalid package file %s: expected a 'deps' field.", file);
       make(<pkg>,
-           name: json["name"],
-           deps: map-as(<dep-vec>, string-to-dep, json["deps"]),
-           version: element(json, "version", default: $latest))
+           name: name,
+           deps: map-as(<dep-vec>, string-to-dep, deps),
+           version: element(json, "version", default: $latest),
+           location: element(json, "location", default: #f))
     end
   exception (e :: <file-does-not-exist-error>)
     #f
   end
 end;
+
