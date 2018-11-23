@@ -308,7 +308,8 @@ define function update-active-package-deps (conf :: <config>)
   end;
 end;
 
-define function find-active-package (conf :: <config>, pkg-name :: <string>) => (p :: pm/<pkg>)
+define function find-active-package
+    (conf :: <config>, pkg-name :: <string>) => (p :: false-or(pm/<pkg>))
   let path = active-package-file(conf, pkg-name);
   pm/read-package-file(path)
     | begin
