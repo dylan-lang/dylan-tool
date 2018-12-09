@@ -22,7 +22,12 @@ json catalog format:
 
 */
 
-define constant $catalog-attrs-key :: <string> = "__catalog_attributes";
+define constant $catalog-attrs-key = "__catalog_attributes";
+
+// Point this at your checkout of pacman-catalog/catalog.json when
+// testing additions to the catalog and the catalog will be loaded
+// from here.
+define constant $catalog-env-var = "DYLAN_CATALOG";
 
 define class <catalog-error> (<package-error>)
 end;
@@ -33,7 +38,7 @@ define function catalog-error (fmt :: <string>, #rest args)
              format-arguments: args));
 end;
 
-// Forward various methods from pkg to the cataleg entry that contains it.
+// Forward various methods from pkg to the catalog entry that contains them.
 define generic synopsis     (a :: <object>) => (s :: <string>);
 define generic description  (a :: <object>) => (s :: <string>);
 define generic contact      (a :: <object>) => (s :: <string>);
@@ -104,15 +109,23 @@ define variable *catalog* :: false-or(<catalog>) = #f;
 // TODO: handle type errors (e.g., from assumptions that the json is valid)
 //       and return <catalog-error>.
 define function load-catalog () => (c :: <catalog>)
-  let local-path = merge-locators(as(<file-locator>, $local-catalog-filename),
-                                  package-manager-directory());
-  *catalog*
-  | (*catalog* := begin
-                    if (install($catalog-pkg, force?: too-old?(local-path)))
-                      copy-to-local-cache($catalog-pkg, local-path);
-                    end;
-                    load-local-catalog(local-path)
-                  end)
+  let override = os/getenv($catalog-env-var);
+  if (override & ~empty?(override))
+    // If there's an override the assumption is that someone is adding
+    // new packages or versions to the catalog and then testing, so
+    // reload the catalog each time.
+    *catalog* := load-local-catalog(as(<file-locator>, override))
+  else
+    let local-path = merge-locators(as(<file-locator>, $local-catalog-filename),
+                                    package-manager-directory());
+    *catalog*
+      | (*catalog* := begin
+                        if (install($catalog-pkg, force?: too-old?(local-path)))
+                          copy-to-local-cache($catalog-pkg, local-path);
+                        end;
+                        load-local-catalog(local-path)
+                      end)
+  end
 end;
 
 define constant $catalog-freshness :: <duration> = make(<duration>, hours: 1);

@@ -82,8 +82,8 @@ define test validate-dependencies-test ()
 end;
 
 define test load-catalog-test ()
-  // TODO: this only works on my machine because I've linked
-  //       $DYLAN/pkg/catalog.json to the catalog.
+  // TODO: Need a way to make test data files available to the tests.
+  // This test requires network access and an account on GitHub.
   assert-no-errors(load-catalog());
 end;
 
