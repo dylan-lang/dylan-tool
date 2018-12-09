@@ -125,7 +125,7 @@ Notes:
 end function main;
 
 // List installed package names, synopsis, versions, etc. If `all` is
-// true, show all packages.
+// true, show all packages. Installed and latest versions are shown.
 define function list-catalog (#key all? :: <bool>)
   let cat = pm/load-catalog();
   for (pkg-name in sort(pm/package-names(cat)))
@@ -133,13 +133,10 @@ define function list-catalog (#key all? :: <bool>)
     let latest-installed = versions.size > 0 & versions[0];
     let entry = pm/find-entry(cat, pkg-name);
     let latest = pm/find-package(cat, pkg-name, pm/$latest);
-    let needs-update? = latest-installed & latest
-                          & (pm/version(latest) ~= pm/$head)
-                          & (latest-installed < pm/version(latest));
     if (all? | latest-installed)
-      print("%s%s (latest: %s) - %s",
+      print("%s (%s/%s) - %s",
             pkg-name,
-            iff(needs-update?, "*", ""),
+            latest-installed | "-",
             pm/version(latest),
             pm/synopsis(entry));
     end;
