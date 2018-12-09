@@ -98,8 +98,8 @@ Notes:
       "install" =>
         // Install a specific package.
         args.size = 2 | usage();
-        let pkg-name = args[1];
-        let vstring = args[2];
+        let pkg-name = args[0];
+        let vstring = args[1];
         let pkg = pm/find-package(pm/load-catalog(), pkg-name, vstring);
         if (~pkg)
           error("Package %s not found.", pkg-name);
