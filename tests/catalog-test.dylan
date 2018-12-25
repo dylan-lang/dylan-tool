@@ -86,10 +86,3 @@ define test load-catalog-test ()
   // This test requires network access and an account on GitHub.
   assert-no-errors(load-catalog());
 end;
-
-define suite catalog-suite ()
-  test catalog-test;
-  test find-latest-version-test;
-  test validate-dependencies-test;
-  test load-catalog-test;
-end;

@@ -1,10 +1,4 @@
 Module: pacman-test
-Synopsis: pacman test suite main function
+Synopsis: Parse command line and run pacman tests.
 
-define suite pacman-suite ()
-  suite catalog-suite;
-  suite install-suite;
-  suite types-suite;
-end;
-
-run-test-application(pacman-suite);
+run-test-application();

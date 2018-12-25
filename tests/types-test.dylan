@@ -93,12 +93,3 @@ define test satisfies?-test ()
     end;
   end;
 end;
-
-define suite types-suite ()
-  test version-=-test;
-  test version-<-test;
-  test dep-name-test;
-  test bad-dep-versions-test;
-  test good-dep-versions-test;
-  test satisfies?-test;
-end;

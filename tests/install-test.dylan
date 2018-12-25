@@ -24,7 +24,3 @@ define test install-test ()
   assert-equal(1, size(versions));
   assert-equal(map-as(<list>, identity, versions), list(pkg.version));
 end test;
-  
-define suite install-suite ()
-  test install-test;
-end;
