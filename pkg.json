@@ -1,0 +1,8 @@
+{
+    "name": "workspaces",
+    "deps": [ "json head",
+              "pacman head",
+              "regular-expressions head",
+              "uncommon-dylan head" ],
+    "location": "https://github.com/cgay/workspaces"
+}
