@@ -13,6 +13,7 @@ define library dylan-tool
     import: { file-system, locators, operating-system };
   use uncommon-dylan,
     import: { uncommon-dylan, uncommon-utils };
+  use workspaces;
 end;
 
 define module dylan-tool
@@ -58,4 +59,6 @@ define module dylan-tool
   use uncommon-dylan;
   use uncommon-utils,
     import: { err, iff, inc!, slice };
+  use workspaces,
+    prefix: "ws/";
 end module dylan-tool;

@@ -220,11 +220,6 @@ for numbered versions can come later.
 
 ### After 0.1.0
 
-* Separate the dylan-tool command and the workspace library so that
-  the latter can be re-used by deft. (Perhaps put the dylan-tool
-  command-line in the tests/ subdirectory so it can be used as a
-  manual test, if I decide deft is the way to go.)
-
 * Integrate pacman and workspace tool into Deft.
 
 * Think about whether and how it makes sense to integrate knowledge of
