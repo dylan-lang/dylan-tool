@@ -28,22 +28,30 @@ define function print (format-string, #rest args)
   flush(*stdout*);
 end;
 
-// May be changed via the --verbose flag.
-define variable *verbose* :: <bool> = #f;
+// Whether to display more verbose informational messages.
+// May be changed via `configure(verbose?: v)`.
+define variable *verbose?* :: <bool> = #f;
 
 define function vprint (format-string, #rest args)
-  if (*verbose*)
+  if (*verbose?*)
     apply(print, format-string, args);
   end;
 end;
 
-define variable *debug* :: <bool> = #f;
+define variable *debug?* :: <bool> = #f;
 
 define function debug (format-string, #rest args)
-  *debug* & apply(print, concat("*** ", format-string), args)
+  *debug?* & apply(print, concat("*** ", format-string), args)
 end;
 
 ignorable(debug);
+
+// Configure options for this package.  If `verbose?` is true, output
+// more informational messages.
+define function configure (#key verbose? :: <bool>, debug? :: <bool>) => ()
+  *verbose?* := verbose?;
+  *debug?* := debug?;
+end;
 
 define constant $workspace-file = "workspace.json";
 
