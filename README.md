@@ -55,7 +55,7 @@ reinstall it.
         $ export PATH=`pwd`/_build/bin:${PATH}
 
 1.  Create a new workspace. For example if you want to work on the
-    strigs library:
+    strings library:
 
         $ cd ${DYLAN}     # or wherever you want your workspace
         $ dylan-tool new ws.strings strings
