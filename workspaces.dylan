@@ -8,9 +8,8 @@ synopsis: Manage developer workspace directories by downloading packages
 // * Display the number of registry files updated and the number unchanged.
 //   It gives reassuring feedback that something went right when there's no
 //   other output.
-// * The 'list' subcommand is showing a random set of packages in my ws.all
-//   workspace.
 
+// The class of errors explicitly signalled by this module.
 define class <workspace-error> (<simple-error>)
 end;
 
@@ -66,16 +65,19 @@ define constant $workspace-file-format-string = #str:[{
 }
 ];
 
-define function new (app :: <string>, workspace-name :: <string>, pkg-names :: <seq>)
+// Create a new workspace named `name` with active packages
+// `pkg-names`.
+define function new (name :: <string>, pkg-names :: <seq>)
   let workspace-file = find-workspace-file(fs/working-directory());
   if (workspace-file)
-    error("You appear to already be in a workspace directory: %s", workspace-file);
+    workspace-error("You appear to already be in a workspace directory: %s",
+                    workspace-file);
   end;
-  let workspace-dir = subdirectory-locator(fs/working-directory(), workspace-name);
+  let workspace-dir = subdirectory-locator(fs/working-directory(), name);
   let workspace-file = as(<file-locator>, "workspace.json");
   let workspace-path = merge-locators(workspace-file, workspace-dir);
   if (fs/file-exists?(workspace-dir))
-    error("Directory already exists: %s", workspace-dir);
+    workspace-error("Directory already exists: %s", workspace-dir);
   end;
   fs/ensure-directories-exist(workspace-path);
   fs/with-open-file (stream = workspace-path,
@@ -90,7 +92,6 @@ define function new (app :: <string>, workspace-name :: <string>, pkg-names :: <
            join(pkg-names, ",\n", key: curry(format-to-string, "        %=: {}")));
   end;
   print("Wrote workspace file to %s.", workspace-path);
-  print("You may now run '%s update' in the new directory.", app);
 end;
 
 // Update the workspace based on the workspace config or signal an error.
@@ -109,24 +110,27 @@ end;
 //         active-package-1/
 //         active-package-2/
 define class <config> (<object>)
-  constant slot active-packages :: <istring-table>, required-init-keyword: active:;
-  constant slot workspace-directory :: <directory-locator>, required-init-keyword: workspace-directory:;
+  constant slot active-packages :: <istring-table>,
+    required-init-keyword: active:;
+  constant slot workspace-directory :: <directory-locator>,
+    required-init-keyword: workspace-directory:;
 end;
 
 define function load-workspace-config (filename :: <string>) => (c :: <config>)
   let path = find-workspace-file(fs/working-directory());
   if (~path)
-    error("Workspace file not found. Current directory isn't under a workspace directory?");
+    workspace-error("Workspace file not found."
+                      " Current directory isn't under a workspace directory?");
   end;
   fs/with-open-file(stream = path, if-does-not-exist: #"signal")
     let object = json/parse(stream, strict?: #f, table-class: <istring-table>);
     if (~instance?(object, <table>))
-      error("Invalid workspace file %s, must be a single JSON object", path);
+      workspace-error("Invalid workspace file %s, must be a single JSON object", path);
     elseif (~element(object, "active", default: #f))
-      error("Invalid workspace file %s, missing required key 'active'", path);
+      workspace-error("Invalid workspace file %s, missing required key 'active'", path);
     elseif (~instance?(object["active"], <table>))
-      error("Invalid workspace file %s, the 'active' element must be a map"
-              " from package name to {...}.", path);
+      workspace-error("Invalid workspace file %s, the 'active' element must be a map"
+                        " from package name to {...}.", path);
     end;
     make(<config>,
          active: object["active"],
@@ -258,8 +262,9 @@ end;
 // defines and create registry files for them.
 define function update-registry-for-package (conf, pkg, dep, installed?)
   if (~installed?)
-    error("Attempt to update registry for dependency %s, which"
-            " is not yet installed. This may be a bug.", pm/package-name(dep));
+    workspace-error("Attempt to update registry for dependency %s, which"
+                      " is not yet installed. This may be a bug.",
+                    pm/package-name(dep));
   end;
   let pkg-dir = if (active-package?(conf, pkg.pm/name))
                   active-package-directory(conf, pkg.pm/name)
