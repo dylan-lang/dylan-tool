@@ -10,3 +10,6 @@
 [submodule "ext/uncommon-dylan"]
 	path = ext/uncommon-dylan
 	url = git@github.com:dylan-lang/uncommon-dylan
+[submodule "ext/workspaces"]
+	path = ext/workspaces
+	url = git@github.com:dylan-lang/workspaces
