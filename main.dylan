@@ -42,13 +42,16 @@ define function main () => (status :: <int>)
     single package 'all' is specified the workspace will contain all
     packages found in the package catalog.
 
+%s print-workspace-file
+    Show the full path of the workspace file, if in a workspace.
+
 %s update
     Bring the current workspace up-to-date with the workspace.json file.
     Install dependencies and update the registry for any new .lid files.
 
 Notes:
   A --verbose flag may be added (anywhere) to see more detailed output.
-", app, app, app, app, app, app);
+", app, app, app, app, app, app, app);
             exit(status);
           end;
     let args = application-arguments();
@@ -88,6 +91,10 @@ Notes:
         let pkg-names = slice(args, 1, #f);
         ws/new(name, pkg-names);
         print("You may now run '%s update' in the new directory.", app);
+      "print-workspace-file" =>
+        // This subcommand is for tooling. Specifically, for use in
+        // the Open Dylan Makefile.
+        print("%s", ws/workspace-file() | error("Not in a Dylan workspace."));
       "update" =>
         args.size = 0 | usage();
         ws/update();     // Update the workspace based on config file.
