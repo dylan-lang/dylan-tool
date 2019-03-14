@@ -64,5 +64,6 @@ define module workspaces
     configure,
     new,
     update,
+    workspace-file,
     <workspace-error>;
 end module workspaces;

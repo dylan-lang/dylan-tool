@@ -68,8 +68,7 @@ define constant $workspace-file-format-string = #:str:[{
 // Create a new workspace named `name` with active packages
 // `pkg-names`.
 define function new (name :: <string>, pkg-names :: <seq>)
-  let workspace-file = find-workspace-file(fs/working-directory());
-  if (workspace-file)
+  if (workspace-file())
     workspace-error("You appear to already be in a workspace directory: %s",
                     workspace-file);
   end;
@@ -117,7 +116,7 @@ define class <config> (<object>)
 end;
 
 define function load-workspace-config (filename :: <string>) => (c :: <config>)
-  let path = find-workspace-file(fs/working-directory());
+  let path = workspace-file();
   if (~path)
     workspace-error("Workspace file not found."
                       " Current directory isn't under a workspace directory?");
@@ -138,15 +137,18 @@ define function load-workspace-config (filename :: <string>) => (c :: <config>)
   end
 end;
 
-// Search up from `dir` to find $workspace-file.
-define function find-workspace-file
-   (dir :: <directory-locator>) => (file :: false-or(<file-locator>))
-  if (~root-directory?(dir))
-    let path = merge-locators(as(fs/<file-system-file-locator>, $workspace-file), dir);
+// Search up from `directory` to find `$workspace-file`. If `directory` is not
+// supplied it defaults to the current working directory.
+define function workspace-file
+    (#key directory :: false-or(<directory-locator>) = fs/working-directory())
+ => (file :: false-or(<file-locator>))
+  if (~root-directory?(directory))
+    let path = merge-locators(as(fs/<file-system-file-locator>, $workspace-file),
+                              directory);
     if (fs/file-exists?(path))
       path
     else
-      locator-directory(dir) & find-workspace-file(locator-directory(dir))
+      locator-directory(directory) & workspace-file(directory: locator-directory(directory))
     end
   end
 end;
@@ -286,7 +288,7 @@ define constant $path-key = #"__path";
 // LID files.)
 define function update-registry-for-directory (conf, pkg-dir)
   let lib2lid = make(<istring-table>);  // library-name => list(lid-data)
-  local method doit (dir, name, type)
+  local method parse-lids (dir, name, type)
           select (type)
             #"file" =>
               if (ends-with?(name, ".lid"))
@@ -307,30 +309,41 @@ define function update-registry-for-directory (conf, pkg-dir)
               // submodule library, we want the package library.
               let subdir = subdirectory-locator(dir, name);
               if (name ~= ".git" & ~git-submodule?(subdir))
-                fs/do-directory(doit, subdir);
+                fs/do-directory(parse-lids, subdir);
               end;
             #"link" => #f;
           end;
         end;
-  fs/do-directory(doit, pkg-dir);
+  fs/do-directory(parse-lids, pkg-dir);
 
-  for (lids keyed-by lib in lib2lid) // lids should never have > ~3 elements
-    for (lid1 in lids)
-      // Check if any of the other LIDs for this library include lid1.
-      let included? = #f;
-      for (lid2 in lids, while: ~included?)
-        if (lid1 ~== lid2)
-          let sublid = element(lid2, #"LID", default: #f);
-          if (sublid & as(<string>, lid1[$path-key]) = as(<string>, sublid[$path-key]))
-            included? := #t;
-          end;
+  // For each library, write a LID if there's one explicitly for this platform,
+  // or there's one with no Platforms: specified at all.
+  let platform = as(<string>, os/$platform-name);
+  for (lids keyed-by lib in lib2lid)
+    let candidates = #();
+    block (done)
+      for (lid in lids)
+        if (lid-has-platform?(lid, platform)) // TODO: rename to lid-has-platform?.
+          candidates := list(lid);
+          done();
+        elseif (~element(lid, #"platforms", default: #f))
+          candidates := pair(lid, candidates);
         end;
-      end for;
-      if (~included?)
-        update-registry-for-lid(conf, lid1);
       end;
-    end for;
-  end;
+    end block;
+    select (candidates.size)
+      0 => #f;  // Nothing for this platform.
+      1 => update-registry-for-lid(conf, candidates[0]);
+      otherwise =>
+        print("WARNING: For library %s multiple .lid files apply to platform %s.\n"
+                "  %s\nRegistry will point to the first one, arbitrarily.",
+              lib, platform,
+              join(candidates, "\n  ", key: method (lid)
+                                              as(<string>, lid[$path-key])
+                                            end));
+        update-registry-for-lid(conf, candidates[0]);
+    end select;
+  end for;
 end function update-registry-for-directory;
 
 define function git-submodule? (dir :: <directory-locator>) => (_ :: <bool>)
@@ -340,26 +353,25 @@ end;
 
 define function update-registry-for-lid (conf :: <config>, lid :: <table>)
   let lid-path :: <file-locator> = lid[$path-key];
-  let platform = lowercase(as(<string>, os/$platform-name));
-  let lid-platforms = element(lid, #"platforms", default: #f);
-  if (lid-platforms & (member?("none", lid-platforms, test: istr=)
-                         | ~member?(platform, lid-platforms, test: str=)))
-    vprint("Skipped, not %s: %s", platform, lid-path);
-  else
-    let directory = subdirectory-locator(conf.registry-directory, platform);
-    let lib = lid[#"library"][0];
-    let reg-file = merge-locators(as(<file-locator>, lib), directory);
-    let relative-path = relative-locator(lid-path, conf.workspace-directory);
-    let new-content = format-to-string("abstract:/" "/dylan/%s\n", relative-path);
-    let old-content = file-content(reg-file);
-    if (new-content ~= old-content)
-      fs/ensure-directories-exist(reg-file);
-      fs/with-open-file(stream = reg-file, direction: #"output", if-exists?: #"overwrite")
-        write(stream, new-content);
-      end;
-      print("Wrote %s (%s)", reg-file, lid-path);
+  let platform = as(<string>, os/$platform-name);
+  let directory = subdirectory-locator(conf.registry-directory, platform);
+  let lib = lid[#"library"][0];
+  let reg-file = merge-locators(as(<file-locator>, lib), directory);
+  let relative-path = relative-locator(lid-path, conf.workspace-directory);
+  let new-content = format-to-string("abstract:/" "/dylan/%s\n", relative-path);
+  let old-content = file-content(reg-file);
+  if (new-content ~= old-content)
+    fs/ensure-directories-exist(reg-file);
+    fs/with-open-file(stream = reg-file, direction: #"output", if-exists?: #"overwrite")
+      write(stream, new-content);
     end;
+    print("Wrote %s (%s)", reg-file, lid-path);
   end;
+end function;
+
+define function lid-has-platform? (lid :: <table>, platform :: <string>) => (b :: <bool>)
+  let platforms = element(lid, #"platforms", default: #[]);
+  member?(platform, platforms, test: istr=)
 end;
 
 // Read the full contents of a file and return it as a string.  If the
@@ -420,6 +432,7 @@ define function parse-lid-file-into (path :: <file-locator>, lid :: <table>) => 
           let (whole, keyword, value) = re/search-strings($keyword-line-regex, line);
           if (whole)
             value := strip(value);
+            // TODO: can as(<symbol>) err?  I should just use strings and ignore case.
             let key = as(<symbol>, keyword);
             if (key = #"LID")
               // Note that we parse included LIDs twice. Once when the
