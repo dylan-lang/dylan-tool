@@ -26,7 +26,7 @@ define function main () => (status :: <int>)
     //       doesn't do well with subcommands. Needs improvement.
     let app = locator-name(as(<file-locator>, application-name()));
     local method usage (#key status :: <int> = 2)
-            print(#str:"Usage:
+            print(#:str:"Usage:
 %s install <pkg> <version>
     Install a package into ${DYLAN}/pkg. <version> may be a version
     number of the form 1.2.3, 'latest' to install the latest numbered
