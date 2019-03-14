@@ -355,7 +355,9 @@ define function update-registry-for-lid (conf :: <config>, lid :: <table>)
   let lid-path :: <file-locator> = lid[$path-key];
   let platform = as(<string>, os/$platform-name);
   let directory = subdirectory-locator(conf.registry-directory, platform);
-  let lib = lid[#"library"][0];
+  // The registry file must be written in lowercase so that on unix systems the
+  // compiler can find it.
+  let lib = lowercase(lid[#"library"][0]);
   let reg-file = merge-locators(as(<file-locator>, lib), directory);
   let relative-path = relative-locator(lid-path, conf.workspace-directory);
   let new-content = format-to-string("abstract:/" "/dylan/%s\n", relative-path);
