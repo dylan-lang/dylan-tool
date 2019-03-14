@@ -72,7 +72,7 @@ define method \= (p1 :: <pkg>, p2 :: <pkg>) => (_ :: <bool>)
   istring=(p1.name, p2.name) & p1.version = p2.version
 end;
 
-define constant $pkg-name-regex = #regex:{^[A-Za-z][A-Za-z0-9.-]*$};
+define constant $pkg-name-regex = #:regex:{^[A-Za-z][A-Za-z0-9.-]*$};
 
 define function validate-package-name (name :: <string>) => ()
   re/search-strings($pkg-name-regex, name)
@@ -120,7 +120,7 @@ define function version-to-string (v :: <version>) => (_ :: <string>)
   end
 end;
 
-define constant $version-regex = #regex:{^(\d+)\.(\d+)\.(\d+)$};
+define constant $version-regex = #:regex:{^(\d+)\.(\d+)\.(\d+)$};
 
 define function string-to-version
     (input :: <string>) => (_ :: <version>)
@@ -215,9 +215,9 @@ end;
 // define constant $package-name-regex :: <regex> = #regex:{([a-zA-Z][a-zA-Z0-9-]*)};
 define constant $dependency-regex :: <regex>
   = begin
-      let rev = #string:"(\d+\.\d+\.\d+)";
+      let rev = #:string:"(\d+\.\d+\.\d+)";
       let range = concat(rev, "-", rev);
-      let version-spec = concat(#string:"(head|\*|([<=>])?", rev, "|", range, ")");
+      let version-spec = concat(#:string:"(head|\*|([<=>])?", rev, "|", range, ")");
       // groups: 1:name, 2:vspec, 3:[<=>], 4: v1, 5:v1, 6:v2
       let pattern = concat("^([A-Za-z][A-Za-z0-9-]*)(?: ", version-spec, ")?$");
       re/compile(pattern)
