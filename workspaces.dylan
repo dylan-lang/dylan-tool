@@ -58,7 +58,7 @@ define constant $workspace-file = "workspace.json";
 define function str-parser (s :: <string>) => (s :: <string>) s end;
 
 // Pulled out into a constant because it ruins code formatting.
-define constant $workspace-file-format-string = #str:[{
+define constant $workspace-file-format-string = #:str:[{
     "active": {
 %s
     }
@@ -375,7 +375,7 @@ define function file-content (path :: <locator>) => (s :: false-or(<string>))
   end
 end;
 
-define constant $keyword-line-regex = #regex:"^([a-zA-Z0-9-]+):[ \t]+(.+)$";
+define constant $keyword-line-regex = #:regex:"^([a-zA-Z0-9-]+):[ \t]+(.+)$";
 
 // Parse the contents of `path` into a newly created `<table>` and
 // return the table.

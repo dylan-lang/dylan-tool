@@ -39,7 +39,7 @@ define module workspaces
   use pacman,
     prefix: "pm/";
   use regular-expressions,
-    import: { regex-parser },      // #regex:"..."
+    import: { regex-parser },      // #:regex:"..."
     rename: { regex-search-strings => re/search-strings };
   use standard-io,
     import: { *standard-output* => *stdout*,
