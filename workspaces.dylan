@@ -1,6 +1,5 @@
 module: workspaces
-synopsis: Manage developer workspace directories by downloading packages
-          requested by the workspace.json file.
+synopsis: Manage developer workspaces
 
 // TODO:
 // * Remove redundancy in 'update' command. It processes (shared?) dependencies
@@ -67,19 +66,20 @@ define constant $workspace-file-format-string = #:str:[{
 
 // Create a new workspace named `name` with active packages
 // `pkg-names`.
-define function new (name :: <string>, pkg-names :: <seq>)
-  if (workspace-file())
+define function new (name :: <string>, pkg-names :: <seq>,
+                     #key parent-directory :: <directory-locator> = fs/working-directory())
+  if (workspace-file(directory: parent-directory))
     workspace-error("You appear to already be in a workspace directory: %s",
                     workspace-file);
   end;
-  let workspace-dir = subdirectory-locator(fs/working-directory(), name);
-  let workspace-file = as(<file-locator>, "workspace.json");
-  let workspace-path = merge-locators(workspace-file, workspace-dir);
-  if (fs/file-exists?(workspace-dir))
-    workspace-error("Directory already exists: %s", workspace-dir);
+  let ws-dir = subdirectory-locator(parent-directory, name);
+  let ws-file = as(<file-locator>, "workspace.json");
+  let ws-path = merge-locators(ws-file, ws-dir);
+  if (fs/file-exists?(ws-dir))
+    workspace-error("Directory already exists: %s", ws-dir);
   end;
-  fs/ensure-directories-exist(workspace-path);
-  fs/with-open-file (stream = workspace-path,
+  fs/ensure-directories-exist(ws-path);
+  fs/with-open-file (stream = ws-path,
                      direction: #"output",
                      if-does-not-exist: #"create")
     if (pkg-names.size = 0)
@@ -90,32 +90,33 @@ define function new (name :: <string>, pkg-names :: <seq>)
     format(stream, $workspace-file-format-string,
            join(pkg-names, ",\n", key: curry(format-to-string, "        %=: {}")));
   end;
-  print("Wrote workspace file to %s.", workspace-path);
+  print("Wrote workspace file to %s.", ws-path);
 end;
 
 // Update the workspace based on the workspace config or signal an error.
 define function update ()
-  let config = load-workspace-config($workspace-file);
-  print("Workspace directory is %s.", config.workspace-directory);
-  update-active-packages(config);
-  update-active-package-deps(config);
-  update-registry(config);
+  let ws = load-workspace($workspace-file);
+  print("Workspace directory is %s.", ws.workspace-directory);
+  update-active-packages(ws);
+  update-active-package-deps(ws);
+  update-registry(ws);
 end;
 
-// <config> holds the parsed workspace configuration file, and is the one object
-// that knows the layout of the workspace directory.  That is,
+// <workspace> holds the parsed workspace configuration, and is the one object
+// that knows the layout of the workspace directory:
 //       workspace/
-//         registry/
+//         _build
 //         active-package-1/
 //         active-package-2/
-define class <config> (<object>)
+//         registry/
+define class <workspace> (<object>)
   constant slot active-packages :: <istring-table>,
     required-init-keyword: active:;
   constant slot workspace-directory :: <directory-locator>,
     required-init-keyword: workspace-directory:;
 end;
 
-define function load-workspace-config (filename :: <string>) => (c :: <config>)
+define function load-workspace (filename :: <string>) => (w :: <workspace>)
   let path = workspace-file();
   if (~path)
     workspace-error("Workspace file not found."
@@ -131,7 +132,7 @@ define function load-workspace-config (filename :: <string>) => (c :: <config>)
       workspace-error("Invalid workspace file %s, the 'active' element must be a map"
                         " from package name to {...}.", path);
     end;
-    make(<config>,
+    make(<workspace>,
          active: object["active"],
          workspace-directory: locator-directory(path))
   end
@@ -140,7 +141,7 @@ end;
 // Search up from `directory` to find `$workspace-file`. If `directory` is not
 // supplied it defaults to the current working directory.
 define function workspace-file
-    (#key directory :: false-or(<directory-locator>) = fs/working-directory())
+    (#key directory :: <directory-locator> = fs/working-directory())
  => (file :: false-or(<file-locator>))
   if (~root-directory?(directory))
     let path = merge-locators(as(fs/<file-system-file-locator>, $workspace-file),
@@ -162,35 +163,35 @@ define function root-directory? (loc :: <locator>)
   member?(loc, fs/root-directories())
 end;
 
-define function active-package-names (conf :: <config>) => (names :: <seq>)
-  key-sequence(conf.active-packages)
+define function active-package-names (ws :: <workspace>) => (names :: <seq>)
+  key-sequence(ws.active-packages)
 end;
 
 define function active-package-directory
-    (conf :: <config>, pkg-name :: <string>) => (d :: <directory-locator>)
-  subdirectory-locator(conf.workspace-directory, pkg-name)
+    (ws :: <workspace>, pkg-name :: <string>) => (d :: <directory-locator>)
+  subdirectory-locator(ws.workspace-directory, pkg-name)
 end;
 
 define function active-package-file
-    (conf :: <config>, pkg-name :: <string>) => (f :: <file-locator>)
+    (ws :: <workspace>, pkg-name :: <string>) => (f :: <file-locator>)
   merge-locators(as(<file-locator>, "pkg.json"),
-                 active-package-directory(conf, pkg-name))
+                 active-package-directory(ws, pkg-name))
 end;
 
-define function active-package? (conf :: <config>, pkg-name :: <string>) => (_ :: <bool>)
-  member?(pkg-name, conf.active-package-names, test: istr=)
+define function active-package? (ws :: <workspace>, pkg-name :: <string>) => (_ :: <bool>)
+  member?(pkg-name, ws.active-package-names, test: istr=)
 end;
 
-define function registry-directory (conf :: <config>) => (d :: <directory-locator>)
-  subdirectory-locator(conf.workspace-directory, "registry")
+define function registry-directory (ws :: <workspace>) => (d :: <directory-locator>)
+  subdirectory-locator(ws.workspace-directory, "registry")
 end;
 
 // Download active packages into the workspace directory if the
 // package directories don't already exist.
-define function update-active-packages (conf :: <config>)
-  for (attrs keyed-by pkg-name in conf.active-packages)
+define function update-active-packages (ws :: <workspace>)
+  for (attrs keyed-by pkg-name in ws.active-packages)
     // Download the package if necessary.
-    let pkg-dir = active-package-directory(conf, pkg-name);
+    let pkg-dir = active-package-directory(ws, pkg-name);
     if (fs/file-exists?(pkg-dir))
       vprint("Active package %s exists, not downloading.", pkg-name);
     else
@@ -201,24 +202,24 @@ define function update-active-packages (conf :: <config>)
         pm/download(pkg, pkg-dir);
       else
         print("WARNING: Skipping active package %s, not found in catalog.", pkg-name);
-        print("WARNING: If this is a new or private project then this is normal.");
-        print("WARNING: Create a pkg.json file for it and run update again to update deps.");
+        print("         If this is a new or private project then this is normal.");
+        print("         Create a pkg.json file for it and run update again to update deps.");
       end;
     end;
   end;
 end;
 
 // Update dep packages if needed.
-define function update-active-package-deps (conf :: <config>)
-  for (pkg-name in conf.active-package-names)
+define function update-active-package-deps (ws :: <workspace>)
+  for (pkg-name in ws.active-package-names)
     // Update the package deps.
-    let pkg = find-active-package(conf, pkg-name);
+    let pkg = find-active-package(ws, pkg-name);
     if (pkg)
       print("Installing deps for package %s.", pkg-name);
       // TODO: in a perfect world this wouldn't install any deps that
       // are also active packages. It doesn't cause a problem though,
       // as long as the registry points to the right place.
-      pm/install-deps(pkg /* , skip: conf.active-package-names */);
+      pm/install-deps(pkg /* , skip: ws.active-package-names */);
     else
       print("WARNING: No package definition found for active package %s."
               " Not installing deps.", pkg-name);
@@ -227,8 +228,8 @@ define function update-active-package-deps (conf :: <config>)
 end;
 
 define function find-active-package
-    (conf :: <config>, pkg-name :: <string>) => (p :: false-or(pm/<pkg>))
-  let path = active-package-file(conf, pkg-name);
+    (ws :: <workspace>, pkg-name :: <string>) => (p :: false-or(pm/<pkg>))
+  let path = active-package-file(ws, pkg-name);
   pm/read-package-file(path)
     | begin
         print("WARNING: No package found in %s, falling back to catalog.", path);
@@ -246,13 +247,13 @@ end;
 // This traverses package directories to find .lid files. Note that it
 // assumes that .lid files that have no "Platforms:" section are
 // generic, and writes a registry file for them.
-define function update-registry (conf :: <config>)
-  for (pkg-name in conf.active-package-names)
-    let pkg = find-active-package(conf, pkg-name);
+define function update-registry (ws :: <workspace>)
+  for (pkg-name in ws.active-package-names)
+    let pkg = find-active-package(ws, pkg-name);
     if (pkg)
-      let pkg-dir = active-package-directory(conf, pkg-name);
-      update-registry-for-directory(conf, pkg-dir);
-      pm/do-resolved-deps(pkg, curry(update-registry-for-package, conf));
+      let pkg-dir = active-package-directory(ws, pkg-name);
+      update-registry-for-directory(ws, pkg-dir);
+      pm/do-resolved-deps(pkg, curry(update-registry-for-package, ws));
     else
       print("WARNING: No package definition found for active package %s."
               " Not creating registry files.", pkg-name);
@@ -262,18 +263,18 @@ end;
 
 // Dig around in each `pkg`s directory to find the libraries it
 // defines and create registry files for them.
-define function update-registry-for-package (conf, pkg, dep, installed?)
+define function update-registry-for-package (ws, pkg, dep, installed?)
   if (~installed?)
     workspace-error("Attempt to update registry for dependency %s, which"
                       " is not yet installed. This may be a bug.",
                     pm/package-name(dep));
   end;
-  let pkg-dir = if (active-package?(conf, pkg.pm/name))
-                  active-package-directory(conf, pkg.pm/name)
+  let pkg-dir = if (active-package?(ws, pkg.pm/name))
+                  active-package-directory(ws, pkg.pm/name)
                 else
                   pm/source-directory(pkg)
                 end;
-  update-registry-for-directory(conf, pkg-dir);
+  update-registry-for-directory(ws, pkg-dir);
 end;
 
 define constant $path-key = #"__path";
@@ -286,7 +287,39 @@ define constant $path-key = #"__path";
 // registry file twice for the same library without resorting to
 // putting "Platforms: none" in LID files that are included in other
 // LID files.)
-define function update-registry-for-directory (conf, pkg-dir)
+define function update-registry-for-directory (ws :: <workspace>, pkg-dir :: <directory-locator>)
+  let lib2lid = find-libraries(pkg-dir);
+  // For each library, write a LID if there's one explicitly for this platform,
+  // or there's one with no Platforms: specified at all.
+  let platform = as(<string>, os/$platform-name);
+  for (lids keyed-by lib in lib2lid)
+    let candidates = #();
+    block (done)
+      for (lid in lids)
+        if (lid-has-platform?(lid, platform)) // TODO: rename to lid-has-platform?.
+          candidates := list(lid);
+          done();
+        elseif (~element(lid, #"platforms", default: #f))
+          candidates := pair(lid, candidates);
+        end;
+      end;
+    end block;
+    select (candidates.size)
+      0 => #f;  // Nothing for this platform.
+      1 => update-registry-for-lid(ws, candidates[0]);
+      otherwise =>
+        print("WARNING: For library %s multiple .lid files apply to platform %s.\n"
+                "  %s\nRegistry will point to the first one, arbitrarily.",
+              lib, platform,
+              join(candidates, "\n  ", key: method (lid)
+                                              as(<string>, lid[$path-key])
+                                            end));
+        update-registry-for-lid(ws, candidates[0]);
+    end select;
+  end for;
+end function;
+
+define function find-libraries (pkg-dir :: <directory-locator>) => (lib2lid :: <istring-table>)
   let lib2lid = make(<istring-table>);  // library-name => list(lid-data)
   local method parse-lids (dir, name, type)
           select (type)
@@ -315,51 +348,23 @@ define function update-registry-for-directory (conf, pkg-dir)
           end;
         end;
   fs/do-directory(parse-lids, pkg-dir);
-
-  // For each library, write a LID if there's one explicitly for this platform,
-  // or there's one with no Platforms: specified at all.
-  let platform = as(<string>, os/$platform-name);
-  for (lids keyed-by lib in lib2lid)
-    let candidates = #();
-    block (done)
-      for (lid in lids)
-        if (lid-has-platform?(lid, platform)) // TODO: rename to lid-has-platform?.
-          candidates := list(lid);
-          done();
-        elseif (~element(lid, #"platforms", default: #f))
-          candidates := pair(lid, candidates);
-        end;
-      end;
-    end block;
-    select (candidates.size)
-      0 => #f;  // Nothing for this platform.
-      1 => update-registry-for-lid(conf, candidates[0]);
-      otherwise =>
-        print("WARNING: For library %s multiple .lid files apply to platform %s.\n"
-                "  %s\nRegistry will point to the first one, arbitrarily.",
-              lib, platform,
-              join(candidates, "\n  ", key: method (lid)
-                                              as(<string>, lid[$path-key])
-                                            end));
-        update-registry-for-lid(conf, candidates[0]);
-    end select;
-  end for;
-end function update-registry-for-directory;
+  lib2lid
+end function;
 
 define function git-submodule? (dir :: <directory-locator>) => (_ :: <bool>)
   let dot-git = merge-locators(as(<file-locator>, ".git"), dir);
   fs/file-exists?(dot-git)
 end;
 
-define function update-registry-for-lid (conf :: <config>, lid :: <table>)
+define function update-registry-for-lid (ws :: <workspace>, lid :: <table>)
   let lid-path :: <file-locator> = lid[$path-key];
   let platform = as(<string>, os/$platform-name);
-  let directory = subdirectory-locator(conf.registry-directory, platform);
+  let directory = subdirectory-locator(ws.registry-directory, platform);
   // The registry file must be written in lowercase so that on unix systems the
   // compiler can find it.
   let lib = lowercase(lid[#"library"][0]);
   let reg-file = merge-locators(as(<file-locator>, lib), directory);
-  let relative-path = relative-locator(lid-path, conf.workspace-directory);
+  let relative-path = relative-locator(lid-path, ws.workspace-directory);
   let new-content = format-to-string("abstract:/" "/dylan/%s\n", relative-path);
   let old-content = file-content(reg-file);
   if (new-content ~= old-content)
@@ -461,7 +466,7 @@ define function parse-lid-file-into (path :: <file-locator>, lid :: <table>) => 
     vprint("LID file %s has no Files: property.", path);
   end;
   lid
-end function parse-lid-file-into;
+end function;
 
 define function lid-files (lid :: <table>) => (files :: <seq>)
   element(lid, #"files", default: #f)

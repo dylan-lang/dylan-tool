@@ -61,6 +61,7 @@ define module workspaces
     import: { err, iff, inc!, slice };
 
   export
+    <workspace>,
     configure,
     new,
     update,
