@@ -1,6 +1,6 @@
 [submodule "ext/pacman"]
 	path = ext/pacman
-	url = git@github.com:dylan-lang/pacman
+	url = git@github.com:cgay/pacman
 [submodule "ext/json"]
 	path = ext/json
 	url = git@github.com:dylan-lang/json
@@ -12,4 +12,4 @@
 	url = git@github.com:dylan-lang/uncommon-dylan
 [submodule "ext/workspaces"]
 	path = ext/workspaces
-	url = git@github.com:dylan-lang/workspaces
+	url = git@github.com:cgay/workspaces
