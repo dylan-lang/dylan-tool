@@ -38,9 +38,9 @@ reinstall it.
         $ export DYLAN=${HOME}/dylan
 
     Dylan packages, including the
-    [pacman-catalog](https://github.com/dylan-lang/pacman-catalog)
-    package which describes where to find other packages, will be
-    installed under `${DYLAN}/pkg/`.
+    [pacman-catalog](git@github.com:cgay/pacman-catalog) package which
+    describes where to find other packages, will be installed under
+    `${DYLAN}/pkg/`.
 
     **Note:** Don't ever put files you want to keep in the
     `${DYLAN}/pkg/` directory. The expectation should be that anything
@@ -49,7 +49,7 @@ reinstall it.
 
 1.  Clone and build the `dylan-tool` project:
 
-        $ git clone --recursive git@github.com:dylan-lang/dylan-tool
+        $ git clone --recursive git@github.com:cgay/dylan-tool
         $ cd dylan-tool
         $ dylan-compiler -build dylan-tool.lid
         $ export PATH=`pwd`/_build/bin:${PATH}
@@ -91,9 +91,9 @@ update`. These are the steps:
 1.  Create a new directory and git repo for your package in the
     workspace directory. (Hint: use `make-dylan-app` to create a
     library skeleton.)
-1.  Create a `pkg.json` file that lists your package dependencies
-    (deps). You could copy from [this
-    one](https://github.com/dylan-lang/dylan-tool/blob/master/pkg.json).
+1.  Create a `pkg.json` file that lists your package dependencies (deps). You
+    could copy from [this
+    one](git@github.com:cgay/dylan-tool/blob/master/pkg.json).
 1.  Add the package name to the "active" list in the `workspace.json`
     file.
 1.  Run `dylan-tool update` to install the deps and update the
@@ -137,13 +137,12 @@ again.
 Each key under "active" specifies a package that will be under active
 development. If you're working on existing packages then these should
 match the name of an existing package in the
-[Catalog](https://github.com/dylan-lang/pacman-catalog), and if a
-subdirectory by this name doesn't exist in the workspace file's
-directory, `dylan-tool` will do the initial checkout for you. If
-you're creating a new package then you'll need to create the
-subdirectory yourself, create a `pkg.json` file inside it, and then
-run `dylan-tool update` and it will fetch the package's dependencies
-for you.
+[Catalog](git@github.com:cgay/pacman-catalog), and if a subdirectory
+by this name doesn't exist in the workspace file's directory,
+`dylan-tool` will do the initial checkout for you. If you're creating
+a new package then you'll need to create the subdirectory yourself,
+create a `pkg.json` file inside it, and then run `dylan-tool update`
+and it will fetch the package's dependencies for you.
 
 ## The Registry
 
