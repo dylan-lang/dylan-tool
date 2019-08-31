@@ -3,6 +3,7 @@
     "deps": [
         "json head",
         "regular-expressions head",
+        "testworks head",
         "uncommon-dylan head"
     ],
     "location": "git@github.com:cgay/pacman"

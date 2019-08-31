@@ -109,11 +109,21 @@ define method install
   end
 end;
 
-define method install-deps (pkg :: <pkg>, #key force? :: <bool>)
-  local method doit (p, _, installed?)
-          ~installed? & install(p, force?: force?, deps?: #t)
+// Install dependencies of `pkg`. If `force?` is true, remove and re-install
+// all dependencies.  If `update-head?` is true then pull the latest updates
+// for any packages that are installed at version $head. `update-head?` is
+// redundant (and ignored) when `force?` is true.
+define method install-deps (pkg :: <pkg>, #key force? :: <bool>, update-head? :: <bool>)
+  local method install-one (p, _, installed?)
+          // TODO: For now update-head? is implemented by forcing force? to
+          // true, which will cause the package to be removed and re-installed.
+          // Ultimately, it would be better to check whether there's anything
+          // new to pull and if update-head? is false, print a warning to the
+          // user that they're out-of-date.
+          let new-force? = force? | (update-head? & p.version = $head);
+          ~installed? & install(p, force?: new-force?, deps?: #t)
         end;
-  do-resolved-deps(pkg, doit);
+  do-resolved-deps(pkg, install-one);
 end;
 
 // Apply `fn` to all transitive dependencies of `pkg` using a

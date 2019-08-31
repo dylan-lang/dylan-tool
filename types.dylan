@@ -108,7 +108,7 @@ define class <latest> (<version>, <singleton-object>) end;
 define constant $latest :: <latest> = make(<latest>, major: -1, minor: -1, patch: -1);
 
 // $head refers to the bleeding edge devhead version, which has no number.
-// Usually the "master" branch in git terms.
+// Usually the head of the "master" branch in git terms.
 define class <head> (<version>, <singleton-object>) end;
 define constant $head :: <head> = make(<head>, major: 0, minor: 0, patch: 0);
 
