@@ -26,7 +26,7 @@ define function main () => (status :: <int>)
     //       doesn't do well with subcommands. Needs improvement.
     let app = locator-name(as(<file-locator>, application-name()));
     local method usage (#key status :: <int> = 2)
-            print(#:str:"Usage:
+            print(#:str:`Usage:
 %s install <pkg> <version>
     Install a package into ${DYLAN}/pkg. <version> may be a version
     number of the form 1.2.3, 'latest' to install the latest numbered
@@ -42,13 +42,15 @@ define function main () => (status :: <int>)
     single package 'all' is specified the workspace will contain all
     packages found in the package catalog.
 
-%s update
+%s update [--update-head]
     Bring the current workspace up-to-date with the workspace.json file.
     Install dependencies and update the registry for any new .lid files.
+    If --update-head is provided, the latest changes are fetched for
+    packages that are installed at version "head".
 
 Notes:
   A --verbose flag may be added (anywhere) to see more detailed output.
-", app, app, app, app, app, app);
+`, app, app, app, app, app, app);
             exit(status);
           end;
     let args = application-arguments();
@@ -89,8 +91,11 @@ Notes:
         ws/new(name, pkg-names);
         print("You may now run '%s update' in the new directory.", app);
       "update" =>
-        args.size = 0 | usage();
-        ws/update();     // Update the workspace based on config file.
+        if (args.size > 1 | (args.size = 1 & args[0] ~= "--update-head"))
+          usage();
+        end;
+        let update-head? = args.size = 1 & args[0] = "--update-head";
+        ws/update(update-head?: update-head?); // Update the workspace based on config file.
       otherwise =>
         print("%= not recognized", subcmd);
         usage();
