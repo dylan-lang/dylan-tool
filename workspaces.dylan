@@ -93,12 +93,14 @@ define function new (name :: <string>, pkg-names :: <seq>,
   print("Wrote workspace file to %s.", ws-path);
 end;
 
-// Update the workspace based on the workspace config or signal an error.
-define function update ()
+// Update the workspace based on the workspace config or signal an error.  If
+// `update-head?` is true then pull the latest updates for any packages that
+// are installed at version $head.
+define function update (#key update-head? :: <bool>)
   let ws = load-workspace($workspace-file);
   print("Workspace directory is %s.", ws.workspace-directory);
   update-active-packages(ws);
-  update-active-package-deps(ws);
+  update-active-package-deps(ws, update-head?: update-head?);
   update-registry(ws);
 end;
 
@@ -210,16 +212,22 @@ define function update-active-packages (ws :: <workspace>)
 end;
 
 // Update dep packages if needed.
-define function update-active-package-deps (ws :: <workspace>)
+define function update-active-package-deps (ws :: <workspace>, #key update-head? :: <bool>)
   for (pkg-name in ws.active-package-names)
     // Update the package deps.
     let pkg = find-active-package(ws, pkg-name);
     if (pkg)
+      // TODO: don't do output unless some deps are actually installed. If
+      // everything is up-to-date, only print something if --verbose. Probably
+      // cleanest to first make a plan and then execute it. Would also
+      // facilitate showing the plan and prompting yes/no, and also --dry-run.
       print("Installing deps for package %s.", pkg-name);
-      // TODO: in a perfect world this wouldn't install any deps that
-      // are also active packages. It doesn't cause a problem though,
-      // as long as the registry points to the right place.
-      pm/install-deps(pkg /* , skip: ws.active-package-names */);
+
+      // TODO: in a perfect world this wouldn't install any deps that are also
+      // active packages. It doesn't cause a problem though, as long as the
+      // registry points to the right place. (This is more easily solved once
+      // the above TODO is done: two passes, make plan, execute plan.)
+      pm/install-deps(pkg /* , skip: ws.active-packages */, update-head?: update-head?);
     else
       print("WARNING: No package definition found for active package %s."
               " Not installing deps.", pkg-name);
