@@ -1,10 +1,5 @@
 Module: dylan-tool
 
-// I'm undecided whether to go forward with this tool in the long run
-// or to try and use Deft, but I don't want to deal with Deft's
-// problems right now so this should be a pretty simple way to get
-// workspaces and packages working.
-
 // TODO:
 // * The 'list' subcommand is showing a random set of packages in my ws.all
 //   workspace.
@@ -48,9 +43,12 @@ define function main () => (status :: <int>)
     If --update-head is provided, the latest changes are fetched for
     packages that are installed at version "head".
 
+%s workspace-dir
+    Print the pathname of the workspace directory.
+
 Notes:
   A --verbose flag may be added (anywhere) to see more detailed output.
-`, app, app, app, app, app, app);
+`, app, app, app, app, app, app, app);
             exit(status);
           end;
     let args = application-arguments();
@@ -96,6 +94,9 @@ Notes:
         end;
         let update-head? = args.size = 1 & args[0] = "--update-head";
         ws/update(update-head?: update-head?); // Update the workspace based on config file.
+      "workspace-dir" =>
+        // Needed for the Open Dylan Makefile.
+        print("%s", as(<string>, locator-directory(ws/workspace-file())));
       otherwise =>
         print("%= not recognized", subcmd);
         usage();
