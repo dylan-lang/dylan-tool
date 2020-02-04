@@ -327,21 +327,37 @@ define function update-registry-for-directory (ws :: <workspace>, pkg-dir :: <di
   end for;
 end function;
 
+// Descend pkg-dir finding .lid or .hdp files. Return a map from library names
+// to parsed lid files (tables mapping lid keywords to values). .hdp files are
+// (I believe) obsolecent so the .lid file is preferred.
 define function find-libraries (pkg-dir :: <directory-locator>) => (lib2lid :: <istring-table>)
   let lib2lid = make(<istring-table>);  // library-name => list(lid-data)
+  let lib2ext = make(<istring-table>);  // library-name => #"lid" or #"hdp"
   local method parse-lids (dir, name, type)
           select (type)
             #"file" =>
-              if (ends-with?(name, ".lid"))
+              let ext = if (ends-with?(name, ".lid"))
+                          #"lid"
+                        elseif (ends-with?(name, ".hdp"))
+                          #"hdp"
+                        end;
+              if (ext)
                 let lid-path = merge-locators(as(<file-locator>, name), dir);
                 let lid = parse-lid-file(lid-path);
-                let libs = element(lid, #"library", default: #f);
+                let libs = element(lid, #"library", default: #[]);
                 let lib = ~empty?(libs) & libs[0];
                 if (~lib)
                   print("Skipping %s, it has no Library: line.", lid-path);
+                else
+                  let prev = element(lib2ext, lib, default: #f);
+                  if (ext = #"hdp" & prev = #"lid")
+                    print("Skipping %s, preferring previous .lid file.", lid-path);
+                  else
+                    let lids = element(lib2lid, lib, default: #[]);
+                    lib2lid[lib] := add(lids, lid);
+                    lib2ext[lib] := ext;
+                  end;
                 end;
-                let lids = element(lib2lid, lib, default: #[]);
-                lib2lid[lib] := add(lids, lid);
               end;
             #"directory" =>
               // Skip git submodules; their use is a vestige of
