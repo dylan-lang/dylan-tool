@@ -120,8 +120,10 @@ define method install-deps (pkg :: <pkg>, #key force? :: <bool>, update-head? ::
           // Ultimately, it would be better to check whether there's anything
           // new to pull and if update-head? is false, print a warning to the
           // user that they're out-of-date.
-          let new-force? = force? | (update-head? & p.version = $head);
-          ~installed? & install(p, force?: new-force?, deps?: #t)
+          let force? = force? | (update-head? & p.version = $head);
+          if (~installed? | force?)
+            install(p, force?: force?, deps?: #t);
+          end;
         end;
   do-resolved-deps(pkg, install-one);
 end;
