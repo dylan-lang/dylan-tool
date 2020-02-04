@@ -1,8 +1,6 @@
 Module: dylan-user
 
 define library dylan-tool
-  use collections,
-    import: { table-extensions };
   use io,
     import: { format, standard-io, streams };
   use json;
