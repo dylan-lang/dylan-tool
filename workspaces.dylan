@@ -7,6 +7,8 @@ synopsis: Manage developer workspaces
 // * Display the number of registry files updated and the number unchanged.
 //   It gives reassuring feedback that something went right when there's no
 //   other output.
+// * LID parsing shouldn't map every key to a sequence; only those that have
+//   continuation lines, like Files:.
 
 // The class of errors explicitly signalled by this module.
 define class <workspace-error> (<simple-error>)
@@ -128,7 +130,7 @@ define function load-workspace (filename :: <string>) => (w :: <workspace>)
     let object = json/parse(stream, strict?: #f, table-class: <istring-table>);
     if (~instance?(object, <table>))
       workspace-error("Invalid workspace file %s, must be a single JSON object", path);
-    elseif (~element(object, "active", default: #f))
+    elseif (~elt(object, "active", or: #f))
       workspace-error("Invalid workspace file %s, missing required key 'active'", path);
     elseif (~instance?(object["active"], <table>))
       workspace-error("Invalid workspace file %s, the 'active' element must be a map"
@@ -181,7 +183,7 @@ define function active-package-file
 end;
 
 define function active-package? (ws :: <workspace>, pkg-name :: <string>) => (_ :: <bool>)
-  member?(pkg-name, ws.active-package-names, test: istr=)
+  member?(pkg-name, ws.active-package-names, test: istring=?)
 end;
 
 define function registry-directory (ws :: <workspace>) => (d :: <directory-locator>)
@@ -307,7 +309,7 @@ define function update-registry-for-directory (ws :: <workspace>, pkg-dir :: <di
         if (lid-has-platform?(lid, platform)) // TODO: rename to lid-has-platform?.
           candidates := list(lid);
           done();
-        elseif (~element(lid, #"platforms", default: #f))
+        elseif (~elt(lid, #"platforms", or: #f))
           candidates := pair(lid, candidates);
         end;
       end;
@@ -327,50 +329,85 @@ define function update-registry-for-directory (ws :: <workspace>, pkg-dir :: <di
   end for;
 end function;
 
-// Descend pkg-dir finding .lid or .hdp files. Return a map from library names
-// to parsed lid files (tables mapping lid keywords to values). .hdp files are
-// (I believe) obsolecent so the .lid file is preferred.
+// Descend pkg-dir finding .lid, .hdp, or .spec files. Return a map from library names to
+// parsed lid files (tables mapping lid keywords to values). .hdp files are (I believe)
+// obsolecent so the .lid file is preferred. For .spec files the corresponding .hdp file
+// doesn't exist so the table returned for it just maps #"library" to the library name.
 define function find-libraries (pkg-dir :: <directory-locator>) => (lib2lid :: <istring-table>)
   let lib2lid = make(<istring-table>);  // library-name => list(lid-data)
   let lib2ext = make(<istring-table>);  // library-name => #"lid" or #"hdp"
-  local method parse-lids (dir, name, type)
-          select (type)
-            #"file" =>
-              let ext = if (ends-with?(name, ".lid"))
-                          #"lid"
-                        elseif (ends-with?(name, ".hdp"))
-                          #"hdp"
-                        end;
-              if (ext)
-                let lid-path = merge-locators(as(<file-locator>, name), dir);
-                let lid = parse-lid-file(lid-path);
-                let libs = element(lid, #"library", default: #[]);
-                let lib = ~empty?(libs) & libs[0];
-                if (~lib)
-                  print("Skipping %s, it has no Library: line.", lid-path);
-                else
-                  let prev = element(lib2ext, lib, default: #f);
-                  if (ext = #"hdp" & prev = #"lid")
-                    print("Skipping %s, preferring previous .lid file.", lid-path);
-                  else
-                    let lids = element(lib2lid, lib, default: #[]);
-                    lib2lid[lib] := add(lids, lid);
-                    lib2ext[lib] := ext;
-                  end;
-                end;
-              end;
-            #"directory" =>
-              // Skip git submodules; their use is a vestige of
-              // pre-package manager setups and it causes registry
-              // entries to be written twice. We don't want the
-              // submodule library, we want the package library.
-              let subdir = subdirectory-locator(dir, name);
-              if (name ~= ".git" & ~git-submodule?(subdir))
-                fs/do-directory(parse-lids, subdir);
-              end;
-            #"link" => #f;
-          end;
+  local
+    method parse-lid (lid-path)
+      let lid = parse-lid-file(lid-path);
+      let lib = single-valued-key(lid, #"library");
+      if (~lib)
+        print("Skipping %s, it has no Library: line.", lid-path);
+      else
+        let ext = locator-extension(lid-path);
+        let old = elt(lib2ext, lib, or: #f);
+        if (ext = #"hdp" & old = #"lid")
+          print("Skipping %s, preferring previous .lid file.", lid-path);
+        else
+          let lids = elt(lib2lid, lib, or: #[]);
+          lib2lid[lib] := add(lids, lid);
+          lib2ext[lib] := ext;
         end;
+      end;
+    end method,
+    method parse-spec (spec-path)
+      let spec = parse-lid-file-into(spec-path, make(<table>));
+      let origin = elt(spec, #"origin", or: #[""])[0];
+      if (istring=?(origin, "omg-idl"))
+        // Generate "protocol", "skeletons", and "stubs" registries for CORBA projects.
+        // The sources for these projects won't exist until generated by the build.
+        // Assume .../foo.idl generates .../stubs/foo-stubs.hdp etc.
+        let prefix = elt(spec, #"prefix", or: "");
+        if (~empty?(prefix))
+          prefix := concat(prefix, "-");
+        end;
+        let base-dir = locator-directory(spec-path);
+        let idl-path = merge-locators(as(<file-locator>, spec[#"idl-file"][0]), base-dir);
+        let idl-name = locator-base(idl-path);
+        for (kind in #("protocol", "skeletons", "stubs"))
+          let spec-val = elt(spec, as(<symbol>, kind), or: "");
+          if (istring=?("yes", spec-val))
+            let lib-name = concat(prefix, kind);
+            let hdp-file = as(<file-locator>, concat(kind, "/", idl-name, "-", kind, ".hdp"));
+            let hdp-path = merge-locators(as(<file-locator>, hdp-file),
+                                          locator-directory(idl-path));
+            let lid-data = begin
+                             let t = make(<table>);
+                             t[#"library"] := lib-name;
+                             t[$path-key] := hdp-path;  // file may not exist
+                           end;
+            lib2lid[lib-name] := lid-data;
+          end;
+        end for;
+      end if;
+    end method,
+    method parse-lids (dir, name, type)
+      select (type)
+        #"file" =>
+          select (name by rcurry(ends-with?, test: char-icompare))
+            ".lid", ".hdp"
+              => parse-lid(merge-locators(as(<file-locator>, name), dir));
+            ".spec"
+              => parse-spec(merge-locators(as(<file-locator>, name), dir));
+            otherwise
+              => #f;
+          end;
+        #"directory" =>
+          // Skip git submodules; their use is a vestige of
+          // pre-package manager setups and it causes registry
+          // entries to be written twice. We don't want the
+          // submodule library, we want the package library.
+          let subdir = subdirectory-locator(dir, name);
+          if (name ~= ".git" & ~git-submodule?(subdir))
+            fs/do-directory(parse-lids, subdir);
+          end;
+        #"link" => #f;
+      end select;
+    end method;
   fs/do-directory(parse-lids, pkg-dir);
   lib2lid
 end function;
@@ -401,8 +438,8 @@ define function update-registry-for-lid (ws :: <workspace>, lid :: <table>)
 end function;
 
 define function lid-has-platform? (lid :: <table>, platform :: <string>) => (b :: <bool>)
-  let platforms = element(lid, #"platforms", default: #[]);
-  member?(platform, platforms, test: istr=)
+  let platforms = elt(lid, #"platforms", or: #[]);
+  member?(platform, platforms, test: istring=?)
 end;
 
 // Read the full contents of a file and return it as a string.  If the
@@ -413,18 +450,25 @@ define function file-content (path :: <locator>) => (s :: false-or(<string>))
     fs/with-open-file(stream = path, if-does-not-exist: #"signal")
       read-to-end(stream)
     end
-  exception (e :: fs/<file-does-not-exist-error>)
+  exception (fs/<file-does-not-exist-error>)
     #f
   end
-end;
+end function;
 
 define constant $keyword-line-regex = #:regex:"^([a-zA-Z0-9-]+):[ \t]+(.+)$";
 
 // Parse the contents of `path` into a newly created `<table>` and
 // return the table.
 define function parse-lid-file (path :: <file-locator>) => (lid :: <table>)
-  parse-lid-file-into(path, make(<table>))
-end;
+  let lid = parse-lid-file-into(path, make(<table>));
+  if (~elt(lid, #"library", or: #f))
+    workspace-error("LID file %s has no Library: property.", path);
+  end;
+  if (empty?(lid-files(lid)))
+    vprint("LID file %s has no Files: property.", path);
+  end;
+  lid
+end function;
 
 // Parse the contents of `path` into `lid`. Every LID keyword is
 // turned into a symbol and used as the table key, and the data
@@ -483,20 +527,21 @@ define function parse-lid-file-into (path :: <file-locator>, lid :: <table>) => 
       end;
     end while;
   end;
-  if (~element(lid, #"library", default: #f))
-    workspace-error("LID file %s has no Library: property.", path);
-  end;
-  if (empty?(lid-files(lid)))
-    vprint("LID file %s has no Files: property.", path);
-  end;
   lid
 end function;
 
+define function single-valued-key (lid :: <table>, key :: <symbol>) => (value)
+  let val = elt(lid, key, or: #f);
+  val & ~empty?(val) & val[0]
+end;
+
 define function lid-files (lid :: <table>) => (files :: <seq>)
-  element(lid, #"files", default: #f)
+  // Technically this should go to arbitrary depth.
+  // Don't want to worry about cycles right now....
+  elt(lid, #"files", or: #f)
   | begin
-      let sub = element(lid, #"LID", default: #f);
-      (sub & element(sub, #"files", default: #f))
+      let sub = elt(lid, #"LID", or: #f);
+      (sub & elt(sub, #"files", or: #f))
         | #[]
     end
-end;
+end function;

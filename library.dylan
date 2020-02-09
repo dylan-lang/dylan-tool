@@ -28,8 +28,9 @@ define module workspaces
               <file-locator>,
               <locator>,
               locator-as-string,
+              locator-base,
               locator-directory,
-              locator-name,
+              locator-extension,
               locator-path,
               merge-locators,
               relative-locator,
@@ -50,15 +51,17 @@ define module workspaces
               read-to-end,
               write };
   use strings,
-    import: { lowercase,
-              starts-with?,
+    // Trying out some alternative names for these...
+    import: { char-compare-ic => char-icompare,
               ends-with?,
-              string-equal? => str=,
-              string-equal-ic? => istr=,
+              lowercase,
+              starts-with?,
+              string-equal? => string=?,
+              string-equal-ic? => istring=?,
               strip };
   use uncommon-dylan;
   use uncommon-utils,
-    import: { err, iff, inc!, slice };
+    import: { elt, err, iff, inc!, slice };
 
   export
     <workspace>,
