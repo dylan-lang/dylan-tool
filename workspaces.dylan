@@ -9,6 +9,8 @@ synopsis: Manage developer workspaces
 //   other output.
 // * LID parsing shouldn't map every key to a sequence; only those that have
 //   continuation lines, like Files:.
+// * The output is extremely verbose (including git output), making it easy
+//   to miss the important bits.
 
 // The class of errors explicitly signalled by this module.
 define class <workspace-error> (<simple-error>)
@@ -118,6 +120,8 @@ define class <workspace> (<object>)
     required-init-keyword: active:;
   constant slot workspace-directory :: <directory-locator>,
     required-init-keyword: workspace-directory:;
+  constant slot workspace-registry :: <registry>,
+    required-init-keyword: registry:;
 end;
 
 define function load-workspace (filename :: <string>) => (w :: <workspace>)
@@ -130,15 +134,17 @@ define function load-workspace (filename :: <string>) => (w :: <workspace>)
     let object = json/parse(stream, strict?: #f, table-class: <istring-table>);
     if (~instance?(object, <table>))
       workspace-error("Invalid workspace file %s, must be a single JSON object", path);
-    elseif (~elt(object, "active", or: #f))
+    elseif (~element(object, "active", default: #f))
       workspace-error("Invalid workspace file %s, missing required key 'active'", path);
     elseif (~instance?(object["active"], <table>))
       workspace-error("Invalid workspace file %s, the 'active' element must be a map"
                         " from package name to {...}.", path);
     end;
+    let registry = make(<registry>, root-directory: locator-directory(path));
     make(<workspace>,
          active: object["active"],
-         workspace-directory: locator-directory(path))
+         workspace-directory: locator-directory(path),
+         registry: registry)
   end
 end;
 
@@ -159,10 +165,9 @@ define function workspace-file
 end;
 
 // TODO: Put something like this in system:file-system?  It seems
-// straight-forward once you figure it out, but it took a few tries to
-// figure out that root-directories returned locators, not strings,
-// and it seems to depend on locators being ==, which I'm not even
-// sure of. It seems to work.
+// straight-forward once you figure it out, but it took a few tries to figure
+// out that root-directories returned locators, not strings, and it seems to
+// depend on locators being ==, which I'm not even sure of. It seems to work.
 define function root-directory? (loc :: <locator>)
   member?(loc, fs/root-directories())
 end;
@@ -184,10 +189,6 @@ end;
 
 define function active-package? (ws :: <workspace>, pkg-name :: <string>) => (_ :: <bool>)
   member?(pkg-name, ws.active-package-names, test: istring=?)
-end;
-
-define function registry-directory (ws :: <workspace>) => (d :: <directory-locator>)
-  subdirectory-locator(ws.workspace-directory, "registry")
 end;
 
 // Download active packages into the workspace directory if the
@@ -252,17 +253,17 @@ define function find-active-package
       end
 end;
 
-// Create/update a single registry directory having an entry for each
-// library in each active package and all transitive dependencies.
-// This traverses package directories to find .lid files. Note that it
-// assumes that .lid files that have no "Platforms:" section are
-// generic, and writes a registry file for them.
+// Create/update a single registry directory having an entry for each library
+// in each active package and all transitive dependencies.  This traverses
+// package directories to find .lid files. Note that it assumes that .lid files
+// that have no "Platforms:" section are generic, and writes a registry file
+// for them.
 define function update-registry (ws :: <workspace>)
   for (pkg-name in ws.active-package-names)
     let pkg = find-active-package(ws, pkg-name);
     if (pkg)
       let pkg-dir = active-package-directory(ws, pkg-name);
-      update-registry-for-directory(ws, pkg-dir);
+      update-for-directory(ws.workspace-registry, pkg-dir);
       pm/do-resolved-deps(pkg, curry(update-registry-for-package, ws));
     else
       print("WARNING: No package definition found for active package %s."
@@ -284,264 +285,5 @@ define function update-registry-for-package (ws, pkg, dep, installed?)
                 else
                   pm/source-directory(pkg)
                 end;
-  update-registry-for-directory(ws, pkg-dir);
+  update-for-directory(ws.workspace-registry, pkg-dir);
 end;
-
-define constant $path-key = #"__path";
-
-// Find all the LID files in `pkg-dir` that are marked as being for
-// the current platform and create registry files for the
-// corresponding libraries. First do a pass over the entire directory
-// reading lid files, then write registry files for the ones that
-// aren't included in other LID files. (This avoids writing the same
-// registry file twice for the same library without resorting to
-// putting "Platforms: none" in LID files that are included in other
-// LID files.)
-define function update-registry-for-directory (ws :: <workspace>, pkg-dir :: <directory-locator>)
-  let lib2lid = find-libraries(pkg-dir);
-  // For each library, write a LID if there's one explicitly for this platform,
-  // or there's one with no Platforms: specified at all.
-  let platform = as(<string>, os/$platform-name);
-  for (lids keyed-by lib in lib2lid)
-    let candidates = #();
-    block (done)
-      for (lid in lids)
-        if (lid-has-platform?(lid, platform)) // TODO: rename to lid-has-platform?.
-          candidates := list(lid);
-          done();
-        elseif (~elt(lid, #"platforms", or: #f))
-          candidates := pair(lid, candidates);
-        end;
-      end;
-    end block;
-    select (candidates.size)
-      0 => #f;  // Nothing for this platform.
-      1 => update-registry-for-lid(ws, candidates[0]);
-      otherwise =>
-        print("WARNING: For library %s multiple .lid files apply to platform %s.\n"
-                "  %s\nRegistry will point to the first one, arbitrarily.",
-              lib, platform,
-              join(candidates, "\n  ", key: method (lid)
-                                              as(<string>, lid[$path-key])
-                                            end));
-        update-registry-for-lid(ws, candidates[0]);
-    end select;
-  end for;
-end function;
-
-// Descend pkg-dir finding .lid, .hdp, or .spec files. Return a map from library names to
-// parsed lid files (tables mapping lid keywords to values). .hdp files are (I believe)
-// obsolecent so the .lid file is preferred. For .spec files the corresponding .hdp file
-// doesn't exist so the table returned for it just maps #"library" to the library name.
-define function find-libraries (pkg-dir :: <directory-locator>) => (lib2lid :: <istring-table>)
-  let lib2lid = make(<istring-table>);  // library-name => list(lid-data)
-  let lib2ext = make(<istring-table>);  // library-name => #"lid" or #"hdp"
-  local
-    method parse-lid (lid-path)
-      let lid = parse-lid-file(lid-path);
-      let lib = single-valued-key(lid, #"library");
-      if (~lib)
-        print("Skipping %s, it has no Library: line.", lid-path);
-      else
-        let ext = locator-extension(lid-path);
-        let old = elt(lib2ext, lib, or: #f);
-        if (ext = #"hdp" & old = #"lid")
-          print("Skipping %s, preferring previous .lid file.", lid-path);
-        else
-          let lids = elt(lib2lid, lib, or: #[]);
-          lib2lid[lib] := add(lids, lid);
-          lib2ext[lib] := ext;
-        end;
-      end;
-    end method,
-    method parse-spec (spec-path)
-      let spec = parse-lid-file-into(spec-path, make(<table>));
-      let origin = elt(spec, #"origin", or: #[""])[0];
-      if (istring=?(origin, "omg-idl"))
-        // Generate "protocol", "skeletons", and "stubs" registries for CORBA projects.
-        // The sources for these projects won't exist until generated by the build.
-        // Assume .../foo.idl generates .../stubs/foo-stubs.hdp etc.
-        let prefix = elt(spec, #"prefix", or: "");
-        if (~empty?(prefix))
-          prefix := concat(prefix, "-");
-        end;
-        let base-dir = locator-directory(spec-path);
-        let idl-path = merge-locators(as(<file-locator>, spec[#"idl-file"][0]), base-dir);
-        let idl-name = locator-base(idl-path);
-        for (kind in #("protocol", "skeletons", "stubs"))
-          let spec-val = elt(spec, as(<symbol>, kind), or: "");
-          if (istring=?("yes", spec-val))
-            let lib-name = concat(prefix, kind);
-            let hdp-file = as(<file-locator>, concat(kind, "/", idl-name, "-", kind, ".hdp"));
-            let hdp-path = merge-locators(as(<file-locator>, hdp-file),
-                                          locator-directory(idl-path));
-            let lid-data = begin
-                             let t = make(<table>);
-                             t[#"library"] := lib-name;
-                             t[$path-key] := hdp-path;  // file may not exist
-                           end;
-            lib2lid[lib-name] := lid-data;
-          end;
-        end for;
-      end if;
-    end method,
-    method parse-lids (dir, name, type)
-      select (type)
-        #"file" =>
-          select (name by rcurry(ends-with?, test: char-icompare))
-            ".lid", ".hdp"
-              => parse-lid(merge-locators(as(<file-locator>, name), dir));
-            ".spec"
-              => parse-spec(merge-locators(as(<file-locator>, name), dir));
-            otherwise
-              => #f;
-          end;
-        #"directory" =>
-          // Skip git submodules; their use is a vestige of
-          // pre-package manager setups and it causes registry
-          // entries to be written twice. We don't want the
-          // submodule library, we want the package library.
-          let subdir = subdirectory-locator(dir, name);
-          if (name ~= ".git" & ~git-submodule?(subdir))
-            fs/do-directory(parse-lids, subdir);
-          end;
-        #"link" => #f;
-      end select;
-    end method;
-  fs/do-directory(parse-lids, pkg-dir);
-  lib2lid
-end function;
-
-define function git-submodule? (dir :: <directory-locator>) => (_ :: <bool>)
-  let dot-git = merge-locators(as(<file-locator>, ".git"), dir);
-  fs/file-exists?(dot-git)
-end;
-
-define function update-registry-for-lid (ws :: <workspace>, lid :: <table>)
-  let lid-path :: <file-locator> = lid[$path-key];
-  let platform = as(<string>, os/$platform-name);
-  let directory = subdirectory-locator(ws.registry-directory, platform);
-  // The registry file must be written in lowercase so that on unix systems the
-  // compiler can find it.
-  let lib = lowercase(lid[#"library"][0]);
-  let reg-file = merge-locators(as(<file-locator>, lib), directory);
-  let relative-path = relative-locator(lid-path, ws.workspace-directory);
-  let new-content = format-to-string("abstract:/" "/dylan/%s\n", relative-path);
-  let old-content = file-content(reg-file);
-  if (new-content ~= old-content)
-    fs/ensure-directories-exist(reg-file);
-    fs/with-open-file(stream = reg-file, direction: #"output", if-exists?: #"overwrite")
-      write(stream, new-content);
-    end;
-    print("Wrote %s (%s)", reg-file, lid-path);
-  end;
-end function;
-
-define function lid-has-platform? (lid :: <table>, platform :: <string>) => (b :: <bool>)
-  let platforms = elt(lid, #"platforms", or: #[]);
-  member?(platform, platforms, test: istring=?)
-end;
-
-// Read the full contents of a file and return it as a string.  If the
-// file doesn't exist return #f. (I thought if-does-not-exist: #f was
-// supposed to accomplish this without the need for block/exception.)
-define function file-content (path :: <locator>) => (s :: false-or(<string>))
-  block ()
-    fs/with-open-file(stream = path, if-does-not-exist: #"signal")
-      read-to-end(stream)
-    end
-  exception (fs/<file-does-not-exist-error>)
-    #f
-  end
-end function;
-
-define constant $keyword-line-regex = #:regex:"^([a-zA-Z0-9-]+):[ \t]+(.+)$";
-
-// Parse the contents of `path` into a newly created `<table>` and
-// return the table.
-define function parse-lid-file (path :: <file-locator>) => (lid :: <table>)
-  let lid = parse-lid-file-into(path, make(<table>));
-  if (~elt(lid, #"library", or: #f))
-    workspace-error("LID file %s has no Library: property.", path);
-  end;
-  if (empty?(lid-files(lid)))
-    vprint("LID file %s has no Files: property.", path);
-  end;
-  lid
-end function;
-
-// Parse the contents of `path` into `lid`. Every LID keyword is
-// turned into a symbol and used as the table key, and the data
-// associated with that keyword is stored as a vector of strings, even
-// if it is known to accept only a single value. There is one
-// exception: the keyword "LID:" is recursively parsed into another
-// `<table>` and included directly. For example,
-//
-//   #"library" => #["http"]
-//   #"files"   => #["foo.dylan", "bar.dylan"]
-//   #"LID"     => {<table>}
-//
-// The `path` is stored in the table under the key `$path-key`.
-define function parse-lid-file-into (path :: <file-locator>, lid :: <table>) => (lid :: <table>)
-  lid[$path-key] := path;
-  let line-number = 0;
-  let prev-key = #f;
-  fs/with-open-file(stream = path)
-    let line = #f;
-    while (line := read-line(stream, on-end-of-stream: #f))
-      inc!(line-number);
-      if (strip(line) ~= ""     // tolerate blank lines
-            & ~starts-with?(strip(line), "/" "/"))
-        if (starts-with?(line, " ") | starts-with?(line, "\t"))
-          // Continuation line
-          if (prev-key)
-            let value = strip(line);
-            if (~empty?(value))
-              lid[prev-key] := add!(lid[prev-key], value);
-            end;
-          else
-            vprint("Skipped unexpected continuation line %s:%d", path, line-number);
-          end;
-        else
-          // Keyword line
-          let (whole, keyword, value) = re/search-strings($keyword-line-regex, line);
-          if (whole)
-            value := strip(value);
-            // TODO: can as(<symbol>) err?  I should just use strings and ignore case.
-            let key = as(<symbol>, keyword);
-            if (key = #"LID")
-              // Note that we parse included LIDs twice. Once when the
-              // directory traversal finds them directly and once
-              // here. It's not worth optimizing.
-              let sub-path = merge-locators(as(<file-locator>, value), locator-directory(path));
-              lid[#"LID"] := parse-lid-file-into(sub-path, make(<table>));
-              prev-key := #f;
-            else
-              lid[key] := vector(value);
-              prev-key := key;
-            end;
-          else
-            vprint("Skipped invalid syntax line %s:%d: %=", path, line-number, line);
-          end;
-        end;
-      end;
-    end while;
-  end;
-  lid
-end function;
-
-define function single-valued-key (lid :: <table>, key :: <symbol>) => (value)
-  let val = elt(lid, key, or: #f);
-  val & ~empty?(val) & val[0]
-end;
-
-define function lid-files (lid :: <table>) => (files :: <seq>)
-  // Technically this should go to arbitrary depth.
-  // Don't want to worry about cycles right now....
-  elt(lid, #"files", or: #f)
-  | begin
-      let sub = elt(lid, #"LID", or: #f);
-      (sub & elt(sub, #"files", or: #f))
-        | #[]
-    end
-end function;

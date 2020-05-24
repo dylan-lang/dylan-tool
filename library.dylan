@@ -61,7 +61,7 @@ define module workspaces
               strip };
   use uncommon-dylan;
   use uncommon-utils,
-    import: { elt, err, iff, inc!, slice };
+    import: { err, iff, inc!, slice };
 
   export
     <workspace>,
