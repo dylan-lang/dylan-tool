@@ -257,7 +257,8 @@ end;
 // in each active package and all transitive dependencies.  This traverses
 // package directories to find .lid files. Note that it assumes that .lid files
 // that have no "Platforms:" section are generic, and writes a registry file
-// for them.
+// for them (unless they're included in another LID file via the LID: keyword,
+// in which case it is assumed they're for inclusion only).
 define function update-registry (ws :: <workspace>)
   for (pkg-name in ws.active-package-names)
     let pkg = find-active-package(ws, pkg-name);

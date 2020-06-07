@@ -3,8 +3,10 @@ module: dylan-user
 define library workspaces
   use collections,
     import: { table-extensions };
+  use dylan,
+    import: { dylan-extensions };
   use io,
-    import: { format, standard-io, streams };
+    import: { format, print, standard-io, streams };
   use json;
   use pacman;
   use regular-expressions;
@@ -17,6 +19,8 @@ define library workspaces
 end;
 
 define module workspaces
+  use dylan-extensions,
+    import: { address-of };
   use file-system,
     prefix: "fs/";
   use format,
@@ -39,6 +43,8 @@ define module workspaces
     prefix: "os/";
   use pacman,
     prefix: "pm/";
+  use print,
+    import: { print-object };
   use regular-expressions,
     import: { regex-parser },      // #:regex:"..."
     rename: { regex-search-strings => re/search-strings };

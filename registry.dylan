@@ -18,26 +18,30 @@ define class <registry> (<object>)
   // A map from library names to sequences of <lid>s.
   constant slot lids-by-library :: <istring-table> = make(<istring-table>);
 
-  // A map from locator to the associated <lid>.
-  constant slot lids-by-locator :: <istring-table> = make(<istring-table>);
+  // A map from full absolute pathname to the associated <lid>.
+  constant slot lids-by-pathname :: <istring-table> = make(<istring-table>);
 end class;
 
 define function has-lid?
     (registry :: <registry>, path :: <file-locator>) => (_ :: <bool>)
-  element(registry.lids-by-locator, as(<string>, path), default: #f)
+  element(registry.lids-by-pathname, as(<string>, path), default: #f) & #t
 end function;
 
 // Find a <lid> in `registry` that was parsed from `path`.
 define function lid-for-path
     (registry :: <registry>, path :: <file-locator>)
  => (lid :: false-or(<lid>))
-  element(registry.lids-by-locator, path, default: #f)
+  element(registry.lids-by-pathname, as(<string>, path), default: #f)
 end function;
 
 define function add-lid
     (registry :: <registry>, lid :: <lid>) => ()
-  registry.lids-by-library[lid-value(lid, #"library")] := lid;
-  registry.lids-by-locator[lid.lid-locator] := lid
+  let library-name = lid-value(lid, #"library");
+  let v = element(registry.lids-by-library, library-name, default: #f);
+  v := v | make(<stretchy-vector>);
+  add-new!(v, lid);
+  registry.lids-by-library[library-name] := v;
+  registry.lids-by-pathname[as(<string>, lid.lid-locator)] := lid;
 end function;
 
 // Return a file locator for the library named by `lid`.
@@ -69,31 +73,37 @@ define class <lid> (<object>)
   constant slot lid-included-in :: <seq> = make(<stretchy-vector>);
 end class;
 
-define constant <lid-value> = type-union(<string>, <lid>, singleton(#f));
+define method print-object
+    (lid :: <lid>, stream :: <stream>) => ()
+  format(stream, "#<lid %= %=>", lid-value(lid, #"library"), address-of(lid));
+end method;
 
 define function lid-values
     (lid :: <lid>, key :: <symbol>) => (_ :: false-or(<seq>))
   element(lid.lid-data, key, default: #f)
 end function;
 
+// The potential types that may be returned from lid-value.
+define constant <lid-value> = type-union(<string>, <lid>, singleton(#f));
+
 define function lid-value
     (lid :: <lid>, key :: <symbol>, #key error? :: <bool>) => (v :: <lid-value>)
-  let lines = element(lid.lid-data, key, default: #f);
-  if (lines.size = 1)
-    lines[0]
+  let items = element(lid.lid-data, key, default: #f);
+  if (items & items.size = 1)
+    items[0]
   elseif (error?)
     error(make(<registry-error>,
                format-string: "A single value was expected for key %=. Got %=. LID: %s",
-               format-arguments: list(key, lines, lid.lid-locator)))
+               format-arguments: list(key, items, lid.lid-locator)))
   end
 end function;
 
-define function lid-has-key?
+define function has-key?
     (lid :: <lid>, key :: <symbol>) => (_ :: <bool>)
-  element(lid.lid-data, key, default: #f)
+  element(lid.lid-data, key, default: #f) & #t
 end function;
 
-define function lid-has-value?
+define function has-key-value?
     (lid :: <lid>, key :: <symbol>, value :: <string>) => (_ :: <bool>)
   member?(value, lid-values(lid, key) | #[], test: istring=?)
 end function;
@@ -130,10 +140,10 @@ define function update-for-directory
     let candidates = #();
     block (done)
       for (lid :: <lid> in lids)
-        if (lid-has-value?(lid, #"platform", current-platform))
+        if (has-key-value?(lid, #"platform", current-platform))
           candidates := list(lid);
           done();
-        elseif (~lid-has-key?(lid, #"platforms") & empty?(lid.lid-included-in))
+        elseif (~has-key?(lid, #"platforms") & empty?(lid.lid-included-in))
           candidates := pair(lid, candidates);
         end;
       end;
@@ -162,7 +172,6 @@ end function;
 // be fixed for Windows at some point.
 define function find-libraries
     (registry :: <registry>, pkg-dir :: <directory-locator>) => ()
-  let lib2ext = make(<istring-table>);     // library-name => "lid" or "hdp"
   local
     method parse-lids (dir, name, type)
       select (type)
@@ -171,7 +180,7 @@ define function find-libraries
           if (~has-lid?(registry, lid-path))
             select (name by rcurry(ends-with?, test: char-icompare))
               ".lid", ".hdp"
-                => ingest-lid-file(registry, lid-path, lib2ext: lib2ext);
+                => ingest-lid-file(registry, lid-path);
               ".spec"
                 => ingest-spec-file(registry, lid-path);
               otherwise
@@ -193,11 +202,11 @@ define function find-libraries
   fs/do-directory(parse-lids, pkg-dir);
 end function;
 
-// Read a <lid> from `lid-path` and store it in `registry`.
-// `lib2ext` is a bit of a hack from refactoring into multiple functions.
-// It gives the ability to prefer a .lid over an .hdp for the same library.
+// Read a <lid> from `lid-path` and store it in `registry`.  Returns a the
+// <lid>, or #f if nothing ingested.
 define function ingest-lid-file
-    (registry :: <registry>, lid-path :: <file-locator>, #key lib2ext) => ()
+    (registry :: <registry>, lid-path :: <file-locator>)
+ => (lid :: false-or(<lid>))
   let lid = parse-lid-file(registry, lid-path);
   let library-name = lid-value(lid, #"library", error?: #t);
 
@@ -207,13 +216,30 @@ define function ingest-lid-file
 
   let ext :: <string> = locator-extension(lid-path);
   let ext = ext & lowercase(ext); // Windows
-  let old = lib2ext & element(lib2ext, library-name, default: #f);
-  if (ext = "hdp" & old = "lid")
+  if (skip-lid?(registry, lid))
     print("Skipping %s, preferring previous .lid file.", lid-path);
+    #f
   else
     add-lid(registry, lid);
-    lib2ext & (lib2ext[library-name] := ext);
-  end;
+    lid
+  end
+end function;
+
+// Returns true if `lid` has "hdp" extension and an existing LID in the same
+// directory has "lid" extension, since the hdp files are usually automatically
+// generated from the LID.
+define function skip-lid?
+    (registry :: <registry>, lid :: <lid>) => (skip? :: <bool>)
+  if (istring=?("hdp", lid.lid-locator.locator-extension))
+    let library-name = lid-value(lid, #"library", error?: #t);
+    let directory = lid.lid-locator.locator-directory;
+    let existing = choose(method (x)
+                            x.lid-locator.locator-directory = directory
+                          end,
+                          element(registry.lids-by-library, library-name, default: #[]));
+    existing.size = 1
+      & istring=?("lid", existing[0].lid-locator.locator-extension)
+  end
 end function;
 
 // Read a CORBA spec file and store a <lid> into `registry` for each of the
@@ -249,6 +275,7 @@ define function ingest-spec-file
                                data: begin
                                        let t = make(<table>);
                                        t[#"library"] := vector(lib-name);
+                                       t
                                      end));
       end;
     end for;
@@ -332,7 +359,9 @@ define function parse-lid-file
               // LID files may be encountered twice: once when the directory
               // traversal finds them directly and once here.
               let sub-path = merge-locators(as(<file-locator>, value), locator-directory(path));
-              let sub-lid = lid-for-path(registry, sub-path) | parse-lid-file(registry, sub-path);
+              let sub-lid = lid-for-path(registry, sub-path);
+              let pre-existing? = sub-lid & #t; // TODO: delete
+              sub-lid := sub-lid | ingest-lid-file(registry, sub-path);
               lid.lid-data[#"LID"] := vector(sub-lid);
               add-new!(sub-lid.lid-included-in, lid);
               prev-key := #f;
