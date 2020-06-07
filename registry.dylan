@@ -360,7 +360,6 @@ define function parse-lid-file
               // traversal finds them directly and once here.
               let sub-path = merge-locators(as(<file-locator>, value), locator-directory(path));
               let sub-lid = lid-for-path(registry, sub-path);
-              let pre-existing? = sub-lid & #t; // TODO: delete
               sub-lid := sub-lid | ingest-lid-file(registry, sub-path);
               lid.lid-data[#"LID"] := vector(sub-lid);
               add-new!(sub-lid.lid-included-in, lid);
