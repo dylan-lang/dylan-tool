@@ -157,16 +157,27 @@ workspace directory for active package libraries but points to the
 installation directory, `${DYLAN}/pkg/...`, for all other
 dependencies.
 
-`dylan-tool` scans each active package for LID files and writes a
-registry file for each one, with two exceptions:
+`dylan-tool` scans each active package for LID files and writes a registry file
+for each one, with one exception: If the LID **is included** in another LID
+file and **does not** explicitly match the current platform via the
+`Platforms:` keyword, then no registry entry is written for that LID file.
+This effectively means that if you *include* a LID file in one
+platform-specific LID file then you must either create one LID file per
+platform for that library, or you must use the `Platforms:` keyword in the
+**included** LID file to specify all platforms that *don't* have a
+platform-specific LID file.
 
-1. If the .lid file has a Platforms: keyword in it and the current
-   platform (e.g., x86_64-linux) isn't one of the values listed. (If
-   there is no Platforms: keyword then the library is assumed to work
-   on all platforms.)
+For example, the `dylan` library itself has a `dylan-win32.lid` file so that it
+can specify some Windows resource files. `dylan-win32.lid` includes `dylan.lid`
+and has `Platforms: x86-win32`. Since there's nothing platform-specific for any
+other platform, creating 8 other platform-specific LID files would be
+cumbersome. Instead, `dylan.lid` just needs to say which platforms it
+explicitly applies to by adding this:
 
-1. If the .lid file is itself included in another LID file via the
-   LID: keyword.
+    Platforms: aarch-64-linux
+               arm-linux
+               x86_64-freebsd
+               ...etc, but not x86-win32...
 
 **Note:** If you use the same workspace directory on multiple
 platforms (e.g., a network mounted directory or shared by a virtual
