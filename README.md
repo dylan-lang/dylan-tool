@@ -1,5 +1,8 @@
 # Dylan Tool
 
+[![Gitter](https://badges.gitter.im/dylan-lang/general.svg)](https://gitter.im/dylan-lang/general?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+
+
 ## Overview
 
 The `dylan-tool` simplifies the creation of Dylan workspaces and
