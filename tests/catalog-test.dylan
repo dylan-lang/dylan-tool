@@ -47,20 +47,7 @@ define function get-test-catalog () => (_ :: <catalog>)
   end
 end;
 
-define test catalog-test ()
-  // Okay, this is a shitty test, but what can I do?  We don't have an
-  // <ordered-dict> class, which would allow me to write the json back
-  // out to a string in a predictable way, remove whitespace, and then
-  // diff. We don't have an object differ. So for now I'll just spot
-  // check a few values.
-/*
-  let text = with-output-to-string (out)
-               write-json-catalog(cat1, out)
-             end;
-  let orig-stripped = choose(complement(whitespace?), $catalog-text);
-  let text-stripped = choose(complement(whitespace?), text);
-  assert-equal(orig-stripped, text-stripped);
-*/
+define test test-read-json-catalog ()
   let cat = get-test-catalog();
   assert-equal(#["http", "json"], sort(key-sequence(cat.entries)));
   let http = find-package(cat, "http", string-to-version("2.10.0"));
@@ -69,19 +56,19 @@ define test catalog-test ()
   assert-equal("opendylan", http.deps[2].package-name);
 end;
 
-define test find-latest-version-test ()
+define test test-find-latest-version ()
   let cat = get-test-catalog();
   let json = find-package(cat, "json", $latest);
   assert-true(json);
   assert-equal("3.1234.100", version-to-string(json.version));
 end;
 
-define test validate-dependencies-test ()
+define test test-validate-dependencies ()
   // needs more...
   assert-signals(<catalog-error>, validate-catalog(get-test-catalog()));
 end;
 
-define test load-catalog-test ()
+define test test-load-catalog ()
   // TODO: Need a way to make test data files available to the tests.
   // This test requires network access and an account on GitHub.
   assert-no-errors(load-catalog());
