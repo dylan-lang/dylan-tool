@@ -38,6 +38,7 @@ define module workspaces
               locator-path,
               merge-locators,
               relative-locator,
+              simplify-locator,
               subdirectory-locator };
   use operating-system,
     prefix: "os/";

@@ -7,6 +7,16 @@ end;
 
 //// REGISTRY
 
+// Keys used to lookup values in a parsed LID file.
+// TODO: use 'define enum' in uncommon-dylan
+define constant $platforms-key = #"platforms";
+define constant $files-key = #"files";
+define constant $library-key = #"library";
+define constant $lid-key = #"lid";
+define constant $origin-key = #"origin";
+define constant $idl-file-key = #"idl-file";
+define constant $prefix-key = #"prefix";
+
 // A <registry> knows how to find and parse LID files and write registry files
 // for them.
 define class <registry> (<object>)
@@ -36,7 +46,7 @@ end function;
 
 define function add-lid
     (registry :: <registry>, lid :: <lid>) => ()
-  let library-name = lid-value(lid, #"library");
+  let library-name = lid-value(lid, $library-key);
   let v = element(registry.lids-by-library, library-name, default: #f);
   v := v | make(<stretchy-vector>);
   add-new!(v, lid);
@@ -44,14 +54,14 @@ define function add-lid
   registry.lids-by-pathname[as(<string>, lid.lid-locator)] := lid;
 end function;
 
-// Return a file locator for the library named by `lid`.
+// Return a registry file locator for the library named by `lid`.
 define function registry-file-locator
     (registry :: <registry>, lid :: <lid>) => (_ :: <file-locator>)
   let platform = as(<string>, os/$platform-name);
   let directory = subdirectory-locator(registry.root-directory, "registry", platform);
   // The registry file must be written in lowercase so that on unix systems the
   // compiler can find it.
-  let lib = lowercase(lid-value(lid, #"library", error?: #t));
+  let lib = lowercase(lid-value(lid, $library-key, error?: #t));
   merge-locators(as(<file-locator>, lib), directory)
 end function;
 
@@ -75,7 +85,7 @@ end class;
 
 define method print-object
     (lid :: <lid>, stream :: <stream>) => ()
-  format(stream, "#<lid %= %=>", lid-value(lid, #"library"), address-of(lid));
+  format(stream, "#<lid %= %=>", lid-value(lid, $library-key), address-of(lid));
 end method;
 
 define function lid-values
@@ -113,10 +123,10 @@ end function;
 define function lid-files (lid :: <lid>) => (files :: <seq>)
   // TODO(cgay): Technically this should go to arbitrary depth.
   // Don't want to worry about cycles right now....
-  concat(lid-values(lid, #"files") | #[],
+  concat(lid-values(lid, $files-key) | #[],
          begin
-           let sub = lid-value(lid, #"LID");
-           (sub & lid-values(sub, #"files")) | #[]
+           let sub = lid-value(lid, $lid-key);
+           (sub & lid-values(sub, $files-key)) | #[]
          end)
 end function;
 
@@ -140,19 +150,21 @@ define function update-for-directory
     let candidates = #();
     block (done)
       for (lid :: <lid> in lids)
-        if (has-key-value?(lid, #"platform", current-platform))
+        if (has-key-value?(lid, $platforms-key, current-platform))
           candidates := list(lid);
           done();
-        elseif (~has-key?(lid, #"platforms") & empty?(lid.lid-included-in))
+        elseif (~has-key?(lid, $platforms-key) & empty?(lid.lid-included-in))
           candidates := pair(lid, candidates);
         end;
       end;
     end block;
     select (candidates.size)
-      0 => #f;  // Nothing for this platform.
+      0 =>
+        vprint("WARNING: For library %=, no LID candidates for platform %=.",
+               library-name, current-platform);
       1 => write-registry-file(registry, candidates[0]);
       otherwise =>
-        print("WARNING: For library %= multiple .lid files apply to platform %s.\n"
+        print("WARNING: For library %= multiple .lid files apply to platform %=.\n"
                 "  %s\nRegistry will point to the first one, arbitrarily.",
               library-name, current-platform,
               join(candidates, "\n  ", key: method (lid)
@@ -208,7 +220,7 @@ define function ingest-lid-file
     (registry :: <registry>, lid-path :: <file-locator>)
  => (lid :: false-or(<lid>))
   let lid = parse-lid-file(registry, lid-path);
-  let library-name = lid-value(lid, #"library", error?: #t);
+  let library-name = lid-value(lid, $library-key, error?: #t);
 
   if (empty?(lid-files(lid)))
     vprint("LID file %s has no 'Files' property", lid-path);
@@ -231,7 +243,7 @@ end function;
 define function skip-lid?
     (registry :: <registry>, lid :: <lid>) => (skip? :: <bool>)
   if (istring=?("hdp", lid.lid-locator.locator-extension))
-    let library-name = lid-value(lid, #"library", error?: #t);
+    let library-name = lid-value(lid, $library-key, error?: #t);
     let directory = lid.lid-locator.locator-directory;
     let existing = choose(method (x)
                             x.lid-locator.locator-directory = directory
@@ -247,21 +259,21 @@ end function;
 define function ingest-spec-file
     (registry :: <registry>, spec-path :: <file-locator>) => ()
   let spec :: <lid> = parse-lid-file(registry, spec-path);
-  let origin = lid-value(spec, #"origin", error?: #t);
+  let origin = lid-value(spec, $origin-key, error?: #t);
   if (istring=?(origin, "omg-idl"))
     // Generate "protocol", "skeletons", and "stubs" registries for CORBA projects.
     // The sources for these projects won't exist until generated by the build.
     // Assume .../foo.idl generates .../stubs/foo-stubs.hdp etc.
     let base-dir = locator-directory(spec-path);
     let idl-path = merge-locators(as(<file-locator>,
-                                     lid-value(spec, #"idl-file", error?: #t)),
+                                     lid-value(spec, $idl-file-key, error?: #t)),
                                   base-dir);
     let idl-name = locator-base(idl-path);
-    let prefix = lid-value(spec, #"prefix");
+    let prefix = lid-value(spec, $prefix-key);
     for (kind in #("protocol", "skeletons", "stubs"))
       // Unsure as to why the remote-nub-protocol library doesn't need
       // "protocol: yes" in its .lid file, but what the heck, just generate a
-      // registry for "protocol" always.
+      // registry entry for "protocol" always.
       if (kind = "protocol" | istring=?("yes", lid-value(spec, as(<symbol>, kind)) | ""))
         let lib-name = concat(prefix | idl-name, "-", kind);
         let hdp-file = as(<file-locator>, concat(prefix | idl-name, "-", kind, ".hdp"));
@@ -270,11 +282,14 @@ define function ingest-spec-file
                            kind);
         let hdp-dir = subdirectory-locator(locator-directory(idl-path), dir-name);
         let hdp-path = merge-locators(as(<file-locator>, hdp-file), hdp-dir);
+        let simple-hdp-path = simplify-locator(hdp-path);
+        vprint("  %s: hdp-path = %s", lib-name, hdp-path);
+        vprint("  %s: simple-hdp-path = %s", lib-name, simple-hdp-path);
         add-lid(registry, make(<lid>,
                                locator: hdp-path,
                                data: begin
                                        let t = make(<table>);
-                                       t[#"library"] := vector(lib-name);
+                                       t[$library-key] := vector(lib-name);
                                        t
                                      end));
       end;
@@ -355,13 +370,13 @@ define function parse-lid-file
             value := strip(value);
             // TODO: can as(<symbol>) err?  I should just use strings and ignore case.
             let key = as(<symbol>, keyword);
-            if (key = #"LID")
+            if (key = $lid-key)
               // LID files may be encountered twice: once when the directory
               // traversal finds them directly and once here.
               let sub-path = merge-locators(as(<file-locator>, value), locator-directory(path));
               let sub-lid = lid-for-path(registry, sub-path);
               sub-lid := sub-lid | ingest-lid-file(registry, sub-path);
-              lid.lid-data[#"LID"] := vector(sub-lid);
+              lid.lid-data[$lid-key] := vector(sub-lid);
               add-new!(sub-lid.lid-included-in, lid);
               prev-key := #f;
             else
