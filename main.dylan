@@ -4,12 +4,13 @@ Module: dylan-tool
 // * The 'list' subcommand is showing a random set of packages in my ws.all
 //   workspace.
 
-define function print (format-string, #rest args)
+define function print
+    (format-string, #rest args)
   apply(format, *stdout*, format-string, args);
   write(*stdout*, "\n");
   // OD doesn't currently have an option for flushing output after \n.
   flush(*stdout*);
-end;
+end function;
 
 // Create the #str:"..." syntax.
 define function str-parser (s :: <string>) => (s :: <string>) s end;
@@ -75,11 +76,9 @@ Notes:
         args.size = 2 | usage();
         let pkg-name = args[0];
         let vstring = args[1];
-        let pkg = pm/find-package(pm/load-catalog(), pkg-name, vstring);
-        if (~pkg)
-          error("Package %s not found.", pkg-name);
-        end;
-        pm/install(pkg);
+        let release = pm/find-package-release(pm/load-catalog(), pkg-name, vstring)
+          | error("Package %s not found.", pkg-name);
+        pm/install(release);
       "list" =>
         list-catalog(all?: member?("--all", args, test: istr=));
       "new" =>                  // Create a new workspace.
@@ -106,25 +105,26 @@ Notes:
     print("Error: %s", err);
     1
   end
-end function main;
+end function;
 
 // List installed package names, synopsis, versions, etc. If `all` is
 // true, show all packages. Installed and latest versions are shown.
-define function list-catalog (#key all? :: <bool>)
+define function list-catalog
+    (#key all? :: <bool>)
   let cat = pm/load-catalog();
   for (pkg-name in sort(pm/package-names(cat)))
     let versions = pm/installed-versions(pkg-name, head?: #f);
     let latest-installed = versions.size > 0 & versions[0];
-    let entry = pm/find-entry(cat, pkg-name);
-    let latest = pm/find-package(cat, pkg-name, pm/$latest);
+    let package = pm/find-package(cat, pkg-name);
+    let latest = pm/find-package-release(cat, pkg-name, pm/$latest);
     if (all? | latest-installed)
       print("%s (%s/%s) - %s",
             pkg-name,
             latest-installed | "-",
-            pm/version(latest),
-            pm/synopsis(entry));
+            pm/release-version(latest),
+            pm/package-synopsis(package));
     end;
   end;
-end;
+end function;
 
 exit-application(main());
