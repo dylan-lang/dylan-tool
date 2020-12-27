@@ -8,8 +8,6 @@ Synopsis: Dylan package manager
 
 define library pacman
   use common-dylan;
-  use collections,
-    import: { table-extensions };
   use system,
     import: { date, file-system, locators, operating-system };
   use io,
@@ -30,12 +28,19 @@ define module pacman
     <catalog-error>,
 
     <catalog>,
-    find-entry,
     find-package,
+    find-package-release,
     package-names,
 
-    <entry>,
-    versions, synopsis, description, contact, license-type, category, keywords,
+    <package>,
+    package-name,
+    package-releases,
+    package-synopsis,
+    package-description,
+    package-contact,
+    package-license-type,
+    package-category,
+    package-keywords,
 
     <package-error>,
     download,
@@ -44,27 +49,24 @@ define module pacman
     installed-versions,
     installed?,
     package-directory,
-    version-directory,
+    release-directory,
     source-directory,
     read-package-file,
 
-    <pkg>,
-    deps,
+    <release>,
+    release-deps,
+    release-location,
+    release-version,
     do-resolved-deps,
-    location,
-    name,
-    version,
     
     <dep>,
-    package-name,
-    version,
 
     <version>,
     $head,
     $latest,
-    major,
-    minor,
-    patch;
+    version-major,
+    version-minor,
+    version-patch;
 end module pacman;
 
 define module %pacman
@@ -98,7 +100,7 @@ define module %pacman
     import: { environment-variable => os/getenv,
               run-application => os/run };
   use print,
-    import: { print-object, *print-escape?* };
+    import: { print-object, printing-object, *print-escape?* };
   use regular-expressions,
     import: { <regex>,
               regex-parser,
@@ -112,9 +114,8 @@ define module %pacman
               lowercase,
               starts-with?,
               string-equal-ic? => istring= };
-  use table-extensions,
-    import: { table };
-  use uncommon-dylan;
+  use uncommon-dylan,
+    rename: { \table => \tabling };
   use uncommon-utils,
     import: { elt, iff, <singleton-object>, value-sequence };
 
@@ -122,8 +123,8 @@ define module %pacman
 
   // For the test suite.
   export
-    <dep-vec>,
-    entries,
+    <dep-vector>,
+    all-packages,
     string-parser,                 // #string:...
 
     string-to-version, version-to-string,
