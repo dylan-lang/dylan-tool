@@ -42,7 +42,7 @@ reinstall it.
 
     Dylan packages, including the
     [pacman-catalog](git@github.com:cgay/pacman-catalog) package which
-    describes where to find other packages, will be installed under
+    describes where to find other packages, are installed under
     `${DYLAN}/pkg/`.
 
     **Note:** Don't ever put files you want to keep in the
@@ -66,8 +66,8 @@ reinstall it.
     This creates the ws.strings directory and
     ws.strings/workspace.json.
 
-1.  Run `dylan-tool update` to download the active packages (strings
-    in this case), install their dependencies, and create a registry
+1.  Run `dylan-tool update` to download the active packages (the strings
+    package in this case), install their dependencies, and create a registry
     with everything you need:
 
         $ cd ws.strings
@@ -80,6 +80,11 @@ reinstall it.
     `dylan-tool update` at any time from anywhere inside the workspace
     directory. It will only write to the registry and download/install
     packages that haven't already been downloaded or installed.
+
+    **Note:** `dylan-tool update` does not currently update packages that are
+    at version "head". If you want the latest head version you must either use
+    `git pull` or delete the package directory and run `dylan-tool update`
+    again.
 
 1.  Build and run your code (still in the ws.strings directory):
 
@@ -102,11 +107,10 @@ update`. These are the steps:
 1.  Run `dylan-tool update` to install the deps and update the
     registry.
 
-You may run the `dylan-tool` command from anywhere inside the
-workspace directory tree; it will search up to find the
-"workspace.json" file.  In general you should invoke `dylan-compiler`
-in the top-level workspace directory so that all the active packages
-are built into the same "_build" directory and so that
+You may run the `dylan-tool` command from anywhere inside the workspace
+directory tree; it will search up to find the "workspace.json" file.  You must
+invoke `dylan-compiler` in the top-level workspace directory so that all the
+active packages are built into the same "_build" directory and so that
 `dylan-compiler` can find the auto-generated "registry" directory.
 
 ## The Workspace File
@@ -125,27 +129,25 @@ JSON object. Example:
 (**Note:** There are currently no options so each package name simply
 maps to an empty dictionary: `{}`.)
 
-The "active" attribute describes the set of packages under active
-development in this workspace. These packages will be cloned into the
-workspace directory rather than being searched for in the installed
-packages directory. (Git via SSH is currently assumed as the source
-control tool, and all repositories are currently on GitHub so you will
-need a GitHub account.)
+The "active" attribute describes the set of packages under active development
+in this workspace. These packages are cloned into the workspace directory
+rather than in `${DYLAN}/pkg`. (Git via SSH is currently assumed as the source
+control tool, and all repositories are currently on GitHub so you will need a
+GitHub account.)
 
 After initial checkout you may create a new branch or perform whatever
 git operations are necessary. If you decide to add a new dependency,
 just add it to the "deps" in `pkg.json` and run `dylan-tool update`
 again.
 
-Each key under "active" specifies a package that will be under active
-development. If you're working on existing packages then these should
-match the name of an existing package in the
-[Catalog](git@github.com:cgay/pacman-catalog), and if a subdirectory
-by this name doesn't exist in the workspace file's directory,
-`dylan-tool` will do the initial checkout for you. If you're creating
-a new package then you'll need to create the subdirectory yourself,
-create a `pkg.json` file inside it, and then run `dylan-tool update`
-and it will fetch the package's dependencies for you.
+Each key under "active" specifies a package under active development. If you're
+working on existing packages then these should match the name of an existing
+package in the [Catalog](https://github.com/cgay/pacman-catalog), and if a
+subdirectory by this name doesn't exist in the workspace file's directory,
+`dylan-tool` will do the initial checkout for you. If you're creating a new
+package then you'll need to create the subdirectory yourself, create a
+`pkg.json` file inside it, and then run `dylan-tool update` and it will fetch
+the package's dependencies for you.
 
 ## The Registry
 
@@ -208,8 +210,9 @@ Version 0.1.0 will primarily work with packages at HEAD since that's
 the way everyone currently expects to work on Dylan.  Better support
 for numbered versions can come later.
 
-* Provide a way to keep installed packages up-to-date. Make `dylan update`
-  prompt when update is needed, or provide a flag and just print a warning.
+* Provide a way to keep packages installed at version "head" up-to-date. Make
+  `dylan update` prompt when update is needed, or provide a flag and just print
+  a warning.
 
 * Improve output a bit. For example, don't display git clone output
   but do log all events somewhere for debugging purposes.
