@@ -15,70 +15,99 @@ end function;
 // Create the #str:"..." syntax.
 define function str-parser (s :: <string>) => (s :: <string>) s end;
 
-define function main () => (status :: <int>)
-  let debug? = #f;
-  block (exit)
-    // TODO: command parsing is ad-hoc because command-line-parser
-    //       doesn't do well with subcommands. Needs improvement.
-    let app = locator-name(as(<file-locator>, application-name()));
-    local method usage (#key status :: <int> = 2)
-            print(#:str:`Usage:
-%s install <pkg> <version>
+/*
+define command-line <dylan-tool-command-line> ()
+  usage "dylan-tool [options] subcommand [options] [args]";
+  help "...longer help message here...";
+
+  option verbose? :: <boolean>,
+    names: #("v", "verbose");
+
+  subcommand install ()
+    help "Install a package into ${DYLAN}/pkg.";
+    option force? :: <boolean>,
+      default: #t,
+      help: "blah blah";
+    option version :: <version>,
+      default: "latest",
+      help: "blah blah";
+    parameter package :: <string>,
+      required?: #t, // default = #t
+      repeated?: #f, // default = #f
+      help "A number of the form 1.2.3, 'latest' to install the latest"
+              " numbered version, or 'head'.";
+  subcommand list ()
+    option all? :: <boolean>,
+      default: #f;
+end command-line;
+*/
+define function make-command-line-parser () => (p :: <command-line-parser>)
+  make(<command-line-parser>,
+       // global options available to all commands
+       options: list(make(<flag-option>, names: #("verbose")),
+                     make(<flag-option>, names: #("debug"))),
+       subcommands:
+         vector(make(<subcommand>,
+                     name: "install",
+                     min-positional-arguments: 1,
+                     options: list(make(<parameter-option>,
+                                        // TODO: type: <version>
+                                        names: #("version", "v"))),
+                     help: #:str:"%app install [options] <pkg> ...
     Install a package into ${DYLAN}/pkg. <version> may be a version
     number of the form 1.2.3, 'latest' to install the latest numbered
-    version, or 'head'.
-
-%s list [--all]
+    version, or 'head'."),
+                make(<subcommand>,
+                     name: "list",
+                     max-positional-arguments: 0,
+                     options: list(make(<flag-option>,
+                                        names: #("all", "a"))),
+                     help: #:str:"%app list [--all]
     List installed packages. With --all, list all packages in the
     catalog along with the latest available version. (grep is your
-    friend here.)
-
-%s new <workspace> <pkg>...
+    friend here.)"),
+                make(<subcommand>,
+                     name: "new",
+                     min-positional-arguments: 2,
+                     help: #:str:"%app new <workspace> <pkg>...
     Create a new workspace with the specified active packages. If the
     single package 'all' is specified the workspace will contain all
-    packages found in the package catalog.
-
-%s update [--update-head]
+    packages found in the package catalog."),
+                make(<subcommand>,
+                     name: "update",
+                     max-positional-arguments: 0,
+                     options: list(make(<flag-option>,
+                                        names: #("update-head"))),
+                     help: #:str:{%app update [--update-head]
     Bring the current workspace up-to-date with the workspace.json file.
     Install dependencies and update the registry for any new .lid files.
     If --update-head is provided, the latest changes are fetched for
-    packages that are installed at version "head".
+    packages that are installed at version "head".}),
+                make(<subcommand>,
+                     name: "workspace-dir",
+                     min-positional-arguments: 1,
+                     max-positional-arguments: 1,
+                     help: #:str:"%app workspace-dir
+    Print the pathname of the workspace directory.")))
+end function;
 
-%s workspace-dir
-    Print the pathname of the workspace directory.
-
-Notes:
-  A --verbose flag may be added (anywhere) to see more detailed output.
-`, app, app, app, app, app, app, app);
-            exit(status);
-          end;
-    let args = application-arguments();
-    if (args.size = 0
-          | member?("--help", args, test: istr=)
-          | member?("-h", args, test: istr=))
-      usage(status: 0);
-    end;
-    let subcmd = args[0];
-    let args = slice(args, 1, #f);
-    if (member?("--debug", args, test: istr=))
-      args := remove(args, "--debug", test: istr=);
-      debug? := #t;
-    end;
-    let verbose? = #f;
-    if (member?("--verbose", args, test: istr=))
-      args := remove(args, "--verbose", test: istr=);
-      verbose? := #t;
-    end;
+define function main () => (status :: <int>)
+  let parser = make-command-line-parser();
+  block (exit)
+    parse-command-line(parser, application-arguments());
+    let debug? = get-option-value(parser, "debug");
+    let verbose? = get-option-value(parser, "verbose");
+    let subcommand = parser-subcommand(parser);
+    select (subcommand.command-name by \=)
     ws/configure(verbose?: verbose?, debug?: debug?);
     select (subcmd by istr=)
       "install" =>
-        // Install a specific package.
-        args.size = 2 | usage();
-        let pkg-name = args[0];
-        let vstring = args[1];
-        let release = pm/find-package-release(pm/load-catalog(), pkg-name, vstring)
-          | error("Package %s not found.", pkg-name);
-        pm/install(release);
+        for (package-name in subcmd.positional-arguments)
+          let vstring = get-option-value(subcmd, "version") | "latest";
+          let release = pm/find-package-release(pm/load-catalog(), package-name, vstring)
+            | error("package %= not found", package-name);
+          pm/install(release);
+        end;
       "list" =>
         list-catalog(all?: member?("--all", args, test: istr=));
       "new" =>                  // Create a new workspace.

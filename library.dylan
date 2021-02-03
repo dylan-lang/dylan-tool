@@ -1,6 +1,7 @@
 Module: dylan-user
 
 define library dylan-tool
+  use command-line-parser;
   use io,
     import: { format, standard-io, streams };
   use json;
@@ -15,6 +16,7 @@ define library dylan-tool
 end;
 
 define module dylan-tool
+  use command-line-parser;
   use file-system,
     prefix: "fs/";
   use format,
