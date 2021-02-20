@@ -12,8 +12,8 @@ define function print
   flush(*stdout*);
 end function;
 
-// Create the #str:"..." syntax.
-define function str-parser (s :: <string>) => (s :: <string>) s end;
+// Create the #str:"..." syntax. (Unused for now.)
+//define function str-parser (s :: <string>) => (s :: <string>) s end;
 
 /*
 define command-line <dylan-tool-command-line> ()
@@ -41,100 +41,119 @@ define command-line <dylan-tool-command-line> ()
       default: #f;
 end command-line;
 */
-define function make-command-line-parser () => (p :: <command-line-parser>)
+define class <install-subcommand> (<subcommand>)
+  keyword name = "install";
+  keyword help = "Install Dylan packages.";
+end class;
+
+define class <new-subcommand> (<subcommand>)
+  keyword name = "new";
+  keyword help = "Create a new workspace with the given packages.";
+end class;
+
+define class <update-subcommand> (<subcommand>)
+  keyword name = "update";
+  keyword help = "Bring the current workspace up-to-date with the workspace.json file.";
+end class;
+
+define class <list-subcommand> (<subcommand>)
+  keyword name = "list";
+  keyword help = "List installed Dylan packages.";
+end class;
+
+define class <workspace-dir-subcommand> (<subcommand>)
+  keyword name = "workspace-dir";
+  keyword help = "Print the pathname of the workspace directory.";
+end class;
+
+define function make-command-line-parser
+    () => (p :: <command-line-parser>)
   make(<command-line-parser>,
-       // global options available to all commands
-       options: list(make(<flag-option>, names: #("verbose")),
-                     make(<flag-option>, names: #("debug"))),
+       help: "Tool to maintain Dylan dev workspaces and installed packages.",
+       options: list(make(<flag-option>,
+                          name: "verbose",
+                          help: "Generate more verbose output."),
+                     make(<flag-option>,
+                          name: "debug",
+                          help: "Enter the debugger (or print a backtrace) on error.")),
        subcommands:
-         vector(make(<subcommand>,
-                     name: "install",
-                     min-positional-arguments: 1,
-                     options: list(make(<parameter-option>,
-                                        // TODO: type: <version>
-                                        names: #("version", "v"))),
-                     help: #:str:"%app install [options] <pkg> ...
-    Install a package into ${DYLAN}/pkg. <version> may be a version
-    number of the form 1.2.3, 'latest' to install the latest numbered
-    version, or 'head'."),
-                make(<subcommand>,
-                     name: "list",
-                     max-positional-arguments: 0,
-                     options: list(make(<flag-option>,
-                                        names: #("all", "a"))),
-                     help: #:str:"%app list [--all]
-    List installed packages. With --all, list all packages in the
-    catalog along with the latest available version. (grep is your
-    friend here.)"),
-                make(<subcommand>,
-                     name: "new",
-                     min-positional-arguments: 2,
-                     help: #:str:"%app new <workspace> <pkg>...
-    Create a new workspace with the specified active packages. If the
-    single package 'all' is specified the workspace will contain all
-    packages found in the package catalog."),
-                make(<subcommand>,
-                     name: "update",
-                     max-positional-arguments: 0,
-                     options: list(make(<flag-option>,
-                                        names: #("update-head"))),
-                     help: #:str:{%app update [--update-head]
-    Bring the current workspace up-to-date with the workspace.json file.
-    Install dependencies and update the registry for any new .lid files.
-    If --update-head is provided, the latest changes are fetched for
-    packages that are installed at version "head".}),
-                make(<subcommand>,
-                     name: "workspace-dir",
-                     min-positional-arguments: 1,
-                     max-positional-arguments: 1,
-                     help: #:str:"%app workspace-dir
-    Print the pathname of the workspace directory.")))
+         list(make(<install-subcommand>,
+                   options: list(make(<parameter-option>,
+                                      // TODO: type: <version>
+                                      names: #("version", "v"),
+                                      default: "latest",
+                                      help: "The version to install."),
+                                 make(<positional-option>,
+                                      name: "pkg",
+                                      repeated?: #t,
+                                      help: "Packages to install."))),
+              make(<list-subcommand>,
+                   options:
+                     list(make(<flag-option>,
+                               names: #("all", "a"),
+                               help: "List all packages whether installed or not."))),
+              make(<new-subcommand>,
+                   options: list(make(<positional-option>,
+                                      name: "name",
+                                      help: "Workspace directory name."),
+                                 make(<positional-option>,
+                                      name: "pkg",
+                                      repeated?: #t,
+                                      help: "Active packages to be added"
+                                        " to workspace file."))),
+              make(<update-subcommand>,
+                   options:
+                     list(make(<flag-option>,
+                               name: "pull",
+                               help: "Pull the latest code for packages that are"
+                                 " at version 'head'."))),
+              make(<workspace-dir-subcommand>)))
 end function;
 
-define function main () => (status :: <int>)
-  let parser = make-command-line-parser();
-  block (exit)
-    parse-command-line(parser, application-arguments());
-    let debug? = get-option-value(parser, "debug");
-    let verbose? = get-option-value(parser, "verbose");
-    let subcommand = parser-subcommand(parser);
-    select (subcommand.command-name by \=)
-    ws/configure(verbose?: verbose?, debug?: debug?);
-    select (subcmd by istr=)
-      "install" =>
-        for (package-name in subcmd.positional-arguments)
-          let vstring = get-option-value(subcmd, "version") | "latest";
-          let release = pm/find-package-release(pm/load-catalog(), package-name, vstring)
-            | error("package %= not found", package-name);
-          pm/install(release);
+define method execute-subcommand
+    (parser :: <command-line-parser>, subcmd :: <install-subcommand>)
+ => (status :: false-or(<int>))
+  for (package-name in get-option-value(subcmd, "pkg"))
+    let vstring = get-option-value(subcmd, "version");
+    let release = pm/find-package-release(pm/load-catalog(), package-name, vstring)
+      | begin
+          print("Package %= not found.", package-name);
+          abort-command(1);
         end;
-      "list" =>
-        list-catalog(all?: member?("--all", args, test: istr=));
-      "new" =>                  // Create a new workspace.
-        args.size >= 2 | usage();
-        let name = args[0];
-        let pkg-names = slice(args, 1, #f);
-        ws/new(name, pkg-names);
-        print("You may now run '%s update' in the new directory.", app);
-      "update" =>
-        if (args.size > 1 | (args.size = 1 & args[0] ~= "--update-head"))
-          usage();
-        end;
-        let update-head? = args.size = 1 & args[0] = "--update-head";
-        ws/update(update-head?: update-head?); // Update the workspace based on config file.
-      "workspace-dir" =>
-        // Needed for the Open Dylan Makefile.
-        print("%s", as(<string>, locator-directory(ws/workspace-file())));
-      otherwise =>
-        print("%= not recognized", subcmd);
-        usage();
-    end select;
-    0
-  exception (err :: <error>, test: method (_) ~debug? end)
-    print("Error: %s", err);
-    1
-  end
-end function;
+    pm/install(release);
+  end;
+end method;
+
+define method execute-subcommand
+    (parser :: <command-line-parser>, subcmd :: <list-subcommand>)
+ => (status :: false-or(<int>))
+  list-catalog(all?: get-option-value(subcmd, "all"))
+end method;
+
+define method execute-subcommand
+    (parser :: <command-line-parser>, subcmd :: <new-subcommand>)
+ => (status :: false-or(<int>))
+  let name = get-option-value(subcmd, "name");
+  let pkg-names = get-option-value(subcmd, "pkg");
+  ws/new(name, pkg-names);
+  print("You may now run '%s update' in the new directory.", application-name());
+end method;
+
+define method execute-subcommand
+    (parser :: <command-line-parser>, subcmd :: <update-subcommand>)
+ => (status :: false-or(<int>))
+  ws/configure(verbose?: get-option-value(parser, "verbose"),
+               debug?: get-option-value(parser, "debug"));
+  ws/update(update-head?: get-option-value(subcmd, "pull"));
+end method;
+
+define method execute-subcommand
+    (parser :: <command-line-parser>, subcmd :: <workspace-dir-subcommand>)
+ => (status :: false-or(<int>))
+  // Needed for the Open Dylan Makefile.
+  print("%s", as(<string>, locator-directory(ws/workspace-file())));
+end method;
+
 
 // List installed package names, synopsis, versions, etc. If `all` is
 // true, show all packages. Installed and latest versions are shown.
@@ -156,4 +175,18 @@ define function list-catalog
   end;
 end function;
 
-exit-application(main());
+define function main () => (status :: false-or(<int>))
+  let parser = make-command-line-parser();
+  block (exit)
+    parse-command-line(parser, application-arguments());
+    if (get-option-value(parser, "verbose"))
+      pm/set-verbose(#t);
+    end;
+    execute-command(parser);
+  exception (err :: <abort-command-error>)
+    print("%s", err);
+    exit-status(err)
+  end
+end function;
+
+exit-application(main() | 0);
