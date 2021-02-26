@@ -138,7 +138,7 @@ define method \<
                        & v1.version-patch < v2.version-patch)))
   end
 end method;
-  
+
 
 // A dependency on a specific version of a package. To depend on a specific, single
 // version of a package specify min-version = max-version.  If neither min- nor
@@ -258,7 +258,7 @@ end class;
 
 define function read-package-file
     (file :: <file-locator>) => (release :: false-or(<release>))
-  message("Reading package file %s\n", file);
+  verbose-message("Reading package file %s\n", file);
   block ()
     with-open-file (stream = file)
       let json = json/parse(stream, table-class: <istring-table>, strict?: #f);

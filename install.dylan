@@ -109,11 +109,11 @@ define method install
     install-deps(release, force?: force?);
   end;
   if (force? & installed?(release))
-    message("Deleting package %s for forced install.\n", release);
+    verbose-message("Deleting package %s for forced install.\n", release);
     delete-directory(release-directory(release), recursive?: #t);
   end;
   if (installed?(release))
-    message("Package %s is already installed.\n", release);
+    verbose-message("Package %s is already installed.\n", release);
   else
     download(release, source-directory(release));
     #t

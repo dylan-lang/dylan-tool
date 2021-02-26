@@ -24,6 +24,7 @@ end library pacman;
 
 define module pacman
   export
+    set-verbose,
     load-catalog,
     <catalog-error>,
 
@@ -58,7 +59,7 @@ define module pacman
     release-location,
     release-version,
     do-resolved-deps,
-    
+
     <dep>,
 
     <version>,
@@ -114,8 +115,7 @@ define module %pacman
               lowercase,
               starts-with?,
               string-equal-ic? => istring= };
-  use uncommon-dylan,
-    rename: { \table => \tabling };
+  use uncommon-dylan;
   use uncommon-utils,
     import: { elt, iff, <singleton-object>, value-sequence };
 

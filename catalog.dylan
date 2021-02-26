@@ -137,10 +137,10 @@ define function load-local-catalog
                  direction: #"input" /*,  I thought this was supposed to work:
                  if-does-not-exist: #f */)
     let (cat, num-packages, num-releases) = read-json-catalog(stream);
-    message("Loaded %d package%s with %d release%s from %s.\n",
-            num-packages, iff(num-packages == 1, "", "s"),
-            num-releases, iff(num-releases == 1, "", "s"),
-            path);
+    verbose-message("Loaded %d package%s with %d release%s from %s.\n",
+                    num-packages, iff(num-packages == 1, "", "s"),
+                    num-releases, iff(num-releases == 1, "", "s"),
+                    path);
     validate-catalog(cat);
     cat
   end
@@ -264,7 +264,7 @@ define method find-package-release
  => (p :: false-or(<release>))
   let package = find-package(cat, name);
   let releases = package & package.package-releases;
-  if (releases.size > 0)
+  if (releases & releases.size > 0)
     let newest-first = sort(value-sequence(releases),
                             test: method (r1 :: <release>, r2 :: <release>)
                                     r1.release-version > r2.release-version

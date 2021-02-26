@@ -14,12 +14,23 @@ define function package-manager-directory
   subdirectory-locator(dylan-directory(), $package-directory-name)
 end function;
 
-// Display a message on stdout. Abstracted here so we can easily change all
-// output, or log it or whatever.
+define variable *verbose-output?* = #f;
+
+define function set-verbose (verbose? :: <bool>)
+  *verbose-output?* := verbose?
+end;
+
 define function message
     (pattern :: <string>, #rest args) => ()
   apply(printf, pattern, args)
-end function;
+end;
+
+define function verbose-message
+    (pattern :: <string>, #rest args) => ()
+  *verbose-output?* & apply(printf, pattern, args);
+end;
+
+ignorable(message, verbose-message);
 
 // TODO: Windows
 define constant $default-dylan-directory = "/opt/dylan";
