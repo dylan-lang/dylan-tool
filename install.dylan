@@ -184,7 +184,10 @@ define function resolve
       end;
     end;
     // Nope, so find newest matching version in the catalog.
-    for (release in sort(package.package-releases.value-sequence, test: \>))
+    for (release in sort(package.package-releases.value-sequence,
+                         test: method (r1, r2)
+                                 r1.release-version > r2.release-version
+                               end))
       if (satisfies?(dep, release.release-version))
         return(release, #f);
       end;
