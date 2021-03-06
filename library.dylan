@@ -71,10 +71,13 @@ define module workspaces
     import: { err, iff, inc!, slice };
 
   export
-    <workspace>,
     configure,
+    find-workspace,
+    <workspace>,
+      workspace-directory,
+      workspace-file,
+      workspace-default-project-name,
     new,
     update,
-    workspace-file,
     <workspace-error>;
 end module workspaces;

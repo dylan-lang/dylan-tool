@@ -58,13 +58,15 @@ define function configure (#key verbose? :: <bool>, debug? :: <bool>) => ()
 end function;
 
 define constant $workspace-file = "workspace.json";
-
+define constant $default-project-key = "default-project-name";
+define constant $active-key = "active";
 
 define function str-parser (s :: <string>) => (s :: <string>) s end;
 
 // Pulled out into a constant because it ruins code formatting.
-define constant $workspace-file-format-string = #:str:[{
-    "active": {
+define constant $workspace-file-format-string
+  = #:str:[{
+    %=: {
 %s
     }
 }
@@ -94,6 +96,7 @@ define function new
       pkg-names := as(<vector>, pm/package-names(pm/load-catalog()));
     end;
     format(stream, $workspace-file-format-string,
+           $active-key,
            join(pkg-names, ",\n", key: curry(format-to-string, "        %=: {}")));
   end;
   print("Wrote workspace file to %s.", ws-path);
@@ -104,7 +107,7 @@ end function;
 // are installed at version $head.
 define function update
     (#key update-head? :: <bool>)
-  let ws = load-workspace($workspace-file);
+  let ws = find-workspace();
   print("Workspace directory is %s.", ws.workspace-directory);
   update-active-packages(ws);
   update-active-package-deps(ws, update-head?: update-head?);
@@ -125,10 +128,15 @@ define class <workspace> (<object>)
     required-init-keyword: workspace-directory:;
   constant slot workspace-registry :: <registry>,
     required-init-keyword: registry:;
+  constant slot workspace-default-project-name :: false-or(<string>) = #f,
+    init-keyword: default-project-name:;
 end class;
 
-define function load-workspace
-    (filename :: <string>) => (w :: <workspace>)
+// Finds the workspace file somewhere in or above `directory` and creates a
+// `<workspace>` from it. `directory` defaults to the current working
+// directory.  Signals `<workspace-error>` if the file isn't found.
+define function find-workspace
+    (#key directory :: false-or(<directory-locator>)) => (w :: <workspace>)
   let path = workspace-file();
   if (~path)
     workspace-error("Workspace file not found."
@@ -138,43 +146,39 @@ define function load-workspace
     let object = json/parse(stream, strict?: #f, table-class: <istring-table>);
     if (~instance?(object, <table>))
       workspace-error("Invalid workspace file %s, must be a single JSON object", path);
-    elseif (~element(object, "active", default: #f))
+    elseif (~element(object, $active-key, default: #f))
       workspace-error("Invalid workspace file %s, missing required key 'active'", path);
-    elseif (~instance?(object["active"], <table>))
-      workspace-error("Invalid workspace file %s, the 'active' element must be a map"
-                        " from package name to {...}.", path);
+    elseif (~instance?(object[$active-key], <table>))
+      workspace-error("Invalid workspace file %s, the '%s' element must be a map"
+                        " from package name to {...}.",
+                      $active-key, path);
     end;
     let registry = make(<registry>, root-directory: locator-directory(path));
+    let default = element(object, $default-project-key, default: #f);
     make(<workspace>,
-         active: object["active"],
+         active: object[$active-key],
          workspace-directory: locator-directory(path),
-         registry: registry)
+         registry: registry,
+         default-project-name: default)
   end
 end function;
 
-// Search up from `directory` to find `$workspace-file`. If `directory` is not
+// Search up from `directory` to find the workspace file. If `directory` is not
 // supplied it defaults to the current working directory.
 define function workspace-file
     (#key directory :: <directory-locator> = fs/working-directory())
  => (file :: false-or(<file-locator>))
-  if (~root-directory?(directory))
-    let path = merge-locators(as(fs/<file-system-file-locator>, $workspace-file),
-                              directory);
-    if (fs/file-exists?(path))
-      path
-    else
-      locator-directory(directory) & workspace-file(directory: locator-directory(directory))
+  let ws-file = as(<file-locator>, $workspace-file);
+  iterate loop (dir = directory)
+    if (dir)
+      let file = merge-locators(ws-file, dir);
+      if (fs/file-exists?(file))
+        file
+      else
+        loop(dir.locator-directory)
+      end
     end
   end
-end function;
-
-// TODO: Put something like this in system:file-system?  It seems
-// straight-forward once you figure it out, but it took a few tries to figure
-// out that root-directories returned locators, not strings, and it seems to
-// depend on locators being ==, which I'm not even sure of. It seems to work.
-define function root-directory?
-    (loc :: <locator>)
-  member?(loc, fs/root-directories())
 end function;
 
 define function active-package-names
