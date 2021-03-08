@@ -58,7 +58,7 @@ define function configure (#key verbose? :: <bool>, debug? :: <bool>) => ()
 end function;
 
 define constant $workspace-file = "workspace.json";
-define constant $default-project-key = "default-project";
+define constant $default-library-key = "default-library";
 define constant $active-key = "active";
 
 define function str-parser (s :: <string>) => (s :: <string>) s end;
@@ -128,8 +128,8 @@ define class <workspace> (<object>)
     required-init-keyword: workspace-directory:;
   constant slot workspace-registry :: <registry>,
     required-init-keyword: registry:;
-  constant slot workspace-default-project-name :: false-or(<string>) = #f,
-    init-keyword: default-project-name:;
+  constant slot workspace-default-library-name :: false-or(<string>) = #f,
+    init-keyword: default-library-name:;
 end class;
 
 // Finds the workspace file somewhere in or above `directory` and creates a
@@ -155,17 +155,17 @@ define function find-workspace
     end;
     let registry = make(<registry>, root-directory: locator-directory(path));
     let active = object[$active-key];
-    let default = element(object, $default-project-key, default: #f);
-    if (~default & active.size = 1)
-      for (_ keyed-by project-name in active)
-        default := project-name;
+    let library = element(object, $default-library-key, default: #f);
+    if (~library & active.size = 1)
+      for (_ keyed-by package-name in active)
+        library := package-name;
       end;
     end;
     make(<workspace>,
          active: object[$active-key],
          workspace-directory: locator-directory(path),
          registry: registry,
-         default-project-name: default)
+         default-library-name: library)
   end
 end function;
 

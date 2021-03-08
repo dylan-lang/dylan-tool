@@ -76,7 +76,7 @@ define module workspaces
     <workspace>,
       workspace-directory,
       workspace-file,
-      workspace-default-project-name,
+      workspace-default-library-name,
     new,
     update,
     <workspace-error>;
