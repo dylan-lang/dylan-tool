@@ -118,22 +118,36 @@ active packages are built into the same "_build" directory and so that
 A workspace is defined by a `workspace.json` file containing a single
 JSON object. Example:
 
-    {
-        "active": {
-            "dylan-tool": {},
-            "pacman": {},
-            "uncommon-dylan": {}
-        }
-    }
+```json
+{
+    "active": {
+        "dylan-tool": {},
+        "pacman": {},
+        "uncommon-dylan": {}
+    },
+    "default-library": "dylan-tool"
+}
+```
 
 (**Note:** There are currently no options so each package name simply
 maps to an empty dictionary: `{}`.)
 
-The "active" attribute describes the set of packages under active development
+The `"active"` attribute describes the set of packages under active development
 in this workspace. These packages are cloned into the workspace directory
 rather than in `${DYLAN}/pkg`. (Git via SSH is currently assumed as the source
 control tool, and all repositories are currently on GitHub so you will need a
 GitHub account.)
+
+The `"default-library"` attribute is used by the [Dylan LSP
+server](https://github.com/pedro-w/lsp-dylan) to decide which project to open.
+In general you want this to be your top-level library, or even better its test
+library. That is, the one that uses all the other libraries but is not used by
+anything in this workspace. That way the LSP server will be able to find all
+the code.
+
+Note that if there is only one active package and the library name is the same
+as the package name, it will be used as the default library if you omit the
+`"default-library"` attribute. Example: `{ "active": { "dylan-tool": {} } }`
 
 After initial checkout you may create a new branch or perform whatever
 git operations are necessary. If you decide to add a new dependency,
