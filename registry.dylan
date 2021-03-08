@@ -327,11 +327,12 @@ end function;
 
 define constant $keyword-line-regex = #:regex:"^([a-zA-Z0-9-]+):[ \t]+(.+)$";
 
-// Parse the contents of `path` into `data`. Every LID keyword is turned into a
-// symbol and used as the table key, and the data associated with that keyword
-// is stored as a vector of strings, even if it is known to accept only a
-// single value. There is one exception: the keyword "LID:" is recursively
-// parsed into another `<lid>` and included directly. For example,
+// Parse the contents of `path` into a new `<lid>` and return it. Every LID
+// keyword is turned into a symbol and used as the table key, and the data
+// associated with that keyword is stored as a vector of strings, even if it is
+// known to accept only a single value. There is one exception: the keyword
+// "LID:" is recursively parsed into another `<lid>` and included directly. For
+// example,
 //
 //   #"library" => #["http"]
 //   #"files"   => #["foo.dylan", "bar.dylan"]

@@ -7,8 +7,8 @@ synopsis: Manage developer workspaces
 // * Display the number of registry files updated and the number unchanged.
 //   It gives reassuring feedback that something went right when there's no
 //   other output.
-// * LID parsing shouldn't map every key to a sequence; only those that have
-//   continuation lines, like Files:.
+// * LID parsing shouldn't map every key to a sequence; only those known to
+//   be sequences, like Files:.
 // * The output is extremely verbose (including git output), making it easy
 //   to miss the important bits. Use the logging library!
 
@@ -58,7 +58,7 @@ define function configure (#key verbose? :: <bool>, debug? :: <bool>) => ()
 end function;
 
 define constant $workspace-file = "workspace.json";
-define constant $default-project-key = "default-project-name";
+define constant $default-project-key = "default-project";
 define constant $active-key = "active";
 
 define function str-parser (s :: <string>) => (s :: <string>) s end;
@@ -154,7 +154,13 @@ define function find-workspace
                       $active-key, path);
     end;
     let registry = make(<registry>, root-directory: locator-directory(path));
+    let active = object[$active-key];
     let default = element(object, $default-project-key, default: #f);
+    if (~default & active.size = 1)
+      for (_ keyed-by project-name in active)
+        default := project-name;
+      end;
+    end;
     make(<workspace>,
          active: object[$active-key],
          workspace-directory: locator-directory(path),
