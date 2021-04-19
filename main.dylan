@@ -100,7 +100,8 @@ define function make-command-line-parser
                                       name: "pkg",
                                       repeated?: #t,
                                       help: "Active packages to be added"
-                                        " to workspace file."))),
+                                        " to workspace file. The special name 'all'"
+                                        " will install all known packages."))),
               make(<update-subcommand>,
                    options:
                      list(make(<flag-option>,
