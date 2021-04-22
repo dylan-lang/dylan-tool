@@ -75,10 +75,12 @@ define constant $workspace-file-format-string
 // Create a new workspace named `name` with active packages `pkg-names`.
 define function new
     (name :: <string>, pkg-names :: <seq>,
-     #key parent-directory :: <directory-locator> = fs/working-directory())
-  if (workspace-file(directory: parent-directory))
-    workspace-error("You appear to already be in a workspace directory: %s",
-                    workspace-file);
+     #key parent-directory :: <directory-locator> = fs/working-directory(),
+          skip-workspace-check? :: <bool>)
+  let check? = ~skip-workspace-check?;
+  let file = check? & workspace-file(directory: parent-directory);
+  if (file & check?)
+    workspace-error("You appear to already be in a workspace directory: %s", file);
   end;
   let ws-dir = subdirectory-locator(parent-directory, name);
   let ws-file = as(<file-locator>, "workspace.json");
