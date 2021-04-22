@@ -93,7 +93,12 @@ define function make-command-line-parser
                                names: #("all", "a"),
                                help: "List all packages whether installed or not."))),
               make(<new-subcommand>,
-                   options: list(make(<positional-option>,
+                   options: list(make(<flag-option>,
+                                      names: #("skip-workspace-check"),
+                                      help: "Don't check whether already"
+                                        " inside a workspace directory.",
+                                      default: #f),
+                                 make(<positional-option>,
                                       name: "name",
                                       help: "Workspace directory name."),
                                  make(<positional-option>,
@@ -136,7 +141,8 @@ define method execute-subcommand
  => (status :: false-or(<int>))
   let name = get-option-value(subcmd, "name");
   let pkg-names = get-option-value(subcmd, "pkg");
-  ws/new(name, pkg-names);
+  let skip-workspace-check? = get-option-value(subcmd, "skip-workspace-check");
+  ws/new(name, pkg-names, skip-workspace-check?: skip-workspace-check?);
   print("You may now run '%s update' in the new directory.", application-name());
 end method;
 
