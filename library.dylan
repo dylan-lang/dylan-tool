@@ -56,7 +56,8 @@ define module dylan-tool
               string-equal? => str=,
               string-equal-ic? => istr=,
               strip };
-  use uncommon-dylan;
+  use uncommon-dylan,
+    exclude: { format-to-string };
   use uncommon-utils,
     import: { err, iff, inc!, slice };
   use workspaces,
