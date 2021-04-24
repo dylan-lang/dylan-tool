@@ -50,7 +50,7 @@ define constant $catalog-package-release :: <release>
       let release = make(<release>,
                          package: package,
                          version: $head,
-                         location: "git@github.com:cgay/pacman-catalog",
+                         location: "https://github.com/cgay/pacman-catalog",
                          deps: as(<dep-vector>, #[]));
       releases[$head-name] := release;
       release
