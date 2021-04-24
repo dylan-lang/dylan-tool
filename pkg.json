@@ -1,8 +1,10 @@
 {
     "name": "dylan-tool",
-    "deps": [ "json head",
+    "deps": [ "command-line-parser head",
+              "json head",
               "pacman head",
               "regular-expressions head",
-              "uncommon-dylan head" ],
+              "uncommon-dylan head",
+              "workspaces head" ],
     "location": "https://github.com/cgay/dylan-tool"
 }
