@@ -1,6 +1,7 @@
 # pacman
 
-A package manager for Dylan
+A package manager for Dylan. (This is a library, not the name of an executable,
+so there is no conflict with the `pacman` package manager for Arch Linux.)
 
 Find, download, install, and uninstall any version of any Dylan package and its dependencies.
 
