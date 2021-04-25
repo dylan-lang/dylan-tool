@@ -104,16 +104,25 @@ define function new
   print("Wrote workspace file to %s.", ws-path);
 end function;
 
-// Update the workspace based on the workspace config or signal an error.  If
-// `update-head?` is true then pull the latest updates for any packages that
-// are installed at version $head.
+// Update the workspace based on the workspace config or signal an error.
+// Parameters:
+//   update-head?: if true, pull the latest updates for any packages that
+//     are installed at version $head. The default is false.
+//   update-submodules?: if true (the default), then checkout (git) submodules
+//     when downloading packages.
+//   update-deps?: if true (the default), download package dependencies specified
+//     in the pkg.json file.
+//   update-registry?: if true (the default), create a registry based on all
+//     active packages and dependencies.
 define function update
-    (#key update-head? :: <bool>)
+    (#key update-head? :: <bool>, update-submodules? :: <bool> = #t,
+          update-deps? :: <bool> = #t, update-registry? :: <bool> = #t)
+ => ()
   let ws = find-workspace();
   print("Workspace directory is %s.", ws.workspace-directory);
-  update-active-packages(ws);
-  update-active-package-deps(ws, update-head?: update-head?);
-  update-registry(ws);
+  update-active-packages(ws, update-submodules?);
+  update-deps?     & update-active-package-deps(ws, update-head?: update-head?);
+  update-registry? & update-registry(ws);
 end function;
 
 // <workspace> holds the parsed workspace configuration, and is the one object
@@ -213,7 +222,7 @@ end function;
 // Download active packages into the workspace directory if the
 // package directories don't already exist.
 define function update-active-packages
-    (ws :: <workspace>)
+    (ws :: <workspace>, update-submodules? :: <bool>)
   for (attrs keyed-by pkg-name in ws.active-packages)
     // Download the package if necessary.
     let pkg-dir = active-package-directory(ws, pkg-name);
@@ -224,7 +233,7 @@ define function update-active-packages
       let rel = pm/find-package-release(cat, pkg-name, pm/$head)
                   | pm/find-package-release(cat, pkg-name, pm/$latest);
       if (rel)
-        pm/download(rel, pkg-dir);
+        pm/download(rel, pkg-dir, update-submodules?: update-submodules?);
       else
         print("WARNING: Skipping active package %s, not found in catalog.", pkg-name);
         print("         If this is a new or private project then this is normal.");
