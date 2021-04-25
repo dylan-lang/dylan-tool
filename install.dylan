@@ -43,20 +43,25 @@ end function;
 // (for example due to a network or file-system error). Dependencies
 // are not downloaded.
 define not-inline function download
-    (release :: <release>, dest-dir :: <directory-locator>) => ()
+    (release :: <release>, dest-dir :: <directory-locator>,
+     #key update-submodules? :: <bool> = #t)
+ => ()
   // Dispatch based on the transport type: git, mercurial, tarball, ...
-  %download(package-transport(release), release.release-location, dest-dir);
+  %download(package-transport(release), release.release-location, dest-dir, update-submodules?);
 end function;
 
 define generic %download
-    (transport :: <transport>, location :: <string>, dest-dir :: <directory-locator>)
+    (transport :: <transport>, location :: <string>, dest-dir :: <directory-locator>,
+     update-submodules? :: <bool>)
  => ();
 
 define method %download
-    (transport :: <git-transport>, location :: <string>, dest-dir :: <directory-locator>)
+    (transport :: <git-transport>, location :: <string>, dest-dir :: <directory-locator>,
+     update-submodules? :: <bool>)
  => ()
   // TODO: add --quiet, once debugged
-  let command = sprintf("git clone --recurse-submodules --branch=%s -- %s %s",
+  let command = sprintf("git clone%s --branch=%s -- %s %s",
+                        (update-submodules? & " --recurse-submodules") | "",
                         transport.branch, location, dest-dir);
   let (exit-code, #rest more)
     = os/run(command,
