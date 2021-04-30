@@ -5,108 +5,108 @@
 
 ## Overview
 
-The `dylan` tool simplifies the creation of Dylan workspaces and package
-management by using a config file to specify packages that are under active
-development and managing a single "registry" for the user in what should
-(hopefully) become a standard development setup for Dylan hackers. This should
-eliminate the need to manage registries by hand and the need to use git
-submodules to track dependencies.
+The `dylan` tool simplifies the management of Dylan workspaces and packages and
+provides a simplified interface to the Open Dylan compiler for building,
+testing, and generating documentation. It eliminates the need to manage the
+"registry" (for locating libraries) by hand and the need to use git submodules
+to track dependencies.
 
-A key part of this tool is the package manager (tentatively named "pacman") and
-its catalog of packages, the "pacman-catalog" repository. For any package to be
-downloadable it must have an entry in pacman-catalog. The catalog entry
-specifies the location of the package and its dependencies, among other
-attributes.
+A key part of this tool is the package manager (pacman) and its catalog of
+packages, the [pacman-catalog](https://github.com/cgay/pacman-catalog.git)
+repository. For any package to be downloadable it must have an entry in the
+catalog. The catalog entry specifies the location of the package and its
+dependencies, among other attributes.
 
 In addition, a package may have a `pkg.json` file in its top-level
 directory. This file, if it exists, overrides dependency information in the
-catalog. This is important when you need to add a new dependency during
-development, but unfortunately there is some duplication with the catalog
-here. Hopefully a better solution can be found.
+catalog. This is necessary when you need to add a new dependency during
+development. When `pkg.json` doesn't exist `dylan` falls back to using
+information in the catalog.
 
 A "workspace" is just a directory containing a `workspace.json` file. The
-workspace file primarily specifies "active" packages. These are the packages
-you're actively developing, as opposed to packages installed in the package
-cache, `${DYLAN}/pkg/`.
+workspace file specifies "active" packages, whuch are the packages you're
+actively developing, as opposed to packages installed in the package cache,
+`${DYLAN}/pkg/`.
+
+**Note:** Because an executable named `dylan` conflicts with the base Dylan
+library during the build process, this library is named `dylan-tool` and then
+the executable is installed as `dylan` by the `Makefile`. The examples in this
+document use the name `dylan` instead of `dylan-tool`.
 
 ## Quick Start
 
-1.  Make sure the `DYLAN` environment variable is set to wherever you
-    do your Dylan hacking. For example:
+1.  Make sure you have `git`, `make`, and `dylan-compiler` installed.
 
-        $ export DYLAN=${HOME}/dylan
-
-    Dylan packages, including the
+1.  Optionall set the `DYLAN` environment variable to wherever you do your
+    Dylan hacking. The `dylan` tool installs packages, including the
     [pacman-catalog](git@github.com:cgay/pacman-catalog) package which
-    describes where to find other packages, are installed under
-    `${DYLAN}/pkg/`.
+    describes where to find other packages, under `${DYLAN}/pkg/`.
 
-    **Note:** Don't ever put files you want to keep in the
-    `${DYLAN}/pkg/` directory. The expectation should be that anything
-    in this directory may be deleted at any time by the package
-    manager.
+    If `${DYLAN}` is not set, `${HOME}/dylan` is used instead. If for some
+    reason `${HOME}` is not set, `/opt/dylan` is used. (Windows is not yet
+    supported.)
+
+    **Note:** Don't put files you want to keep in the `${DYLAN}/pkg/`
+    directory. The expectation should be that anything in this directory may be
+    deleted at any time by the package manager.
 
 1.  Clone and build the `dylan-tool` project:
 
-        $ git clone --recursive git@github.com:cgay/dylan-tool
+        $ git clone --recursive https://github.com/cgay/dylan-tool.git
         $ cd dylan-tool
-        $ dylan-compiler -build dylan-tool.lid
-        $ export PATH=`pwd`/_build/bin:${PATH}
+        $ make install
+
+1.  Make sure that `${DYLAN}/bin` is on your `$PATH`. If you prefer not to set
+    `$DYLAN`, make sure that `${HOME}/dylan/bin` is on your `$PATH`.
 
 1.  Create a new workspace. For example if you want to work on the
     strings library:
 
-        $ cd ${DYLAN}     # or wherever you want your workspace
-        $ dylan-tool new ws.strings strings
+        $ cd ${DYLAN}/workspaces     # or wherever you want your workspace
+        $ dylan new strings strings
 
-    This creates the ws.strings directory and
-    ws.strings/workspace.json.
+    This creates the strings directory and strings/workspace.json.
 
-1.  Run `dylan-tool update` to download the active packages (the strings
-    package in this case), install their dependencies, and create a registry
-    with everything you need:
+1.  Run `dylan update` in the new directory to download the active packages
+    (the strings package in this case), install their dependencies, and create
+    a registry with everything you need:
 
-        $ cd ws.strings
-        $ dylan-tool update
+        $ cd strings
+        $ dylan update
 
-    You should see some `git clone` output along with package and
-    registry updates.
+    You should see some `git clone` output along with package and registry
+    updates.
 
-    **Note:** It should be safe to modify `workspace.json` and run
-    `dylan-tool update` at any time from anywhere inside the workspace
-    directory. It will only write to the registry and download/install
-    packages that haven't already been downloaded or installed.
+    **Note:** It should be safe to modify `workspace.json` and run `dylan
+    update` at any time from anywhere inside the workspace directory. It will
+    only write to the registry and download/install packages that haven't
+    already been downloaded or installed.
 
-    **Note:** `dylan-tool update` does not currently update packages that are
-    at version "head". If you want the latest head version you must either use
-    `git pull` or delete the package directory and run `dylan-tool update`
-    again.
+    **Note:** `dylan update` does not currently update packages that are at
+    version "head". If you want the latest head version you must either use
+    `git pull` or delete the package directory and run `dylan update` again.
 
-1.  Build and run your code (still in the ws.strings directory):
+1.  Build and run your code (still in the strings workspace):
 
         $ dylan-compiler -build strings-test-suite-app
         $ _build/bin/strings-test-suite-app
 
-If you want to create a new package, rather than doing development on
-one that already exists, you must manually add it to the
-`workspace.json` file (see below) and then run `dylan-tool
-update`. These are the steps:
+If you want to create a new package, rather than doing development on one that
+already exists, for now you must manually add it to the `workspace.json` file
+(see below) and then run `dylan update`. These are the steps:
 
-1.  Create a new directory and git repo for your package in the
-    workspace directory. (Hint: use `make-dylan-app` to create a
-    library skeleton.)
+1.  Create a new directory and git repo for your package in the workspace
+    directory. (Hint: use `make-dylan-app` to create a library skeleton.)
 1.  Create a `pkg.json` file that lists your package dependencies (deps). You
     could copy from [this
     one](git@github.com:cgay/dylan-tool/blob/master/pkg.json).
-1.  Add the package name to the "active" list in the `workspace.json`
-    file.
-1.  Run `dylan-tool update` to install the deps and update the
-    registry.
+1.  Add the package name to the "active" list in the `workspace.json` file.
+1.  Run `dylan update` to install the deps and update the registry.
 
-You may run the `dylan-tool` command from anywhere inside the workspace
-directory tree; it will search up to find the "workspace.json" file.  You must
-invoke `dylan-compiler` in the top-level workspace directory so that all the
-active packages are built into the same "_build" directory and so that
+You may run the `dylan` command from anywhere inside the workspace directory
+tree; it will search up to find the `workspace.json` file.  You must invoke
+`dylan-compiler` in the top-level workspace directory so that all the active
+packages are built into the same "_build" directory and so that
 `dylan-compiler` can find the auto-generated "registry" directory.
 
 ## The Workspace File
@@ -125,14 +125,12 @@ JSON object. Example:
 }
 ```
 
-(**Note:** There are currently no options so each package name simply
-maps to an empty dictionary: `{}`.)
+(**Note:** There are currently no options so each package name simply maps to
+an empty dictionary: `{}`.)
 
 The `"active"` attribute describes the set of packages under active development
 in this workspace. These packages are cloned into the workspace directory
-rather than in `${DYLAN}/pkg`. (Git via SSH is currently assumed as the source
-control tool, and all repositories are currently on GitHub so you will need a
-GitHub account.)
+rather than in `${DYLAN}/pkg`.
 
 The `"default-library"` attribute is used by the [Dylan LSP
 server](https://github.com/pedro-w/lsp-dylan) to decide which project to open.
@@ -141,40 +139,37 @@ library. That is, the one that uses all the other libraries but is not used by
 anything in this workspace. That way the LSP server will be able to find all
 the code.
 
-Note that if there is only one active package and the library name is the same
-as the package name, it will be used as the default library if you omit the
+If there is only one active package and the library name is the same as the
+package name, it will be used as the default library if you omit the
 `"default-library"` attribute. Example: `{ "active": { "dylan-tool": {} } }`
 
-After initial checkout you may create a new branch or perform whatever
-git operations are necessary. If you decide to add a new dependency,
-just add it to the "deps" in `pkg.json` and run `dylan-tool update`
-again.
+After initial checkout you may create a new branch or perform whatever git
+operations are necessary. If you decide to add a new dependency, just add it to
+the "deps" in `pkg.json` and run `dylan update` again.
 
 Each key under "active" specifies a package under active development. If you're
 working on existing packages then these should match the name of an existing
-package in the [Catalog](https://github.com/cgay/pacman-catalog), and if a
-subdirectory by this name doesn't exist in the workspace file's directory,
-`dylan-tool` will do the initial checkout for you. If you're creating a new
-package then you'll need to create the subdirectory yourself, create a
-`pkg.json` file inside it, and then run `dylan-tool update` and it will fetch
-the package's dependencies for you.
+package in the [Catalog](https://github.com/cgay/pacman-catalog.git), and if a
+subdirectory by this name doesn't exist in the workspace, `dylan` will do the
+initial checkout for you. If you're creating a new package then you'll need to
+create the subdirectory yourself, create a `pkg.json` file inside it, and then
+run `dylan update` and it will fetch the package's dependencies for you.
 
 ## The Registry
 
 Open Dylan uses "registries" to locate library sources. Setting up a
-development workspace historically involved a lot of manual git
-cloning and creating registry files for each used library.
+development workspace historically involved a lot of manual git cloning and
+creating registry files for each used library.
 
-The main purpose of specifying active packages is so that `dylan-tool`
-can clone those packages into the workspace directory and create the
-registry files for you accurately.  The registry points to the
-workspace directory for active package libraries but points to the
-installation directory, `${DYLAN}/pkg/...`, for all other
-dependencies.
+The main purpose of specifying active packages is so that `dylan` can clone
+those packages into the workspace directory and create the registry files for
+you accurately.  The registry files point to the workspace directory for active
+package libraries but point to the installation directory, `${DYLAN}/pkg/...`,
+for all other dependencies.
 
-`dylan-tool` scans each active package for LID files and writes a registry file
-for each one, with one exception: If the LID **is included** in another LID
-file and **does not** explicitly match the current platform via the
+The `dylan` tool scans each active package for LID files and writes a registry
+file for each one, with one exception: If the LID **is included** in another
+LID file and **does not** explicitly match the current platform via the
 `Platforms:` keyword, then no registry entry is written for that LID file.
 This effectively means that if you *include* a LID file in one
 platform-specific LID file then you must either create one LID file per
@@ -182,25 +177,26 @@ platform for that library, or you must use the `Platforms:` keyword in the
 **included** LID file to specify all platforms that *don't* have a
 platform-specific LID file.
 
-For example, the `dylan` library itself has a `dylan-win32.lid` file so that it
-can specify some Windows resource files. `dylan-win32.lid` includes `dylan.lid`
-and has `Platforms: x86-win32`. Since there's nothing platform-specific for any
-other platform, creating 8 other platform-specific LID files would be
-cumbersome. Instead, `dylan.lid` just needs to say which platforms it
-explicitly applies to by adding this:
+For example, the base `dylan` library itself (not to be confused with
+`dylan-tool`) has a
+[dylan-win32.lid](https://github.com/dylan-lang/opendylan/blob/master/sources/dylan/dylan-win32.lid)
+file so that it can specify some Windows resource files. `dylan-win32.lid`
+includes `dylan.lid` and has `Platforms: x86-win32`. Since there's nothing
+platform-specific for any other platform, creating 8 other platform-specific
+LID files would be cumbersome. Instead, `dylan.lid` just needs to say which
+platforms it explicitly applies to by adding this:
 
     Platforms: aarch-64-linux
                arm-linux
                x86_64-freebsd
                ...etc, but not x86-win32...
 
-**Note:** If you use the same workspace directory on multiple
-platforms (e.g., a network mounted directory or shared by a virtual
-machine) you will need to run `dylan-tool update` on **both**
-platforms so that the correct platform-specific registry entries are
-created.  `dylan-tool` makes no attempt to figure out which packages
-are "generic" and which are platform-specific, so it always writes
-platform-specific registry files.
+**Note:** If you use the same workspace directory on multiple platforms (e.g.,
+a network mounted directory or shared by a virtual machine) you will need to
+run `dylan update` on **both** platforms so that the correct platform-specific
+registry entries are created.  The `dylan` tool makes no attempt to figure out
+which packages are "generic" and which are platform-specific, so it always
+writes registry files specifically for the current platform.
 
 ## Bugs
 
