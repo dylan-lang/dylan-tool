@@ -61,9 +61,9 @@ define class <list-subcommand> (<subcommand>)
   keyword help = "List installed Dylan packages.";
 end class;
 
-define class <workspace-dir-subcommand> (<subcommand>)
-  keyword name = "workspace-dir";
-  keyword help = "Print the pathname of the workspace directory.";
+define class <status-subcommand> (<subcommand>)
+  keyword name = "status";
+  keyword help = "Display information about the current workspace.";
 end class;
 
 define function make-command-line-parser
@@ -113,7 +113,7 @@ define function make-command-line-parser
                                name: "pull",
                                help: "Pull the latest code for packages that are"
                                  " at version 'head'."))),
-              make(<workspace-dir-subcommand>)))
+              make(<status-subcommand>)))
 end function;
 
 define method execute-subcommand
@@ -155,10 +155,16 @@ define method execute-subcommand
 end method;
 
 define method execute-subcommand
-    (parser :: <command-line-parser>, subcmd :: <workspace-dir-subcommand>)
+    (parser :: <command-line-parser>, subcmd :: <status-subcommand>)
  => (status :: false-or(<int>))
-  // Needed for the Open Dylan Makefile.
-  print("%s", as(<string>, locator-directory(ws/workspace-file())));
+  let file = ws/workspace-file();
+  if (file)
+    print("%s", as(<string>, locator-directory(file)));
+    0
+  else
+    print("Not currently in a workspace directory.");
+    1
+  end
 end method;
 
 
