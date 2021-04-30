@@ -5,33 +5,29 @@
 
 ## Overview
 
-The `dylan-tool` simplifies the creation of Dylan workspaces and
-package management by using a config file to specify packages that are
-under active development and managing a single "registry" for the user
-in what should (hopefully) become a standard development setup for
-Dylan hackers. This should eliminate the need to manage registries by
-hand and the need to use git submodules to track dependencies.
+The `dylan` tool simplifies the creation of Dylan workspaces and package
+management by using a config file to specify packages that are under active
+development and managing a single "registry" for the user in what should
+(hopefully) become a standard development setup for Dylan hackers. This should
+eliminate the need to manage registries by hand and the need to use git
+submodules to track dependencies.
 
-A key part of this tool is the package manager (tentatively named
-"pacman") and its catalog of packages, the "pacman-catalog"
-repository. For any package to be downloadable it must have an entry
-in pacman-catalog. The catalog entry specifies the location of the
-package and its dependencies, among other attributes.
+A key part of this tool is the package manager (tentatively named "pacman") and
+its catalog of packages, the "pacman-catalog" repository. For any package to be
+downloadable it must have an entry in pacman-catalog. The catalog entry
+specifies the location of the package and its dependencies, among other
+attributes.
 
 In addition, a package may have a `pkg.json` file in its top-level
-directory. This file, if it exists, overrides dependency information
-in the catalog. This is important when its necessary to add a
-dependency during new development, but unfortunately there is some
-duplication with the catalog here. Hopefully a better solution can be
-found.
+directory. This file, if it exists, overrides dependency information in the
+catalog. This is important when you need to add a new dependency during
+development, but unfortunately there is some duplication with the catalog
+here. Hopefully a better solution can be found.
 
-A "workspace" is just a directory containing a `workspace.json` file
-at top-level. The workspace file primarily specifies "active"
-packages. These are the packages you're actively developing, as
-opposed to packages installed in `${DYLAN}/pkg/`, which should never
-be modified since that directory is the package manager's domain and
-it might decide to delete anything there at any time, for example to
-reinstall it.
+A "workspace" is just a directory containing a `workspace.json` file. The
+workspace file primarily specifies "active" packages. These are the packages
+you're actively developing, as opposed to packages installed in the package
+cache, `${DYLAN}/pkg/`.
 
 ## Quick Start
 
@@ -253,13 +249,8 @@ for numbered versions can come later.
 
 ### After 0.1.0
 
-* Integrate pacman and workspace tool into Deft.
-
-* Think about whether and how it makes sense to integrate knowledge of
-  packages and versioned dependencies into Open Dylan itself.
-
-* Remove the assumption that git (and specifically github) is where
-  all packages reside. Support tarballs and/or zip files.
+* Make the opendylan bootstrap process work with packages. (It's pretty close
+  already but has some bugs remaining to work out.)
 
 * Improve version dependency specs. Can get inspiration from Cargo
   here.
