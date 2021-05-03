@@ -111,7 +111,8 @@ define module %pacman
   use streams,
     import: { read-to-end, <stream>, write };
   use strings,
-    import: { find-substring,
+    import: { ends-with?,
+              find-substring,
               lowercase,
               starts-with?,
               string-equal-ic? => istring= };

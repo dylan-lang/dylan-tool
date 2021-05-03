@@ -88,6 +88,9 @@ define constant $latest :: <latest> = make(<latest>, major: -1, minor: -1, patch
 define class <head> (<version>, <singleton-object>) end;
 define constant $head :: <head> = make(<head>, major: 0, minor: 0, patch: 0);
 
+// The printed representation of a <version> does not include the "v" prefix we
+// currently use for GitHub releases. That detail is left to the
+// <git-transport>.
 define function version-to-string (v :: <version>) => (_ :: <string>)
   select (v)
     $head     => $head-name;
@@ -249,12 +252,23 @@ end function;
 define abstract class <transport> (<object>)
 end class;
 
-// Install git packages.
+// Install packages as git repositories.
 define class <git-transport> (<transport>)
-  constant slot branch :: <string> = "master", init-keyword: branch:;
 end class;
 
-// TODO: mercurial, tarballs, ...
+// TODO: mercurial, tarballs, local files (for tests), ...
+
+define function package-transport
+    (release :: <release>) => (transport :: <transport>)
+  let location :: <string> = release.release-location;
+  if (starts-with?(location, "https://git") // github, gitlab, ...
+      | starts-with?(location, "git@")
+      | ends-with?(location, ".git"))
+    make(<git-transport>)
+  else
+    package-error("No transport found for package URL %=", location);
+  end
+end function;
 
 define function read-package-file
     (file :: <file-locator>) => (release :: false-or(<release>))

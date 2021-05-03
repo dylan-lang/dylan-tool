@@ -47,52 +47,36 @@ define not-inline function download
      #key update-submodules? :: <bool> = #t)
  => ()
   // Dispatch based on the transport type: git, mercurial, tarball, ...
-  %download(package-transport(release), release.release-location, dest-dir, update-submodules?);
+  %download(package-transport(release), release, dest-dir, update-submodules?);
 end function;
 
 define generic %download
-    (transport :: <transport>, location :: <string>, dest-dir :: <directory-locator>,
+    (transport :: <transport>, release :: <release>, dest-dir :: <directory-locator>,
      update-submodules? :: <bool>)
  => ();
 
 define method %download
-    (transport :: <git-transport>, location :: <string>, dest-dir :: <directory-locator>,
+    (transport :: <git-transport>, release :: <release>, dest-dir :: <directory-locator>,
      update-submodules? :: <bool>)
  => ()
-  // TODO: add --quiet, once debugged
-  let command = sprintf("git clone%s --branch=%s -- %s %s",
+  let branch = "master";
+  if (release.release-version ~= $head)
+    // By convention, Git releases are tagged with vX.Y.Z, at least for Dylan
+    // packages. I don't know how universal this is!
+    branch := concat("v", version-to-string(release.release-version));
+  end;
+  let command = sprintf("git clone%s --quiet --branch=%s -- %s %s",
                         (update-submodules? & " --recurse-submodules") | "",
-                        transport.branch, location, dest-dir);
-  let (exit-code, #rest more)
-    = os/run(command,
-             output: "/tmp/git-clone-stdout.log", // temp
-             error: "/tmp/git-clone-stderr.log",  // temp
-             if-output-exists: #"append",
-             if-error-exists: #"append");
-  if (exit-code ~= 0)
+                        branch, release.release-location, dest-dir);
+  let (exit-code, signal-code /* , process, #rest streams */)
+    = os/run(command, output: #"null", error: #"null");
+  if (exit-code = 0)
+    message("Downloaded %s to %s\n", release, dest-dir);
+  else
     package-error("git clone command failed with exit code %d. Command: %=",
                   exit-code, command);
   end;
 end method;
-
-define function package-transport
-    (release :: <release>) => (transport :: <transport>)
-  // TODO: don't assume github. If it's not general enough to detect
-  // which transport to use based on the package location we might
-  // have to specify the transport explicitly in the catalog and
-  // package files.
-  if (find-substring(release.release-location, "github")
-        // work around indentation bug...
-        | starts-with?(release.release-location, "file:/" "/"))
-    let branch = "master";
-    if (release.release-version ~= $head)
-      branch := sprintf("v%s", version-to-string(release.release-version));
-    end;
-    make(<git-transport>, branch: branch)
-  else
-    package-error("unrecognized package source URL: %=", release.release-location);
-  end
-end function;
 
 // Download and install `release` into the standard location.
 //
