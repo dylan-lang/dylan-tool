@@ -85,9 +85,10 @@ define module %pacman
               with-open-file };
   use format,
     import: { format,
-              format-to-string => sprintf };
+              format-to-string };
   use format-out,
-    import: { format-out => printf };
+    import: { format-out,
+              force-out };
   use json,
     import: { parse-json => json/parse,
               encode-json => json/encode };
@@ -116,7 +117,8 @@ define module %pacman
               lowercase,
               starts-with?,
               string-equal-ic? => istring= };
-  use uncommon-dylan;
+  use uncommon-dylan,
+    exclude: { format-out, format-to-string };
   use uncommon-utils,
     import: { elt, iff, <singleton-object>, value-sequence };
 

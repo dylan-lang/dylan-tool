@@ -103,7 +103,8 @@ define function version-to-string (v :: <version>) => (_ :: <string>)
   select (v)
     $head     => $head-name;
     $latest   => $latest-name;
-    otherwise => sprintf("%d.%d.%d", v.version-major, v.version-minor, v.version-patch)
+    otherwise =>
+      format-to-string("%d.%d.%d", v.version-major, v.version-minor, v.version-patch);
   end
 end function;
 
@@ -199,8 +200,9 @@ define function dep-to-string
     ~minv         => concat(name, " <", version-to-string(maxv));
     ~maxv         => concat(name, " >", version-to-string(minv));
     minv = maxv   => concat(name, " ", version-to-string(minv));
-    // bleh, this isn't right because it needs to indicate <= max version
-    otherwise     => sprintf("%s %s-%s", name, version-to-string(minv), version-to-string(maxv));
+    otherwise     => format-to-string("%s %s-%s", name,
+                                      version-to-string(minv),
+                                      version-to-string(maxv));
   end
 end function;
 

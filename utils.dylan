@@ -22,12 +22,15 @@ end;
 
 define function message
     (pattern :: <string>, #rest args) => ()
-  apply(printf, pattern, args)
+  apply(format-out, pattern, args);
+  force-out();
 end;
 
 define function verbose-message
     (pattern :: <string>, #rest args) => ()
-  *verbose-output?* & apply(printf, pattern, args);
+  if (*verbose-output?*)
+    apply(message, pattern, args);
+  end;
 end;
 
 ignorable(message, verbose-message);

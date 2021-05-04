@@ -65,9 +65,10 @@ define method %download
     // packages. I don't know how universal this is!
     branch := concat("v", version-to-string(release.release-version));
   end;
-  let command = sprintf("git clone%s --quiet --branch=%s -- %s %s",
-                        (update-submodules? & " --recurse-submodules") | "",
-                        branch, release.release-location, dest-dir);
+  let command
+    = format-to-string("git clone%s --quiet --branch=%s -- %s %s",
+                       (update-submodules? & " --recurse-submodules") | "",
+                       branch, release.release-location, dest-dir);
   let (exit-code, signal-code /* , process, #rest streams */)
     = os/run(command, output: #"null", error: #"null");
   if (exit-code = 0)
