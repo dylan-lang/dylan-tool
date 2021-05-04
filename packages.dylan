@@ -1,7 +1,7 @@
 Module: %pacman
 
-define constant $head-name = "head";
-define constant $latest-name = "latest";
+define constant $head-name = "HEAD";
+define constant $latest-name = "LATEST";
 
 define constant <dep-vector> = limited(<vector>, of: <dep>);
 
@@ -30,8 +30,12 @@ end class;
 
 define method print-object
     (release :: <release>, stream :: <stream>) => ()
-  printing-object (release, stream)
-    format(stream, "%s %s", release.package-name, release.release-version);
+  if (*print-escape?*)
+    printing-object (release, stream)
+      print(release, stream, escape?: #f);
+    end;
+  else
+    format(stream, "%s@%s", release.package-name, release.release-version);
   end;
 end method;
 
@@ -74,7 +78,11 @@ end class;
 
 define method print-object
     (v :: <version>, stream :: <stream>) => ()
-  printing-object (v, stream)
+  if (*print-escape?*)
+    printing-object (v, stream)
+      write(stream, version-to-string(v));
+    end;
+  else
     write(stream, version-to-string(v));
   end;
 end method;

@@ -101,7 +101,7 @@ define module %pacman
     import: { environment-variable => os/getenv,
               run-application => os/run };
   use print,
-    import: { print-object, printing-object, *print-escape?* };
+    import: { print, print-object, printing-object, *print-escape?* };
   use regular-expressions,
     import: { <regex>,
               regex-parser,
