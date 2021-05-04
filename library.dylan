@@ -66,7 +66,8 @@ define module workspaces
               string-equal? => string=?,
               string-equal-ic? => istring=?,
               strip };
-  use uncommon-dylan;
+  use uncommon-dylan,
+    exclude: { format-to-string };
   use uncommon-utils,
     import: { err, iff, inc!, slice };
 
