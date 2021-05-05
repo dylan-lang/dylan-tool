@@ -164,15 +164,24 @@ define method execute-subcommand
     print("Not currently in a workspace.");
     abort-command(1);
   end;
-  print("%s", ws/workspace-directory(workspace));
+  print("Workspace: %s", ws/workspace-directory(workspace));
   if (get-option-value(subcmd, "directory"))
     abort-command(0);
   end;
 
-  // TODO:
-  // * Show active packages with branch name and whether modified
-  //   and whether up-to-date with origin/master.
-  // * Show last build time for active packages?
+  // Show active package status
+  // TODO: show current branch name and whether modified and whether ahead of
+  //   upstream (usually but not always origin/master).
+  let active = ws/workspace-active-packages(workspace);
+  if (empty?(active))
+    print("No active packages.");
+  else
+    print("Active packages:");
+    for (package in active)
+      print("  %s", pm/package-name(package));
+    end;
+  end;
+
   0
 end method;
 
