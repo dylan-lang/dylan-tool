@@ -3,8 +3,7 @@ Synopsis: Dylan package manager
 
 // Note that in this project I'm trying out a naming style that is
 // less verbose than usual, including renaming some of the basic Dylan
-// types and functions. If it works out maybe I'll make an alternative
-// module to common-dylan called "brevity".
+// types and functions.
 
 define library pacman
   use common-dylan;

@@ -172,7 +172,6 @@ define function json-to-catalog
         // case when the package was added.
         catalog-error("duplicate package %=", name);
       end;
-      let releases = make(<istring-table>); // version string -> <release>
       let description = required-element(name, attributes, "description", <string>);
       let package
         = make(<package>,
@@ -185,9 +184,8 @@ define function json-to-catalog
                category: optional-element(name, attributes, "category", <string>)
                  | $uncategorized,
                keywords: optional-element(name, attributes, "keywords", <seq>)
-                 | #[],
-               releases: releases);
-      json-to-releases(package, releases,
+                 | #[]);
+      json-to-releases(package,
                        required-element(name, attributes, "releases", <table>));
       packages[name] := package;
       nreleases := nreleases + package.package-releases.size;
@@ -199,10 +197,12 @@ define function json-to-catalog
 end function;
 
 define function json-to-releases
-    (package :: <package>, releases :: <istring-table>, attributes :: <string-table>)
+    (package :: <package>, attributes :: <string-table>)
  => ()
   let name = package.package-name;
+  let releases = package.package-releases;
   for (release-attributes keyed-by vstring in attributes)
+    // TODO: This test will fail when I make "1.2" parse the same as "1.2.0"
     if (element(releases, vstring, default: #f))
       catalog-error("duplicate package version: %s %s", name, vstring);
     end;

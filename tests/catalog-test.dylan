@@ -1,7 +1,7 @@
 Module: pacman-test
 
 define constant $catalog-text =
-  #string:({
+  #:string:({
     "__catalog_attributes": {"unused": "for now"},
     "http": {
       "contact": "zippy",
@@ -10,7 +10,7 @@ define constant $catalog-text =
       "synopsis": "HTTP server and client",
       "category": "network",
       "keywords": [ "http" ],
-      "versions": {
+      "releases": {
         "1.0.0": {
           "deps": [ "uri 4.0.9", "opendylan 2014.2.2" ],
           "location": "https://github.com/dylan-lang/http"
@@ -28,7 +28,7 @@ define constant $catalog-text =
       "synopsis": "json parser/serializer",
       "category": "encoding",
       "keywords": [ "parser", "config", "serialize" ],
-      "versions": {
+      "releases": {
         "1.0.0": {
           "deps": [ "opendylan 2014.1.0" ],
           "location": "https://github.com/dylan-lang/json"
@@ -49,18 +49,18 @@ end;
 
 define test test-read-json-catalog ()
   let cat = get-test-catalog();
-  assert-equal(#["http", "json"], sort(key-sequence(cat.entries)));
-  let http = find-package(cat, "http", string-to-version("2.10.0"));
+  assert-equal(#["http", "json"], sort(cat.package-names));
+  let http = find-package-release(cat, "http", string-to-version("2.10.0"));
   assert-true(http);
-  assert-equal("MIT", http.license-type);
-  assert-equal("opendylan", http.deps[2].package-name);
+  assert-equal("MIT", http.package-license-type);
+  assert-equal("opendylan", http.release-deps[2].package-name);
 end;
 
 define test test-find-latest-version ()
   let cat = get-test-catalog();
-  let json = find-package(cat, "json", $latest);
+  let json = find-package-release(cat, "json", $latest);
   assert-true(json);
-  assert-equal("3.1234.100", version-to-string(json.version));
+  assert-equal("3.1234.100", version-to-string(json.release-version));
 end;
 
 define test test-validate-dependencies ()

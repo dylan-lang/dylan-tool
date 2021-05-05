@@ -20,7 +20,7 @@ define module pacman-test
               <file-system-file-locator>,
               temp-directory };
   use format,
-    import: { format-to-string => sprintf };
+    import: { format-to-string };
   use json;
   use locators,
     import: { merge-locators,
@@ -34,5 +34,6 @@ define module pacman-test
   use streams,
     import: { with-input-from-string, with-output-to-string };
   use testworks;
-  use uncommon-dylan;
+  use uncommon-dylan,
+    exclude: { format-to-string };
 end;

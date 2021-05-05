@@ -12,8 +12,8 @@ define test version-=-test ()
     let v2 = string-to-version(s2);
     let got = v1 = v2;
     assert-equal(got, want,
-                 sprintf("got %=, want %= for 'version(%s) = version(%s)'",
-                         got, want, s1, s2));
+                 format-to-string("got %=, want %= for 'version(%s) = version(%s)'",
+                                  got, want, s1, s2));
   end;
 end;
 
@@ -30,8 +30,8 @@ define test version-<-test ()
     let v2 = string-to-version(s2);
     let got = v1 < v2;
     assert-equal(got, want,
-                 sprintf("got %=, want %= for 'version(%s) < version(%s)'",
-                         got, want, s1, s2));
+                 format-to-string("got %=, want %= for 'version(%s) < version(%s)'",
+                                  got, want, s1, s2));
   end;
 end;
 
@@ -71,8 +71,8 @@ define test good-dep-versions-test ()
                     min-version: minv & string-to-version(minv),
                     max-version: maxv & string-to-version(maxv));
     assert-equal(got, want,
-                 sprintf("for %=, got %=, want %=",
-                         dep-string, dep-to-string(got), dep-to-string(want)));
+                 format-to-string("for %=, got %=, want %=",
+                                  dep-string, dep-to-string(got), dep-to-string(want)));
   end;
 end test;
 
@@ -89,7 +89,7 @@ define test satisfies?-test ()
     for (vstring in vstrings)
       let version = string-to-version(vstring);
       assert-equal(satisfies?(dep, version), want,
-                   sprintf("for dep %s and version %s", dstring, vstring));
+                   format-to-string("for dep %s and version %s", dstring, vstring));
     end;
   end;
-end;
+end test;

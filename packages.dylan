@@ -110,6 +110,8 @@ end function;
 
 define constant $version-regex = #:regex:{^(\d+)\.(\d+)\.(\d+)$};
 
+// Parse a version from a string such as "1.0" or "1.0.2". Major and minor
+// version are required. If patch is omitted it defaults to 0.
 define function string-to-version
     (input :: <string>) => (_ :: <version>)
   select (input by istring=)
@@ -361,8 +363,8 @@ define class <package> (<object>)
   // data that changes with each new versioned release, plus a back-pointer to
   // the package it's a part of.
   // TODO: probably makes more sense to store this as a vector, newest to oldest.
-  constant slot package-releases :: <istring-table>,
-    required-init-keyword: releases:;
+  constant slot package-releases :: <istring-table> = make(<istring-table>),
+    init-keyword: releases:;
 
   constant slot package-synopsis :: <string>,
     init-keyword: synopsis:;
