@@ -178,15 +178,40 @@ define method execute-subcommand
   else
     print("Active packages:");
     for (package in active)
-      print("  %s", pm/package-name(package));
+      let directory = ws/active-package-directory(workspace, pm/package-name(package));
+      let command = "git status --untracked-files=no --branch --ahead-behind --short";
+      let (status, output) = run(command, working-directory: directory);
+      let line = split(output, "\n")[0];
+
+      let command = "git status --porcelain --untracked-files=no";
+      let (status, output) = run(command, working-directory: directory);
+      let dirty = ~whitespace?(output);
+
+      print("  %-15s: %s%s", pm/package-name(package), line, (dirty & " (dirty)") | "");
     end;
   end;
 
   0
 end method;
 
+// Run an executable or shell command. `command` may be a string or a sequence
+// of strings. If a string it is run with `/bin/sh -c`. If a sequence of
+// strings the first element is the executable pathname. Returns the exit
+// status of the command and the combined output to stdout and stderr.
+define function run
+    (command :: <seq>, #key working-directory :: false-or(<directory-locator>))
+ => (status :: <int>, output :: <string>)
+  let stream = make(<string-stream>, direction: #"output");
+  let status = os/run(command,
+                      under-shell?: instance?(command, <string>),
+                      working-directory: working-directory,
+                      outputter: method (string, #rest ignore)
+                                   write(stream, string)
+                                 end);
+  values(status, stream.stream-contents)
+end function;
 
-// List installed package names, synopsis, versions, etc. If `all` is
+// List installed package names, summary, versions, etc. If `all` is
 // true, show all packages. Installed and latest versions are shown.
 define function list-catalog
     (#key all? :: <bool>)
@@ -201,7 +226,7 @@ define function list-catalog
             pkg-name,
             latest-installed | "-",
             pm/release-version(latest),
-            pm/package-synopsis(package));
+            pm/package-summary(package));
     end;
   end;
 end function;

@@ -35,7 +35,8 @@ define module dylan-tool
               relative-locator,
               subdirectory-locator };
   use operating-system,
-    prefix: "os/";
+    prefix: "os/",
+    rename: { run-application => os/run };
   use pacman,
     prefix: "pm/";
   use regular-expressions,
@@ -45,9 +46,11 @@ define module dylan-tool
     import: { *standard-output* => *stdout*,
               *standard-error* => *stderr* };
   use streams,
-    import: { force-output => flush,
+    import: { <string-stream>,
+              force-output => flush,
               read-line,
               read-to-end,
+              stream-contents,
               write };
   use strings,
     import: { lowercase,
@@ -55,7 +58,8 @@ define module dylan-tool
               ends-with?,
               string-equal? => str=,
               string-equal-ic? => istr=,
-              strip };
+              strip,
+              whitespace? };
   use uncommon-dylan,
     exclude: { format-to-string };
   use uncommon-utils,
