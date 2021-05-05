@@ -75,6 +75,7 @@ define module workspaces
     configure,
     find-workspace,
     <workspace>,
+      workspace-active-packages,
       workspace-directory,
       workspace-file,
       workspace-default-library-name,

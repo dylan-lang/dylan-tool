@@ -113,7 +113,7 @@ end function;
 //   update-deps?: if true (the default), download package dependencies specified
 //     in the pkg.json file.
 //   update-registry?: if true (the default), create a registry based on all
-//     active packages and dependencies.
+//     active packages and their dependencies.
 define function update
     (#key update-head? :: <bool>, update-submodules? :: <bool> = #t,
           update-deps? :: <bool> = #t, update-registry? :: <bool> = #t)
@@ -133,12 +133,12 @@ end function;
 //         active-package-2/
 //         registry/
 define class <workspace> (<object>)
-  constant slot active-packages :: <istring-table>,
-    required-init-keyword: active:;
   constant slot workspace-directory :: <directory-locator>,
-    required-init-keyword: workspace-directory:;
+    required-init-keyword: directory:;
   constant slot workspace-registry :: <registry>,
     required-init-keyword: registry:;
+  constant slot workspace-active-packages :: <seq> = #[], // <package>s
+    init-keyword: active-packages:;
   constant slot workspace-default-library-name :: false-or(<string>) = #f,
     init-keyword: default-library-name:;
 end class;
@@ -172,9 +172,14 @@ define function find-workspace
         library := package-name;
       end;
     end;
+    let active-packages
+      = map(method (name)
+              pm/find-package(pm/load-catalog(), name) | make(pm/<package>, name: name)
+            end,
+            key-sequence(object[$active-key])); // nothing in the values yet
     make(<workspace>,
-         active: object[$active-key],
-         workspace-directory: locator-directory(path),
+         active-packages: active-packages,
+         directory: locator-directory(path),
          registry: registry,
          default-library-name: library)
   end
@@ -200,7 +205,7 @@ end function;
 
 define function active-package-names
     (ws :: <workspace>) => (names :: <seq>)
-  key-sequence(ws.active-packages)
+  map(pm/package-name, ws.workspace-active-packages)
 end function;
 
 define function active-package-directory
@@ -221,23 +226,30 @@ end function;
 
 // Download active packages into the workspace directory if the
 // package directories don't already exist.
+//
+// TODO(cgay): this should pull the latest changes to master if the master
+// branch is clean, and output a note otherwise.
 define function update-active-packages
     (ws :: <workspace>, update-submodules? :: <bool>)
-  for (attrs keyed-by pkg-name in ws.active-packages)
+  for (package in ws.workspace-active-packages)
     // Download the package if necessary.
+    let pkg-name = pm/package-name(package);
     let pkg-dir = active-package-directory(ws, pkg-name);
     if (fs/file-exists?(pkg-dir))
       vprint("Active package %s exists, not downloading.", pkg-name);
     else
       let cat = pm/load-catalog();
+      // The expectation is that most packages won't have a $head version
+      // listed in the catalog so we clone the repository containing $latest.
       let rel = pm/find-package-release(cat, pkg-name, pm/$head)
                   | pm/find-package-release(cat, pkg-name, pm/$latest);
       if (rel)
         pm/download(rel, pkg-dir, update-submodules?: update-submodules?);
       else
-        print("WARNING: Skipping active package %s, not found in catalog.", pkg-name);
+        print("WARNING: Skipping active package %=, not found in catalog.", pkg-name);
         print("         If this is a new or private project then this is normal.");
-        print("         Create a pkg.json file for it and run update again to update deps.");
+        print("         Create a pkg.json file for it and run update again to install");
+        print("         dependencies.");
       end;
     end;
   end;
@@ -260,7 +272,8 @@ define function update-active-package-deps
       // active packages. It doesn't cause a problem though, as long as the
       // registry points to the right place. (This is more easily solved once
       // the above TODO is done: two passes, make plan, execute plan.)
-      pm/install-deps(rel /* , skip: ws.active-packages */, update-head?: update-head?);
+      pm/install-deps(rel /* , skip: ws.workspace-active-packages */,
+                      update-head?: update-head?);
     else
       print("WARNING: No package definition found for active package %s."
               " Not installing deps.", pkg-name);
