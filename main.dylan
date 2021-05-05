@@ -96,8 +96,7 @@ define function make-command-line-parser
                    options: list(make(<flag-option>,
                                       names: #("skip-workspace-check"),
                                       help: "Don't check whether already"
-                                        " inside a workspace directory.",
-                                      default: #f),
+                                        " inside a workspace directory."),
                                  make(<positional-option>,
                                       name: "name",
                                       help: "Workspace directory name."),
@@ -113,7 +112,10 @@ define function make-command-line-parser
                                name: "pull",
                                help: "Pull the latest code for packages that are"
                                  " at version 'head'."))),
-              make(<status-subcommand>)))
+              make(<status-subcommand>,
+                   options: list(make(<flag-option>,
+                                      name: "directory",
+                                      help: "Only show the workspace directory.")))))
 end function;
 
 define method execute-subcommand
@@ -157,14 +159,21 @@ end method;
 define method execute-subcommand
     (parser :: <command-line-parser>, subcmd :: <status-subcommand>)
  => (status :: false-or(<int>))
-  let file = ws/workspace-file();
-  if (file)
-    print("%s", as(<string>, locator-directory(file)));
-    0
-  else
-    print("Not currently in a workspace directory.");
-    1
-  end
+  let workspace = ws/find-workspace();
+  if (~workspace)
+    print("Not currently in a workspace.");
+    abort-command(1);
+  end;
+  print("%s", ws/workspace-directory(workspace));
+  if (get-option-value(subcmd, "directory"))
+    abort-command(0);
+  end;
+
+  // TODO:
+  // * Show active packages with branch name and whether modified
+  //   and whether up-to-date with origin/master.
+  // * Show last build time for active packages?
+  0
 end method;
 
 
@@ -197,8 +206,11 @@ define function main () => (status :: false-or(<int>))
     end;
     execute-command(parser);
   exception (err :: <abort-command-error>)
-    print("%s", err);
-    exit-status(err)
+    let status = exit-status(err);
+    if (status ~= 0)
+      print("%s", err);
+    end;
+    status
   end
 end function;
 
