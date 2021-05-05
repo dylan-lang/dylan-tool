@@ -208,6 +208,7 @@ define function active-package-names
   map(pm/package-name, ws.workspace-active-packages)
 end function;
 
+// These next three should probably have methods on (<workspace>, <package>) too.
 define function active-package-directory
     (ws :: <workspace>, pkg-name :: <string>) => (d :: <directory-locator>)
   subdirectory-locator(ws.workspace-directory, pkg-name)
