@@ -294,10 +294,26 @@ define function read-package-file
         | package-error("Invalid package file %s: expected a 'deps' field.", file);
       let vstring = optional-element(name, json, "version", <string>)
         | $latest-name;
+      let summary = optional-element(name, json, "summary", <string>);
       let releases = make(<istring-table>);
       let release
         = make(<release>,
-               package: make(<package>, name: name, releases: releases),
+               // This is different from when parsing packages in the catalog
+               // in that more things are optional here.
+               package: make(<package>,
+                             name: name,
+                             releases: releases,
+                             summary: summary | "**no summary**",
+                             description: optional-element(name, json, "description", <string>)
+                               | summary | "**no description**",
+                             contact: optional-element(name, json, "contact", <string>)
+                               | "**no contact**",
+                             license-type: optional-element(name, json, "license-type", <string>)
+                               | "**no license**",
+                             category: optional-element(name, json, "category", <string>)
+                               | $uncategorized,
+                             keywords: optional-element(name, json, "keywords", <vector>)
+                               | #[]),
                deps: map-as(<dep-vector>, string-to-dep, deps),
                version: string-to-version(vstring),
                location: required-element(name, json, "location", <string>));
@@ -311,7 +327,7 @@ end function;
 
 // Forward various methods from <release> to the <package> that contains them.
 define generic package-name         (o :: <object>) => (s :: <string>);
-define generic package-synopsis     (o :: <object>) => (s :: <string>);
+define generic package-summary      (o :: <object>) => (s :: <string>);
 define generic package-description  (o :: <object>) => (s :: <string>);
 define generic package-contact      (o :: <object>) => (s :: <string>);
 define generic package-license-type (o :: <object>) => (s :: <string>);
@@ -323,9 +339,9 @@ define not-inline method package-name
   release.release-package.package-name
 end method;
 
-define method package-synopsis
+define method package-summary
     (release :: <release>) => (s :: <string>)
-  release.release-package.package-synopsis
+  release.release-package.package-summary
 end method;
 
 define method package-description
@@ -356,30 +372,51 @@ end method;
 // Describes a package and its versions.  Many of the slots here are optional
 // because they're not required in pkg.json files.  The catalog enforces more
 // requirements itself.
+//
+// If you add slots to this you probably want to update the set of generics
+// that forward from <release> to this, and the `to-table` method.
 define class <package> (<object>)
   constant slot package-name :: <string>,
     required-init-keyword: name:;
-  // Map from version number string to <release>. Each release contains the
-  // data that changes with each new versioned release, plus a back-pointer to
-  // the package it's a part of.
-  // TODO: probably makes more sense to store this as a vector, newest to oldest.
+
+  // Map from full version number string to <release>. Each release contains
+  // the data that changes with each new versioned release, plus a back-pointer
+  // to the package it's a part of.
+  //
+  // TODO: probably makes more sense to store this as a vector, newest to
+  // oldest.
   constant slot package-releases :: <istring-table> = make(<istring-table>),
     init-keyword: releases:;
 
-  constant slot package-synopsis :: <string>,
-    init-keyword: synopsis:;
+  // A one-liner to be displayed in the top-level table of contents of
+  // packages. (May want to put a length limit on this.)
+  constant slot package-summary :: <string>,
+    required-init-keyword: summary:;
+
+  // Full description of the package, which may be arbitrarily long. If this is
+  // not supplied the summary is used instead.
   constant slot package-description :: <string>,
-    init-keyword: description:;
+    required-init-keyword: description:;
 
   // Who to contact with questions about this package.
   constant slot package-contact :: <string>,
-    init-keyword: contact:;
+    required-init-keyword: contact:;
 
   // License type for this package, e.g. "MIT" or "BSD".
+  //
+  // TODO: allow a full license to be specified, perhaps just a relative path
+  // to the license file within the repo.
   constant slot package-license-type :: <string>,
-    init-keyword: license-type:;
-  constant slot package-category :: <string> = $uncategorized,
-    init-keyword: category:;
+    required-init-keyword: license-type:;
+
+  // The category this package should be listed under in a table of contents
+  // for the entire catalog.
+  constant slot package-category :: <string>,
+    required-init-keyword: category:;
+
+  // A sequence of strings to aid in package searches. The plan is that these
+  // will be valued higher than the same words that occur in the description.
+  // No need to duplicate words that occur in the summary (above) though.
   constant slot package-keywords :: <seq> = #[],
     init-keyword: keywords:;
 end class;
@@ -410,7 +447,7 @@ define method to-table
     releases[vstring] := to-table(release);
   end;
   let package = make(<istring-table>);
-  package["synopsis"] := p.package-synopsis;
+  package["summary"] := p.package-summary;
   package["description"] := p.package-description;
   package["contact"] := p.package-contact;
   package["license-type"] := p.package-license-type;

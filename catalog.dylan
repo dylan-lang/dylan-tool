@@ -9,7 +9,7 @@ json catalog format:
   "__catalog_attributes": { ... catalog metadata ... },
   "http": {
     "license": "MIT",
-    "synopsis": "HTTP server and client",
+    "summary": "HTTP server and client",
     ...
     "releases": {
       "1.0.0": { ... http 1.0.0 attributes ... },
@@ -46,7 +46,12 @@ define constant $catalog-package-release :: <release>
       let releases = make(<istring-table>);
       let package = make(<package>,
                          name: "pacman-catalog",
-                         releases: releases);
+                         releases: releases,
+                         summary: "The pacman catalog",
+                         description: "The pacman catalog",
+                         contact: "carlgay@gmail.com",
+                         license-type: "MIT",
+                         category: $uncategorized);
       let release = make(<release>,
                          package: package,
                          version: $head,
@@ -172,13 +177,13 @@ define function json-to-catalog
         // case when the package was added.
         catalog-error("duplicate package %=", name);
       end;
-      let description = required-element(name, attributes, "description", <string>);
+      let summary = required-element(name, attributes, "summary", <string>);
       let package
         = make(<package>,
                name: name,
-               description: description,
-               synopsis: optional-element(name, attributes, "synopsis", <string>)
-                 | description,
+               summary: summary,
+               description: optional-element(name, attributes, "description", <string>)
+                 | summary,
                contact: required-element(name, attributes, "contact", <string>),
                license-type: required-element(name, attributes, "license-type", <string>),
                category: optional-element(name, attributes, "category", <string>)
@@ -227,8 +232,13 @@ define function required-element
  => (value :: <object>)
   // TODO: error message could be better if we had a `context` parameter.
   let v = element(table, key, default: #f)
-    | catalog-error("package %= missing required key %=",
-                    name, key);
+    | catalog-error("package %= missing required key %=. table = %s",
+                    name, key,
+                    with-output-to-string (s)
+                      for (v keyed-by k in table)
+                        format(s, "%= => %=\n", k, v)
+                      end;
+                    end);
   instance?(v, expected-type)
     | catalog-error("package %=, incorrect type for key %=: %=",
                     name, key, expected-type);
@@ -236,13 +246,13 @@ define function required-element
 end function;
 
 define function optional-element
-    (name :: <string>, table :: <table>, key :: <string>, expected-type :: <type>)
+    (package-name :: <string>, table :: <table>, key :: <string>, expected-type :: <type>)
  => (value :: <object>)
   // TODO: error message could be better if we had a `context` parameter.
   let v = element(table, key, default: #f);
   if (v & ~instance?(v, expected-type))
     catalog-error("package %=, incorrect type for key %=: %=",
-                  name, key, expected-type);
+                  package-name, key, expected-type);
   end;
   v
 end function;

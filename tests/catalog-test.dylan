@@ -7,7 +7,7 @@ define constant $catalog-text =
       "contact": "zippy",
       "description": "foo",
       "license-type": "MIT",
-      "synopsis": "HTTP server and client",
+      "summary": "HTTP server and client",
       "category": "network",
       "keywords": [ "http" ],
       "releases": {
@@ -25,7 +25,7 @@ define constant $catalog-text =
       "contact": "me@mine",
       "description": "bar",
       "license-type": "BSD",
-      "synopsis": "json parser/serializer",
+      "summary": "json parser/serializer",
       "category": "encoding",
       "keywords": [ "parser", "config", "serialize" ],
       "releases": {
@@ -69,7 +69,9 @@ define test test-validate-dependencies ()
 end;
 
 define test test-load-catalog ()
-  // TODO: Need a way to make test data files available to the tests.
-  // This test requires network access and an account on GitHub.
+  // TODO: Need a way to make test data files available to the tests.  This
+  // test requires network access and an account on GitHub.  For now, to make
+  // this test pass you need to set DYLAN_CATALOG to the file containing the
+  // catalog in your checkout.
   assert-no-errors(load-catalog());
 end;

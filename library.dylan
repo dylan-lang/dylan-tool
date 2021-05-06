@@ -35,7 +35,7 @@ define module pacman
     <package>,
     package-name,
     package-releases,
-    package-synopsis,
+    package-summary,
     package-description,
     package-contact,
     package-license-type,
@@ -109,7 +109,7 @@ define module %pacman
               regex-pattern => re/pattern,
               regex-search-strings => re/search-strings };
   use streams,
-    import: { read-to-end, <stream>, write };
+    import: { read-to-end, <stream>, with-output-to-string, write };
   use strings,
     import: { ends-with?,
               find-substring,

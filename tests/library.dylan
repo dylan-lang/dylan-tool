@@ -15,15 +15,13 @@ end;
 
 define module pacman-test
   use file-system,
-    import: { delete-directory,
-              file-exists?,
-              <file-system-file-locator>,
-              temp-directory };
+    import: { file-exists? };
   use format,
     import: { format-to-string };
   use json;
   use locators,
-    import: { merge-locators,
+    import: { <file-locator>,
+              merge-locators,
               subdirectory-locator };
   use operating-system,
     import: { environment-variable-setter };
