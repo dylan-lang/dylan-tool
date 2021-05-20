@@ -59,12 +59,9 @@ define method %download
     (transport :: <git-transport>, release :: <release>, dest-dir :: <directory-locator>,
      update-submodules? :: <bool>)
  => ()
-  let branch = "master";
-  if (release.release-version ~= $head)
-    // By convention, Git releases are tagged with vX.Y.Z, at least for Dylan
-    // packages. I don't know how universal this is!
-    branch := concat("v", version-to-string(release.release-version));
-  end;
+  // TODO(cgay): Use GitHub et al's HTTP API instead, so users needn't have git, hg, etc
+  // installed. For reference, curl -L https://github.com/dylan-lang/testworks/archive/refs/tags/v1.1.0.tar.gz --output testworks-v1.1.0.tar.gz
+  let branch = release.release-version.version-branch;
   let command
     = format-to-string("git clone%s --quiet --branch=%s -- %s %s",
                        (update-submodules? & " --recurse-submodules") | "",
@@ -84,7 +81,7 @@ end method;
 // Parameters:
 //   force? - if true, the existing package is removed, if present, and
 //     the package is re-installed. This applies transitively to dependencies.
-//   deps? - if true , also install dependencies recursively.
+//   deps? - if true, also install dependencies recursively.
 // Values:
 //   installed? - #t if an installation was performed or #f if the package was
 //     already installed and `force?` was #f.
@@ -111,79 +108,17 @@ define method install
 end method;
 
 // Install dependencies of `release`. If `force?` is true, remove and
-// re-install all dependencies.  If `update-head?` is true then pull the latest
-// updates for any packages that are installed at version $head. `update-head?`
-// is redundant (and ignored) when `force?` is true.
+// re-install all dependencies.
 define method install-deps
-    (release :: <release>, #key force? :: <bool>, update-head? :: <bool>)
-  local method install-one (release, _, installed?)
-          // TODO: For now update-head? is implemented by forcing force? to
-          // true, which will cause the package to be removed and re-installed.
-          // Ultimately, it would be better to check whether there's anything
-          // new to pull and if update-head? is false, print a warning to the
-          // user that they're out-of-date.
-          let force? = force? | (update-head? & release.release-version = $head);
-          if (force? | ~installed?)
-            install(release, force?: force?, deps?: #t);
-          end;
-        end;
-  do-resolved-deps(release, install-one);
-end method;
-
-// Apply `fn` to all transitive dependencies of `release` using a
-// post-order traversal. `fn` is called with three arguments: the
-// package to which the dep was resolved, the dep itself, and a
-// boolean indicating whether or not the package is already
-// installed. The return value of `fn`, if any, is ignored.
-//
-// TODO: detect dep circularities
-define function do-resolved-deps
-    (release :: <release>, fn :: <func>) => ()
-  for (dep in release.release-deps)
-    let (release, installed?) = resolve(dep);
-    do-resolved-deps(release, fn);
-    fn(release, dep, installed?);
-  end;
-end function;
-
-// Resolve a dep to a specific package release. If an installed package meets
-// the dependency requirement, it is used, even if there is a newer version in
-// the catalog.
-//
-// TODO: update-dep, a function to install the latest versions rather than
-//   using the latest installed version.
-//
-// TODO: currently this requires that all release deps must be in the
-//   catalog. When developing the initial release of a new package that won't
-//   work.  Probably should be a flag because in normal use that could lead to
-//   non-reproducible environments.
-define function resolve
-    (dep :: <dep>) => (release :: <release>, installed? :: <bool>)
+    (release :: <release>, #key force? :: <bool>)
   let cat = load-catalog();
-  let name = dep.package-name;
-  block (return)
-    let package = find-package(cat, name)
-      | package-error("cannot resolve dependency %=, package not found in catalog", dep);
-    // See if an installed version works.
-    for (version in installed-versions(name, head?: #t)) // newest to oldest
-      if (satisfies?(dep, version))
-        let release = find-release(package, version);
-        if (release)
-          return(release, #t);
-        end;
-      end;
+  // TODO(cgay): pass correct `active:` arg.
+  for (rel in resolve-deps(release, cat))
+    if (force? | ~installed?)
+      install(rel, force?: force?, deps?: #t);
     end;
-    // Nope, so find newest matching version in the catalog.
-    for (release in sort(package.package-releases.value-sequence,
-                         test: method (r1, r2)
-                                 r1.release-version > r2.release-version
-                               end))
-      if (satisfies?(dep, release.release-version))
-        return(release, #f);
-      end;
-    end;
-  end block
-end function;
+  end;
+end method;
 
 // Return all versions of package `package-name` that are installed, sorted
 // newest to oldest. If `head?` is true, include the "head" version.

@@ -1,6 +1,8 @@
 library: pacman
-files: library
-       utils
-       packages
-       catalog
-       install
+files: library.dylan
+       utils.dylan
+       versions.dylan
+       packages.dylan
+       catalog.dylan
+       deps.dylan
+       install.dylan

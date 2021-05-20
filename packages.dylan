@@ -5,6 +5,8 @@ define constant $latest-name = "LATEST";
 
 define constant <dep-vector> = limited(<vector>, of: <dep>);
 
+// An error due to invalid or missing package attributes, badly specified
+// dependencies, etc.
 define class <package-error> (<simple-error>)
 end class;
 
@@ -12,10 +14,17 @@ define function package-error (msg :: <string>, #rest args)
   error(make(<package-error>, format-string: msg, format-arguments: args));
 end function;
 
+///
+/// Releases
+///
+
 // Represents a specific release of a package. Anything that might change for
 // each release belongs here and anything that remains constant across all
 // releases belongs in <package>.
 define class <release> (<object>)
+  // Note that this may be a semantic version or a branch version even though technically
+  // branch versions aren't usually considered releases. This is so that dependency
+  // resolution and installation can be performed on them.
   constant slot release-version :: <version>,
     required-init-keyword: version:;
   constant slot release-deps :: <dep-vector> = as(<dep-vector>, #[]),
@@ -39,17 +48,33 @@ define method print-object
   end;
 end method;
 
+define function release-to-string
+    (rel :: <release>) => (s :: <string>)
+  with-output-to-string (s)
+    print(rel, s, escape?: #f)
+  end
+end function;
+
 // A package with the same name and version is guaranteed to have all
 // other attributes the same.
 //
-// TODO: document why this method was necessary because I sure don't remember.
+// TODO: Document why this method was necessary because I sure don't remember.
+//       More and more I think using this is a mistake since it's impossible to
+//       search for callers.
 define method \=
-    (rel1 :: <release>, rel2 :: <release>) => (_ :: <bool>)
-  istring=(rel1.package-name, rel2.package-name)
-    & rel1.release-version = rel2.release-version
+    (r1 :: <release>, r2 :: <release>) => (_ :: <bool>)
+  istring=(r1.package-name, r2.package-name) & r1.release-version = r2.release-version
 end method;
 
-define constant $pkg-name-regex = #:regex:{^[A-Za-z][A-Za-z0-9.-]*$};
+// This method makes it easy to sort a list of releases newest to oldest.
+// See resolve-deps for usage via `max`.
+define method \<
+    (r1 :: <release>, r2 :: <release>) => (_ :: <bool>)
+  istring<(r1.package-name, r2.package-name) | r1.release-version < r2.release-version
+end method;
+
+// Start with restrictive package naming. Expand later if needed.
+define constant $pkg-name-regex = #:regex:{^[A-Za-z][A-Za-z0-9._-]*$};
 
 define function validate-package-name
     (name :: <string>) => ()
@@ -67,197 +92,15 @@ define method to-table
           "location" => release.release-location)
 end method;
 
-define class <version> (<object>)
-  constant slot version-major :: <int>, required-init-keyword: major:;
-  constant slot version-minor :: <int>, required-init-keyword: minor:;
-  constant slot version-patch :: <int>, required-init-keyword: patch:;
-  // TODO: consider adding a tag slot for "alpha-1" or "rc.3". I think
-  // it would not be part of the equality comparisons and would be
-  // solely for display purposes but I'm not sure.
-end class;
 
-define method print-object
-    (v :: <version>, stream :: <stream>) => ()
-  if (*print-escape?*)
-    printing-object (v, stream)
-      write(stream, version-to-string(v));
-    end;
-  else
-    write(stream, version-to-string(v));
-  end;
-end method;
+///
+/// Transports
+///
 
-// $latest refers to the latest numbered version of a package.
-define class <latest> (<version>, <singleton-object>) end;
-define constant $latest :: <latest> = make(<latest>, major: -1, minor: -1, patch: -1);
-
-// $head refers to the bleeding edge devhead version, which has no number.
-// Usually the head of the "master" branch in git terms.
-define class <head> (<version>, <singleton-object>) end;
-define constant $head :: <head> = make(<head>, major: 0, minor: 0, patch: 0);
-
-// The printed representation of a <version> does not include the "v" prefix we
-// currently use for GitHub releases. That detail is left to the
-// <git-transport>.
-define function version-to-string (v :: <version>) => (_ :: <string>)
-  select (v)
-    $head     => $head-name;
-    $latest   => $latest-name;
-    otherwise =>
-      format-to-string("%d.%d.%d", v.version-major, v.version-minor, v.version-patch);
-  end
-end function;
-
-define constant $version-regex = #:regex:{^(\d+)\.(\d+)\.(\d+)$};
-
-// Parse a version from a string such as "1.0" or "1.0.2". Major and minor
-// version are required. If patch is omitted it defaults to 0.
-define function string-to-version
-    (input :: <string>) => (_ :: <version>)
-  select (input by istring=)
-    $head-name   => $head;
-    $latest-name => $latest;
-    otherwise =>
-      let (_, maj, min, pat) = re/search-strings($version-regex, input);
-      maj | package-error("invalid version spec: %=", input);
-      maj := string-to-integer(maj);
-      min := string-to-integer(min);
-      pat := string-to-integer(pat);
-      if (maj < 0 | min < 0 | pat < 0 | (maj + min + pat = 0))
-        package-error("invalid version spec: %=", input);
-      end;
-      make(<version>, major: maj, minor: min, patch: pat)
-  end
-end function;
-
-define method \=
-    (v1 :: <version>, v2 :: <version>) => (_ :: <bool>)
-  v1.version-major == v2.version-major
-    & v1.version-minor == v2.version-minor
-    & v1.version-patch == v2.version-patch
-end method;
-
-define method \<
-    (v1 :: <version>, v2 :: <version>) => (_ :: <bool>)
-  case
-    v1 = $head   => #f;
-    v1 = $latest => v2 = $head;
-    v2 = $head   => v1 ~= $head;
-    v2 = $latest => (v1 ~= $head & v1 ~= $latest);
-    otherwise =>
-      v1.version-major < v2.version-major
-        | (v1.version-major == v2.version-major
-             & (v1.version-minor < v2.version-minor
-                  | (v1.version-minor == v2.version-minor
-                       & v1.version-patch < v2.version-patch)))
-  end
-end method;
-
-
-// A dependency on a specific version of a package. To depend on a specific, single
-// version of a package specify min-version = max-version.  If neither min- nor
-// max-version is supplied then any version of the package is considered to fulfill
-// the dependency.
-define class <dep> (<object>)
-  constant slot package-name :: <string>, required-init-keyword: package-name:;
-  constant slot min-version :: false-or(<version>) = #f, init-keyword: min-version:;
-  constant slot max-version :: false-or(<version>) = #f, init-keyword: max-version:;
-end class;
-
-define method initialize
-    (dep :: <dep>, #key package-name) => ()
-  next-method();
-  validate-package-name(package-name);
-  let minv = dep.min-version;
-  let maxv = dep.max-version;
-  if (minv & maxv & ~(minv <= maxv))
-    package-error("invalid dependency: %=", dep-to-string(dep));
-  end;
-end method;
-
-define method print-object
-    (dep :: <dep>, stream :: <stream>) => ()
-  printing-object (dep, stream)
-    write(stream, dep-to-string(dep));
-  end;
-end method;
-
-define method \=
-    (d1 :: <dep>, d2 :: <dep>) => (_ :: <bool>)
-  istring=(d1.package-name, d2.package-name)
-  & d1.min-version = d2.min-version
-  & d1.max-version = d2.max-version
-end method;
-
-// TODO: I like the dependency syntax/semantics used by Cargo. Will
-//       probably switch to those, but it can wait because for now we
-//       mostly can use 'head'. Might be more complex than necessary?
-define function dep-to-string
-    (dep :: <dep>) => (_ :: <string>)
-  let name = dep.package-name;
-  let minv = dep.min-version;
-  let maxv = dep.max-version;
-  case
-    ~minv & ~maxv => concat(name, " *");
-    ~minv         => concat(name, " <", version-to-string(maxv));
-    ~maxv         => concat(name, " >", version-to-string(minv));
-    minv = maxv   => concat(name, " ", version-to-string(minv));
-    otherwise     => format-to-string("%s %s-%s", name,
-                                      version-to-string(minv),
-                                      version-to-string(maxv));
-  end
-end function;
-
-// TODO: validate package names against this when packages are added.
-// Start out with a restrictive naming scheme. Can expand later if needed.
-// define constant $package-name-regex :: <regex> = #regex:{([a-zA-Z][a-zA-Z0-9-]*)};
-define constant $dependency-regex :: <regex>
-  = begin
-      let rev = #:string:"(\d+\.\d+\.\d+)";
-      let range = concat(rev, "-", rev);
-      let version-spec = concat(#:string:"(head|\*|([<=>])?", rev, "|", range, ")");
-      // groups: 1:name, 2:vspec, 3:[<=>], 4: v1, 5:v1, 6:v2
-      let pattern = concat("^([A-Za-z][A-Za-z0-9-]*)(?: ", version-spec, ")?$");
-      re/compile(pattern)
-    end;
-
-// Parse a dependency spec as generated by `dep-to-string`.
-define function string-to-dep
-    (input :: <string>) => (d :: <dep>)
-  let (whole, name, vspec, binop, v1a, v1b, v2) = re/search-strings($dependency-regex, input);
-  if (~whole)
-    // TODO: add doc link explaining dependency syntax.
-    package-error("Invalid dependency spec: %=", input);
-  end;
-  let (minv, maxv) = #f;
-  case
-    vspec = "*" => #f;
-    vspec = $head-name => #f;
-    v2 =>
-      minv := v1b;
-      maxv := v2;
-    otherwise =>
-      select (binop by \=)
-        "<"     => maxv := v1a;
-        "=", #f => minv := v1a; maxv := v1a;
-        ">"     => minv := v1a;
-      end;
-  end;
-  make(<dep>,
-       package-name: name,
-       min-version: minv & string-to-version(minv),
-       max-version: maxv & string-to-version(maxv))
-end function;
-
-define function satisfies?
-    (dep :: <dep>, version :: <version>) => (_ :: <bool>)
-  let (minv, maxv) = values(dep.min-version, dep.max-version);
-  (~minv & ~maxv)               // any version will do
-    | (~maxv & version >= minv)
-    | (~minv & version <= maxv)
-    | (minv & maxv & version >= minv & version <= maxv)
-end function;
-
+// TODO(cgay): The Go module system supposedly uses only HTTP requests
+// to download packages, to avoid requiring users to have source control
+// clients installed. e.g., if we want to support both Mercurial and Git
+// every user has to have both installed. Bad.
 
 // Something that knows how to grab a package off the net and unpack
 // it into a directory.
@@ -267,8 +110,6 @@ end class;
 // Install packages as git repositories.
 define class <git-transport> (<transport>)
 end class;
-
-// TODO: mercurial, tarballs, local files (for tests), ...
 
 define function package-transport
     (release :: <release>) => (transport :: <transport>)
@@ -295,7 +136,7 @@ define function read-package-file
       let vstring = optional-element(name, json, "version", <string>)
         | $latest-name;
       let summary = optional-element(name, json, "summary", <string>);
-      let releases = make(<istring-table>);
+      let releases = make(<stretchy-vector>);
       let release
         = make(<release>,
                // This is different from when parsing packages in the catalog
@@ -317,7 +158,7 @@ define function read-package-file
                deps: map-as(<dep-vector>, string-to-dep, deps),
                version: string-to-version(vstring),
                location: required-element(name, json, "location", <string>));
-      releases[vstring] := release;
+      add!(releases, release);
       release
     end
   exception (<file-does-not-exist-error>)
@@ -369,7 +210,7 @@ define method package-keywords
   release.release-package.package-keywords
 end method;
 
-// Describes a package and its versions.  Many of the slots here are optional
+// Describes a package and its releases.  Many of the slots here are optional
 // because they're not required in pkg.json files.  The catalog enforces more
 // requirements itself.
 //
@@ -379,14 +220,13 @@ define class <package> (<object>)
   constant slot package-name :: <string>,
     required-init-keyword: name:;
 
-  // Map from full version number string to <release>. Each release contains
-  // the data that changes with each new versioned release, plus a back-pointer
-  // to the package it's a part of.
-  //
-  // TODO: probably makes more sense to store this as a vector, newest to
-  // oldest.
-  constant slot package-releases :: <istring-table> = make(<istring-table>),
-    init-keyword: releases:;
+  // All releases of this package, ordered newest to oldest. Each release
+  // contains the data that changes with each new versioned release, plus a
+  // back-pointer to the package it's a part of. Currently it is possible for
+  // the <head> version to be at the beginning of this sequence, but the plan
+  // is to only allow <semantic-version>s.
+  constant slot package-releases :: <seq>,
+    required-init-keyword: releases:;
 
   // A one-liner to be displayed in the top-level table of contents of
   // packages. (May want to put a length limit on this.)
@@ -435,10 +275,77 @@ define method print-object
   end;
 end method;
 
-define function find-release
-    (p :: <package>, v :: <version>) => (r :: false-or(<release>))
-  element(p.package-releases, version-to-string(v), default: #f)
-end function;
+// Find a release in package `p` that matches version `v`.
+define generic find-release
+    (p :: <package>, v :: <version>, #key exact?) => (r :: false-or(<release>));
+
+// Find a release in package `p` that matches version `v`. If `exact?` is true then
+// major, minor, and patch must exactly match `v`. Otherwise find the lowest numbered
+// release that matches `v`'s major version. Based on SemVer, anything with the same
+// major version and >= minor and patch should be compatible.
+define method find-release
+    (p :: <package>, v :: <semantic-version>, #key exact? :: <bool>) => (r :: false-or(<release>))
+  // Releases are ordered newest to oldest, so avoid checking all of them.
+  block (return)
+    let min = #f;
+    for (release in p.package-releases)
+      let version = release.release-version;
+      if (version = v)
+        return(release)
+      elseif (version < v)
+        return(~exact? & min)
+      elseif (version.version-major = v.version-major)
+        // version is > v and it's compatible because they have the same major version.
+        min := release;
+      end;
+    end;
+    ~exact? & min
+  end block
+end method;
+
+// @latest finds the latest numbered release. Package releases are ordered newest to
+// oldest so it is only necessary to find the first <semantic-version>.
+define method find-release
+    (p :: <package>, v :: <latest>, #key exact? :: <bool>) => (r :: false-or(<release>))
+  ignore(exact?);
+  block (return)
+    let first = #f;           // Could be HEAD release, until we remove support for that.
+    for (release in p.package-releases)
+      first := first | release;
+      if (instance?(release.release-version, <semantic-version>))
+        return(release);
+      end;
+    end;
+    first
+  end
+end method;
+
+// Find a release for a branch version. Branches are arbitrary; we simply assume the
+// branch exists and create a release for it.
+//
+// TODO(cgay): this is temporary while I attempt to bootstrap dylan-tool and right now it
+// only works for packages that exist in the catalog because we need to find the location
+// and deps. For now we find the latest release and take the information from it, but
+// that's obviously not always going to be correct. I suspect the right solution for
+// branch versions is to specify them fully in the deps. So instead of just
+// "pacman@my-branch" we would have "https://gitlab.com/org/pacman@my-branch". That takes
+// care of the location, but what about the deps? Do we rely on it having a pkg.json file
+// and the user running `dylan update` again? That's terrible. Auto-detect pkg.json after
+// download, and recompute deps? Try and fetch the pkg.json file right here? Assume no
+// deps at all for branch versions? Don't support branch versions at all and make the
+// user checkout the branch manually?
+define method find-release
+    (p :: <package>, v :: <branch-version>, #key exact? :: <bool>) => (r :: false-or(<release>))
+  ignore(exact?);
+  let release = find-release(p, $latest)
+    | package-error("no release of %= found in catalog, which is currently"
+                      " required for branch versions. version: %=", p, v);
+  make(<release>,
+       package: p,
+       version: v,
+       deps: release.release-deps,
+       location: release.release-location)
+end method;
 
 define method to-table
     (p :: <package>) => (t :: <istring-table>)
