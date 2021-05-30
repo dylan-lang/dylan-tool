@@ -1,38 +1,9 @@
 Module: dylan-tool
 
 // TODO:
-// * The 'list' subcommand is showing a random set of packages in my ws.all
+// * The 'list' subcommand is showing a random set of packages in my "all"
 //   workspace.
 
-// Create the #str:"..." syntax. (Unused for now.)
-//define function str-parser (s :: <string>) => (s :: <string>) s end;
-
-/*
-define command-line <dylan-tool-command-line> ()
-  usage "dylan-tool [options] subcommand [options] [args]";
-  help "...longer help message here...";
-
-  option verbose? :: <boolean>,
-    names: #("v", "verbose");
-
-  subcommand install ()
-    help "Install a package into ${DYLAN}/pkg.";
-    option force? :: <boolean>,
-      default: #t,
-      help: "blah blah";
-    option version :: <version>,
-      default: "latest",
-      help: "blah blah";
-    parameter package :: <string>,
-      required?: #t, // default = #t
-      repeated?: #f, // default = #f
-      help "A number of the form 1.2.3, 'latest' to install the latest"
-              " numbered version, or 'head'.";
-  subcommand list ()
-    option all? :: <boolean>,
-      default: #f;
-end command-line;
-*/
 define class <install-subcommand> (<subcommand>)
   keyword name = "install";
   keyword help = "Install Dylan packages.";
@@ -80,10 +51,9 @@ define function make-command-line-parser
                                       repeated?: #t,
                                       help: "Packages to install."))),
               make(<list-subcommand>,
-                   options:
-                     list(make(<flag-option>,
-                               names: #("all", "a"),
-                               help: "List all packages whether installed or not."))),
+                   options: list(make(<flag-option>,
+                                      names: #("all", "a"),
+                                      help: "List all packages whether installed or not."))),
               make(<new-subcommand>,
                    options: list(make(<flag-option>,
                                       names: #("skip-workspace-check"),
@@ -98,14 +68,9 @@ define function make-command-line-parser
                                       help: "Active packages to be added"
                                         " to workspace file. The special name 'all'"
                                         " will install all known packages."))),
-              make(<update-subcommand>,
-                   options:
-                     list(make(<flag-option>,
-                               name: "pull",
-                               help: "Pull the latest code for packages that are"
-                                 " at version 'head'."))),
+              make(<update-subcommand>),
               make(<status-subcommand>,
-                   options: list(make(<flag-option>,
+                   options: list(make(<flag-option>, // for tooling
                                       name: "directory",
                                       help: "Only show the workspace directory.")))))
 end function;
@@ -143,7 +108,7 @@ end method;
 define method execute-subcommand
     (parser :: <command-line-parser>, subcmd :: <update-subcommand>)
  => (status :: false-or(<int>))
-  ws/update(update-head?: get-option-value(subcmd, "pull"));
+  ws/update();
 end method;
 
 define method execute-subcommand
@@ -177,7 +142,7 @@ define method execute-subcommand
       let (status, output) = run(command, working-directory: directory);
       let dirty = ~whitespace?(output);
 
-      log-info("  %-15s: %s%s", pm/package-name(package), line, (dirty & " (dirty)") | "");
+      log-info("  %-25s: %s%s", pm/package-name(package), line, (dirty & " (dirty)") | "");
     end;
   end;
 
@@ -224,7 +189,7 @@ end function;
 define function main () => (status :: false-or(<int>))
   // Configure logging. We use the logging module for output so we can control verbosity
   // that way.
-  log-formatter(*log*) := make(<log-formatter>, pattern: "%-5L %m");
+  log-formatter(*log*) := make(<log-formatter>, pattern: "%s  %m");
 
   let parser = make-command-line-parser();
   block (exit)
@@ -239,6 +204,11 @@ define function main () => (status :: false-or(<int>))
       log-info("%s", err);
     end;
     status
+  exception (err :: <error>)
+    log-error("%s", condition-to-string(err));
+    if (get-option-value(parser, "debug"))
+      signal(err)
+    end;
   end
 end function;
 
