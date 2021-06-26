@@ -2,6 +2,7 @@
     "name": "workspaces",
     "deps": [
         "json head",
+        "logging head",
         "pacman head",
         "regular-expressions head",
         "testworks head",

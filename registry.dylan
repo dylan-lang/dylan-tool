@@ -160,16 +160,16 @@ define function update-for-directory
     end block;
     select (candidates.size)
       0 =>
-        vprint("WARNING: For library %=, no LID candidates for platform %=.",
-               library-name, current-platform);
+        log-warning("For library %=, no LID candidates for platform %=.",
+                    library-name, current-platform);
       1 => write-registry-file(registry, candidates[0]);
       otherwise =>
-        print("WARNING: For library %= multiple .lid files apply to platform %=.\n"
-                "  %s\nRegistry will point to the first one, arbitrarily.",
-              library-name, current-platform,
-              join(candidates, "\n  ", key: method (lid)
-                                              as(<string>, lid.lid-locator)
-                                            end));
+        log-warning("For library %= multiple .lid files apply to platform %=.\n"
+                      "  %s\nRegistry will point to the first one, arbitrarily.",
+                    library-name, current-platform,
+                    join(candidates, "\n  ", key: method (lid)
+                                                    as(<string>, lid.lid-locator)
+                                                  end));
         write-registry-file(registry, candidates[0]);
     end select;
   end for;
@@ -223,13 +223,13 @@ define function ingest-lid-file
   let library-name = lid-value(lid, $library-key, error?: #t);
 
   if (empty?(lid-files(lid)))
-    vprint("LID file %s has no 'Files' property", lid-path);
+    log-trace("LID file %s has no 'Files' property", lid-path);
   end;
 
   let ext :: <string> = locator-extension(lid-path);
   let ext = ext & lowercase(ext); // Windows
   if (skip-lid?(registry, lid))
-    print("Skipping %s, preferring previous .lid file.", lid-path);
+    log-info("Skipping %s, preferring previous .lid file.", lid-path);
     #f
   else
     add-lid(registry, lid);
@@ -283,8 +283,8 @@ define function ingest-spec-file
         let hdp-dir = subdirectory-locator(locator-directory(idl-path), dir-name);
         let hdp-path = merge-locators(as(<file-locator>, hdp-file), hdp-dir);
         let simple-hdp-path = simplify-locator(hdp-path);
-        vprint("  %s: hdp-path = %s", lib-name, hdp-path);
-        vprint("  %s: simple-hdp-path = %s", lib-name, simple-hdp-path);
+        log-trace("  %s: hdp-path = %s", lib-name, hdp-path);
+        log-trace("  %s: simple-hdp-path = %s", lib-name, simple-hdp-path);
         add-lid(registry, make(<lid>,
                                locator: hdp-path,
                                data: begin
@@ -308,7 +308,7 @@ define function write-registry-file (registry :: <registry>, lid :: <lid>)
     fs/with-open-file(stream = file, direction: #"output", if-exists?: #"overwrite")
       write(stream, new-content);
     end;
-    print("Wrote %s (%s)", file, lid.lid-locator);
+    log-info("Wrote %s (%s)", file, lid.lid-locator);
   end;
 end function;
 
@@ -362,7 +362,7 @@ define function parse-lid-file
               data[prev-key] := add!(data[prev-key], value);
             end;
           else
-            vprint("Skipped unexpected continuation line %s:%d", path, line-number);
+            log-trace("Skipped unexpected continuation line %s:%d", path, line-number);
           end;
         else
           // Keyword line
@@ -385,7 +385,7 @@ define function parse-lid-file
               prev-key := key;
             end;
           else
-            vprint("Skipped invalid syntax line %s:%d: %=", path, line-number, line);
+            log-trace("Skipped invalid syntax line %s:%d: %=", path, line-number, line);
           end;
         end;
       end;

@@ -9,8 +9,6 @@ synopsis: Manage developer workspaces
 //   other output.
 // * LID parsing shouldn't map every key to a sequence; only those known to
 //   be sequences, like Files:.
-// * The output is extremely verbose (including git output), making it easy
-//   to miss the important bits. Use the logging library!
 
 // The class of errors explicitly signalled by this module.
 define class <workspace-error> (<simple-error>)
@@ -21,40 +19,6 @@ define function workspace-error
   error(make(<workspace-error>,
              format-string: format-string,
              format-arguments: args));
-end function;
-
-define function print
-    (format-string, #rest args)
-  apply(format, *stdout*, format-string, args);
-  write(*stdout*, "\n");
-  // OD doesn't currently have an option for flushing output after \n.
-  flush(*stdout*);
-end function;
-
-// Whether to display more verbose informational messages.
-// May be changed via `configure(verbose?: v)`.
-define variable *verbose?* :: <bool> = #f;
-
-define function vprint (format-string, #rest args)
-  if (*verbose?*)
-    apply(print, format-string, args);
-  end;
-end function;
-
-define variable *debug?* :: <bool> = #f;
-
-define function debug
-    (format-string, #rest args)
-  *debug?* & apply(print, concat("*** ", format-string), args)
-end function;
-
-ignorable(debug);
-
-// Configure options for this package.  If `verbose?` is true, output
-// more informational messages.
-define function configure (#key verbose? :: <bool>, debug? :: <bool>) => ()
-  *verbose?* := verbose?;
-  *debug?* := debug?;
 end function;
 
 define constant $workspace-file = "workspace.json";
@@ -101,7 +65,7 @@ define function new
            $active-key,
            join(pkg-names, ",\n", key: curry(format-to-string, "        %=: {}")));
   end;
-  print("Wrote workspace file to %s.", ws-path);
+  log-info("Wrote workspace file to %s.", ws-path);
 end function;
 
 // Update the workspace based on the workspace config or signal an error.
@@ -119,7 +83,7 @@ define function update
           update-deps? :: <bool> = #t, update-registry? :: <bool> = #t)
  => ()
   let ws = find-workspace();
-  print("Workspace directory is %s.", ws.workspace-directory);
+  log-info("Workspace directory is %s.", ws.workspace-directory);
   update-active-packages(ws, update-submodules?);
   update-deps?     & update-active-package-deps(ws, update-head?: update-head?);
   update-registry? & update-registry(ws);
@@ -237,7 +201,7 @@ define function update-active-packages
     let pkg-name = pm/package-name(package);
     let pkg-dir = active-package-directory(ws, pkg-name);
     if (fs/file-exists?(pkg-dir))
-      vprint("Active package %s exists, not downloading.", pkg-name);
+      log-trace("Active package %s exists, not downloading.", pkg-name);
     else
       let cat = pm/load-catalog();
       // The expectation is that most packages won't have a $head version
@@ -247,10 +211,10 @@ define function update-active-packages
       if (rel)
         pm/download(rel, pkg-dir, update-submodules?: update-submodules?);
       else
-        print("WARNING: Skipping active package %=, not found in catalog.", pkg-name);
-        print("         If this is a new or private project then this is normal.");
-        print("         Create a pkg.json file for it and run update again to install");
-        print("         dependencies.");
+        log-warning("Skipping active package %=, not found in catalog.", pkg-name);
+        log-warning("         If this is a new or private project then this is normal.");
+        log-warning("         Create a pkg.json file for it and run update again to install");
+        log-warning("         dependencies.");
       end;
     end;
   end;
@@ -267,7 +231,7 @@ define function update-active-package-deps
       // everything is up-to-date, only print something if --verbose. Probably
       // cleanest to first make a plan and then execute it. Would also
       // facilitate showing the plan and prompting yes/no, and also --dry-run.
-      print("Installing deps for package %s.", pkg-name);
+      log-info("Installing deps for package %s.", pkg-name);
 
       // TODO: in a perfect world this wouldn't install any deps that are also
       // active packages. It doesn't cause a problem though, as long as the
@@ -276,8 +240,8 @@ define function update-active-package-deps
       pm/install-deps(rel /* , skip: ws.workspace-active-packages */,
                       update-head?: update-head?);
     else
-      print("WARNING: No package definition found for active package %s."
-              " Not installing deps.", pkg-name);
+      log-warning("No package definition found for active package %s."
+                    " Not installing deps.", pkg-name);
     end;
   end for;
 end function;
@@ -287,11 +251,11 @@ define function find-active-package-release
   let path = active-package-file(ws, name);
   pm/read-package-file(path)
     | begin
-        print("WARNING: No package found in %s, falling back to catalog.", path);
+        log-warning("No package found in %s, falling back to catalog.", path);
         let cat = pm/load-catalog();
         pm/find-package-release(cat, name, pm/$head)
           | begin
-              print("WARNING: No %s HEAD version found, falling back to latest.", name);
+              log-warning("No %s HEAD version found, falling back to latest.", name);
               pm/find-package-release(cat, name, pm/$latest)
             end
       end
@@ -312,8 +276,8 @@ define function update-registry
       update-for-directory(ws.workspace-registry, pkg-dir);
       pm/do-resolved-deps(rel, curry(update-registry-for-package-release, ws));
     else
-      print("WARNING: No package definition found for active package %s."
-              " Not creating registry files.", name);
+      log-warning("No package definition found for active package %s."
+                    " Not creating registry files.", name);
     end;
   end;
 end function;

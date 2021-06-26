@@ -8,6 +8,7 @@ define library workspaces
   use io,
     import: { format, print, standard-io, streams };
   use json;
+  use logging;
   use pacman;
   use regular-expressions;
   use strings;
@@ -40,6 +41,7 @@ define module workspaces
               relative-locator,
               simplify-locator,
               subdirectory-locator };
+  use logging;
   use operating-system,
     prefix: "os/";
   use pacman,
@@ -72,7 +74,6 @@ define module workspaces
     import: { err, iff, inc!, slice };
 
   export
-    configure,
     find-workspace,
     <workspace>,
       active-package-directory,
