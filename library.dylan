@@ -5,6 +5,7 @@ define library dylan-tool
   use io,
     import: { format, standard-io, streams };
   use json;
+  use logging;
   use pacman;
   use regular-expressions;
   use strings;
@@ -34,6 +35,7 @@ define module dylan-tool
               merge-locators,
               relative-locator,
               subdirectory-locator };
+  use logging;
   use operating-system,
     prefix: "os/",
     rename: { run-application => os/run };

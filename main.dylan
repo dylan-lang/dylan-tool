@@ -4,14 +4,6 @@ Module: dylan-tool
 // * The 'list' subcommand is showing a random set of packages in my ws.all
 //   workspace.
 
-define function print
-    (format-string, #rest args)
-  apply(format, *stdout*, format-string, args);
-  write(*stdout*, "\n");
-  // OD doesn't currently have an option for flushing output after \n.
-  flush(*stdout*);
-end function;
-
 // Create the #str:"..." syntax. (Unused for now.)
 //define function str-parser (s :: <string>) => (s :: <string>) s end;
 
@@ -125,7 +117,7 @@ define method execute-subcommand
     let vstring = get-option-value(subcmd, "version");
     let release = pm/find-package-release(pm/load-catalog(), package-name, vstring)
       | begin
-          print("Package %= not found.", package-name);
+          log-info("Package %= not found.", package-name);
           abort-command(1);
         end;
     pm/install(release);
@@ -145,14 +137,12 @@ define method execute-subcommand
   let pkg-names = get-option-value(subcmd, "pkg");
   let skip-workspace-check? = get-option-value(subcmd, "skip-workspace-check");
   ws/new(name, pkg-names, skip-workspace-check?: skip-workspace-check?);
-  print("You may now run '%s update' in the new directory.", application-name());
+  log-info("You may now run '%s update' in the new directory.", application-name());
 end method;
 
 define method execute-subcommand
     (parser :: <command-line-parser>, subcmd :: <update-subcommand>)
  => (status :: false-or(<int>))
-  ws/configure(verbose?: get-option-value(parser, "verbose"),
-               debug?: get-option-value(parser, "debug"));
   ws/update(update-head?: get-option-value(subcmd, "pull"));
 end method;
 
@@ -161,10 +151,10 @@ define method execute-subcommand
  => (status :: false-or(<int>))
   let workspace = ws/find-workspace();
   if (~workspace)
-    print("Not currently in a workspace.");
+    log-info("Not currently in a workspace.");
     abort-command(1);
   end;
-  print("Workspace: %s", ws/workspace-directory(workspace));
+  log-info("Workspace: %s", ws/workspace-directory(workspace));
   if (get-option-value(subcmd, "directory"))
     abort-command(0);
   end;
@@ -174,9 +164,9 @@ define method execute-subcommand
   //   upstream (usually but not always origin/master).
   let active = ws/workspace-active-packages(workspace);
   if (empty?(active))
-    print("No active packages.");
+    log-info("No active packages.");
   else
-    print("Active packages:");
+    log-info("Active packages:");
     for (package in active)
       let directory = ws/active-package-directory(workspace, pm/package-name(package));
       let command = "git status --untracked-files=no --branch --ahead-behind --short";
@@ -187,7 +177,7 @@ define method execute-subcommand
       let (status, output) = run(command, working-directory: directory);
       let dirty = ~whitespace?(output);
 
-      print("  %-15s: %s%s", pm/package-name(package), line, (dirty & " (dirty)") | "");
+      log-info("  %-15s: %s%s", pm/package-name(package), line, (dirty & " (dirty)") | "");
     end;
   end;
 
@@ -222,27 +212,31 @@ define function list-catalog
     let package = pm/find-package(cat, pkg-name);
     let latest = pm/find-package-release(cat, pkg-name, pm/$latest);
     if (all? | latest-installed)
-      print("%s (%s/%s) - %s",
-            pkg-name,
-            latest-installed | "-",
-            pm/release-version(latest),
-            pm/package-summary(package));
+      log-info("%s (%s/%s) - %s",
+               pkg-name,
+               latest-installed | "-",
+               pm/release-version(latest),
+               pm/package-summary(package));
     end;
   end;
 end function;
 
 define function main () => (status :: false-or(<int>))
+  // Configure logging. We use the logging module for output so we can control verbosity
+  // that way.
+  log-formatter(*log*) := make(<log-formatter>, pattern: "%-5L %m");
+
   let parser = make-command-line-parser();
   block (exit)
     parse-command-line(parser, application-arguments());
     if (get-option-value(parser, "verbose"))
-      pm/set-verbose(#t);
+      log-level(*log*) := $trace-level;
     end;
     execute-command(parser);
   exception (err :: <abort-command-error>)
     let status = exit-status(err);
     if (status ~= 0)
-      print("%s", err);
+      log-info("%s", err);
     end;
     status
   end
