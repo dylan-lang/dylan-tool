@@ -142,16 +142,16 @@ define function load-local-catalog
                  direction: #"input" /*,  I thought this was supposed to work:
                  if-does-not-exist: #f */)
     let (cat, num-packages, num-releases) = read-json-catalog(stream);
-    verbose-message("Loaded %d package%s with %d release%s from %s.\n",
-                    num-packages, iff(num-packages == 1, "", "s"),
-                    num-releases, iff(num-releases == 1, "", "s"),
-                    path);
+    log-trace("Loaded %d package%s with %d release%s from %s.",
+              num-packages, iff(num-packages == 1, "", "s"),
+              num-releases, iff(num-releases == 1, "", "s"),
+              path);
     validate-catalog(cat);
     cat
   end
 /*
   | begin
-      message("WARNING: No package catalog found in %s. Using empty catalog.\n", path);
+      log-warning("No package catalog found in %s. Using empty catalog.", path);
       make(<catalog>)
     end
 */

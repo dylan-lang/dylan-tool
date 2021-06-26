@@ -72,7 +72,7 @@ define method %download
   let (exit-code, signal-code /* , process, #rest streams */)
     = os/run(command, output: #"null", error: #"null");
   if (exit-code = 0)
-    message("Downloaded %s to %s\n", release, dest-dir);
+    log-info("Downloaded %s to %s", release, dest-dir);
   else
     package-error("git clone command failed with exit code %d. Command: %=",
                   exit-code, command);
@@ -99,11 +99,11 @@ define method install
     install-deps(release, force?: force?);
   end;
   if (force? & installed?(release))
-    verbose-message("Deleting package %s for forced install.\n", release);
+    log-trace("Deleting package %s for forced install.", release);
     delete-directory(release-directory(release), recursive?: #t);
   end;
   if (installed?(release))
-    verbose-message("Package %s is already installed.\n", release);
+    log-trace("Package %s is already installed.", release);
   else
     download(release, source-directory(release));
     #t

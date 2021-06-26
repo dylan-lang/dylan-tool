@@ -14,27 +14,6 @@ define function package-manager-directory
   subdirectory-locator(dylan-directory(), $package-directory-name)
 end function;
 
-define variable *verbose-output?* = #f;
-
-define function set-verbose (verbose? :: <bool>)
-  *verbose-output?* := verbose?
-end;
-
-define function message
-    (pattern :: <string>, #rest args) => ()
-  apply(format-out, pattern, args);
-  force-out();
-end;
-
-define function verbose-message
-    (pattern :: <string>, #rest args) => ()
-  if (*verbose-output?*)
-    apply(message, pattern, args);
-  end;
-end;
-
-ignorable(message, verbose-message);
-
 // TODO: Windows
 define constant $default-dylan-directory = "/opt/dylan";
 define constant $dylan-dir-name = "dylan";

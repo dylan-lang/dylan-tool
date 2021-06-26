@@ -7,13 +7,14 @@ Synopsis: Dylan package manager
 
 define library pacman
   use common-dylan;
-  use system,
-    import: { date, file-system, locators, operating-system };
   use io,
     import: { format, format-out, print, streams };
   use json;
+  use logging;
   use regular-expressions;
   use strings;
+  use system,
+    import: { date, file-system, locators, operating-system };
   use uncommon-dylan,
     import: { uncommon-dylan, uncommon-utils };
   export
@@ -23,7 +24,6 @@ end library pacman;
 
 define module pacman
   export
-    set-verbose,
     load-catalog,
     <catalog-error>,
 
@@ -97,6 +97,7 @@ define module %pacman
               locator-name,
               merge-locators,
               subdirectory-locator };
+  use logging;
   use operating-system,
     import: { environment-variable => os/getenv,
               run-application => os/run };
