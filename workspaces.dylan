@@ -2,13 +2,9 @@ module: workspaces
 synopsis: Manage developer workspaces
 
 // TODO:
-// * Remove redundancy in 'update' command. It processes (shared?) dependencies
-//   and writes registry files multiple times.
 // * Display the number of registry files updated and the number unchanged.
 //   It gives reassuring feedback that something went right when there's no
 //   other output.
-// * LID parsing shouldn't map every key to a sequence; only those known to
-//   be sequences, like Files:.
 
 // The class of errors explicitly signalled by this module.
 define class <workspace-error> (<simple-error>)
@@ -68,25 +64,13 @@ define function new
   log-info("Wrote workspace file to %s.", ws-path);
 end function;
 
-// Update the workspace based on the workspace config or signal an error.
-// Parameters:
-//   update-head?: if true, pull the latest updates for any packages that
-//     are installed at version $head. The default is false.
-//   update-submodules?: if true (the default), then checkout (git) submodules
-//     when downloading packages.
-//   update-deps?: if true (the default), download package dependencies specified
-//     in the pkg.json file.
-//   update-registry?: if true (the default), create a registry based on all
-//     active packages and their dependencies.
-define function update
-    (#key update-head? :: <bool>, update-submodules? :: <bool> = #t,
-          update-deps? :: <bool> = #t, update-registry? :: <bool> = #t)
- => ()
+// Update the workspace based on the workspace.json file or signal an error.
+define function update () => ()
   let ws = find-workspace();
   log-info("Workspace directory is %s.", ws.workspace-directory);
-  update-active-packages(ws, update-submodules?);
-  update-deps?     & update-active-package-deps(ws, update-head?: update-head?);
-  update-registry? & update-registry(ws);
+  let cat = pm/load-catalog();
+  update-active-packages(ws, cat);
+  update-registry(ws, cat);
 end function;
 
 // <workspace> holds the parsed workspace configuration, and is the one object
@@ -138,7 +122,15 @@ define function find-workspace
     end;
     let active-packages
       = map(method (name)
-              pm/find-package(pm/load-catalog(), name) | make(pm/<package>, name: name)
+              pm/find-package(pm/load-catalog(), name)
+                | make(pm/<package>,
+                       name: name,
+                       releases: #[],
+                       summary: format-to-string("active package %s", name),
+                       description: "unknown",
+                       contact: "unknown",
+                       license-type: "unknown",
+                       category: "unknown")
             end,
             key-sequence(object[$active-key])); // nothing in the values yet
     make(<workspace>,
@@ -189,75 +181,91 @@ define function active-package?
   member?(pkg-name, ws.active-package-names, test: istring=?)
 end function;
 
-// Download active packages into the workspace directory if the
-// package directories don't already exist.
+// Download the active packages and all of their resolved dependencies.  If an active
+// package directory doesn't exist, the package is searched for in the catalog and
+// downloaded. If not found, it is skipped with a warning. If the active package
+// directory DOES exist, it is assumed to be current and the package is skipped.
 //
-// TODO(cgay): this should pull the latest changes to master if the master
-// branch is clean, and output a note otherwise.
+// TODO(cgay): skipping if the directory exists is pretty bad but is a start. Need to
+// reload pkg.json, if it exists, and install new deps.
+//
+// We cobble together a fake "root" release to pass to pm/resolve-deps. The fake release
+// has the active packages as its direct dependencies. The reason for doing it this way
+// is to give pm/resolve-deps ALL the necessary info at the same time, including the
+// active packages.
 define function update-active-packages
-    (ws :: <workspace>, update-submodules? :: <bool>)
-  for (package in ws.workspace-active-packages)
-    // Download the package if necessary.
-    let pkg-name = pm/package-name(package);
-    let pkg-dir = active-package-directory(ws, pkg-name);
-    if (fs/file-exists?(pkg-dir))
-      log-trace("Active package %s exists, not downloading.", pkg-name);
+    (ws :: <workspace>, cat :: pm/<catalog>)
+  let (deps, actives) = find-active-package-deps(ws, cat);
+
+  // Download active packages
+  for (release in actives)
+    let dir = active-package-directory(ws, release.pm/package-name);
+    if (fs/file-exists?(dir))
+      // TODO(cgay): need to load the pkg.json file in case it has been modified, for
+      // example, by adding a new dependency. Then return it so that it can be included
+      // when updating dependencies, which happens all at one time so that conflicting
+      // deps can be detected.
+      log-trace("Active package directory %s exists, not downloading %s.",
+                dir, release.pm/package-name);
     else
-      let cat = pm/load-catalog();
-      // The expectation is that most packages won't have a $head version
-      // listed in the catalog so we clone the repository containing $latest.
-      let rel = pm/find-package-release(cat, pkg-name, pm/$head)
-                  | pm/find-package-release(cat, pkg-name, pm/$latest);
-      if (rel)
-        pm/download(rel, pkg-dir, update-submodules?: update-submodules?);
-      else
-        log-warning("Skipping active package %=, not found in catalog.", pkg-name);
-        log-warning("         If this is a new or private project then this is normal.");
-        log-warning("         Create a pkg.json file for it and run update again to install");
-        log-warning("         dependencies.");
-      end;
+      pm/download(release, dir);
     end;
+  end;
+
+  // Install dependencies. Note that resolve-deps doesn't return any of the packages
+  // passed in `actives`, so all of the following packages will be installed to
+  // ${DYLAN}/pkg.
+  for (release in deps)
+    pm/install(release, deps?: #f, force?: #f);
   end;
 end function;
 
-// Update dep packages if needed.
-define function update-active-package-deps
-    (ws :: <workspace>, #key update-head? :: <bool>)
+define function find-active-package-deps
+    (ws :: <workspace>, cat :: pm/<catalog>)
+  let actives = make(<istring-table>);
+  let deps = make(<stretchy-vector>);
   for (pkg-name in ws.active-package-names)
-    // Update the package deps.
-    let rel = find-active-package-release(ws, pkg-name);
+    let rel = find-active-package-release(ws, pkg-name, cat);
     if (rel)
-      // TODO: don't do output unless some deps are actually installed. If
-      // everything is up-to-date, only print something if --verbose. Probably
-      // cleanest to first make a plan and then execute it. Would also
-      // facilitate showing the plan and prompting yes/no, and also --dry-run.
-      log-info("Installing deps for package %s.", pkg-name);
-
-      // TODO: in a perfect world this wouldn't install any deps that are also
-      // active packages. It doesn't cause a problem though, as long as the
-      // registry points to the right place. (This is more easily solved once
-      // the above TODO is done: two passes, make plan, execute plan.)
-      pm/install-deps(rel /* , skip: ws.workspace-active-packages */,
-                      update-head?: update-head?);
+      actives[rel.pm/package-name] := rel;
+      add!(deps, make(pm/<dep>,
+                      package-name: rel.pm/package-name,
+                      version: rel.pm/release-version));
     else
-      log-warning("No package definition found for active package %s."
-                    " Not installing deps.", pkg-name);
+      log-warning("Skipping active package %=, not found in catalog.", pkg-name);
+      log-warning("         If this is a new or private project then this is normal.");
+      log-warning("         Create a pkg.json file for it and run update again to install");
+      log-warning("         dependencies.");
     end;
-  end for;
+  end;
+  let releases = make(<stretchy-vector>);
+  let root = make(pm/<release>,
+                  version: make(pm/<branch-version>, branch: "__no_branch__"),
+                  deps: as(pm/<dep-vector>, deps),
+                  package: make(pm/<package>,
+                                name: "ROOT__",
+                                releases: releases,
+                                summary: "workspace dummy package",
+                                description: "workspace dummy package",
+                                license-type: "unknown",
+                                contact: "unknown",
+                                category: "unknown",
+                                location: $workspace-file));
+  add!(releases, root); // back pointer
+  let releases-to-install = pm/resolve-deps(root, cat, active: actives);
+  values(releases-to-install, actives)
 end function;
 
+// Find or create a <release> for the given active package name by first reading the
+// pkg.json file and then falling back to the latest release in the catalog, if any.
 define function find-active-package-release
-    (ws :: <workspace>, name :: <string>) => (p :: false-or(pm/<release>))
+    (ws :: <workspace>, name :: <string>, cat :: pm/<catalog>)
+ => (p :: false-or(pm/<release>))
   let path = active-package-file(ws, name);
   pm/read-package-file(path)
     | begin
         log-warning("No package found in %s, falling back to catalog.", path);
-        let cat = pm/load-catalog();
-        pm/find-package-release(cat, name, pm/$head)
-          | begin
-              log-warning("No %s HEAD version found, falling back to latest.", name);
-              pm/find-package-release(cat, name, pm/$latest)
-            end
+        pm/find-package-release(cat, name, pm/$latest)
       end
 end function;
 
@@ -268,33 +276,13 @@ end function;
 // for them (unless they're included in another LID file via the LID: keyword,
 // in which case it is assumed they're for inclusion only).
 define function update-registry
-    (ws :: <workspace>)
-  for (name in ws.active-package-names)
-    let rel = find-active-package-release(ws, name);
-    if (rel)
-      let pkg-dir = active-package-directory(ws, name);
-      update-for-directory(ws.workspace-registry, pkg-dir);
-      pm/do-resolved-deps(rel, curry(update-registry-for-package-release, ws));
-    else
-      log-warning("No package definition found for active package %s."
-                    " Not creating registry files.", name);
-    end;
+    (ws :: <workspace>, cat :: pm/<catalog>)
+  let (deps, actives) = find-active-package-deps(ws, cat);
+  for (rel in actives)
+    update-for-directory(ws.workspace-registry,
+                         active-package-directory(ws, rel.pm/package-name));
   end;
-end function;
-
-// Dig around in each `pkg`s directory to find the libraries it
-// defines and create registry files for them.
-define function update-registry-for-package-release
-    (ws :: <workspace>, rel :: pm/<release>, dep :: pm/<dep>, installed? :: <bool>)
-  if (~installed?)
-    workspace-error("Attempt to update registry for dependency %s, which"
-                      " is not yet installed. This may be a bug.",
-                    pm/package-name(dep));
+  for (rel in deps)
+    update-for-directory(ws.workspace-registry, pm/source-directory(rel));
   end;
-  let pkg-dir = if (active-package?(ws, rel.pm/package-name))
-                  active-package-directory(ws, rel.pm/package-name)
-                else
-                  pm/source-directory(rel)
-                end;
-  update-for-directory(ws.workspace-registry, pkg-dir);
 end function;

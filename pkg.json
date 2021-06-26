@@ -1,12 +1,12 @@
 {
     "name": "workspaces",
     "deps": [
-        "json head",
-        "logging head",
-        "pacman head",
-        "regular-expressions head",
-        "testworks head",
-        "uncommon-dylan head"
+        "json@1.0",
+        "logging@2.0",
+        "pacman",
+        "regular-expressions@1.0",
+        "testworks@1.1",
+        "uncommon-dylan@0.2"
     ],
-    "location": "https://github.com/cgay/workspaces"
+    "location": "https://github.com/dylan-lang/workspaces"
 }
