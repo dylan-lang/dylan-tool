@@ -2,6 +2,7 @@
     "name": "pacman",
     "deps": [
         "json head",
+        "logging head",
         "regular-expressions head",
         "testworks head",
         "uncommon-dylan head"

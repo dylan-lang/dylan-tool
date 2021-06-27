@@ -284,7 +284,7 @@ end function;
 
 define function read-package-file
     (file :: <file-locator>) => (release :: false-or(<release>))
-  verbose-message("Reading package file %s\n", file);
+  log-trace("Reading package file %s", file);
   block ()
     with-open-file (stream = file)
       let json = json/parse(stream, table-class: <istring-table>, strict?: #f);
