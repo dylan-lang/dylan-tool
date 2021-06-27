@@ -2,6 +2,7 @@
     "name": "dylan-tool",
     "deps": [ "command-line-parser head",
               "json head",
+              "logging head",
               "pacman head",
               "regular-expressions head",
               "uncommon-dylan head",
