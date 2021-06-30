@@ -3,9 +3,9 @@
     "deps": [
         "json@1.0",
         "logging@2.0",
-        "pacman",
+        "pacman@0.0.2",
         "regular-expressions@1.0",
-        "testworks@1.1",
+        "testworks@2.0",
         "uncommon-dylan@0.2"
     ],
     "location": "https://github.com/dylan-lang/workspaces"

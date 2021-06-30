@@ -186,7 +186,7 @@ end function;
 // downloaded. If not found, it is skipped with a warning. If the active package
 // directory DOES exist, it is assumed to be current and the package is skipped.
 //
-// TODO(cgay): skipping if the directory exists is pretty bad but is a start. Need to
+// TODO(cgay): skipping the directory if it exists is pretty bad but is a start. Need to
 // reload pkg.json, if it exists, and install new deps.
 //
 // We cobble together a fake "root" release to pass to pm/resolve-deps. The fake release
