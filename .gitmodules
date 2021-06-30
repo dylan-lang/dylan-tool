@@ -16,3 +16,6 @@
 [submodule "ext/command-line-parser"]
 	path = ext/command-line-parser
 	url = https://github.com/dylan-lang/command-line-parser
+[submodule "ext/logging"]
+	path = ext/logging
+	url = https://github.com/dylan-lang/logging.git
