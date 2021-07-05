@@ -41,9 +41,9 @@ end function;
 // Packages with no category are categorized thusly.
 define constant $uncategorized = "Uncategorized";
 
-define constant $catalog-package-release :: <release>
+define constant $pacman-catalog-release :: <release>
   = begin
-      let releases = make(<istring-table>);
+      let releases = make(<stretchy-vector>);
       let package = make(<package>,
                          name: "pacman-catalog",
                          releases: releases,
@@ -54,10 +54,10 @@ define constant $catalog-package-release :: <release>
                          category: $uncategorized);
       let release = make(<release>,
                          package: package,
-                         version: $head,
+                         version: make(<branch-version>, branch: "master"),
                          location: "https://github.com/cgay/pacman-catalog",
                          deps: as(<dep-vector>, #[]));
-      releases[$head-name] := release;
+      add!(releases, release);
       release
     end;
 
@@ -81,8 +81,14 @@ define function find-package
 end function;
 
 // Loading the catalog once per session should be enough, so cache it here.
-define variable *catalog* :: false-or(<catalog>) = #f;
+// This is a thread-local variable so that we can bind it to a dummy catalog
+// while installing the catalog package itself, to prevent infinite recursion.
+define thread variable *catalog* :: false-or(<catalog>) = #f;
 
+// Load the package catalog. First look in the local cache, then download from
+// GitHub. If $DYLAN_CATALOG is set then that file is used and no attempt is
+// made to download the latest catalog.
+//
 // TODO: handle type errors (e.g., from assumptions that the json is valid)
 //       and return <catalog-error>.
 define function load-catalog
@@ -93,6 +99,7 @@ define function load-catalog
     let override = os/getenv($catalog-env-var);
     let local-path
       = if (override)
+          log-warning("Using override catalog from $%s: %s", $catalog-env-var, override);
           as(<file-locator>, override)
         else
           merge-locators(as(<file-locator>, $local-catalog-filename),
@@ -100,8 +107,13 @@ define function load-catalog
         end;
     *catalog*
       := begin
-           if (install($catalog-package-release, force?: too-old?(local-path)))
-             copy-to-local-cache($catalog-package-release, local-path);
+           // We pass deps?: #f here to prevent infinite recursion when
+           // load-catalog is called again. pacman-catalog is a data-only
+           // package and will never have any deps.
+           if (~override & install($pacman-catalog-release,
+                                   force?: too-old?(local-path),
+                                   deps?: #f))
+             copy-to-local-cache($pacman-catalog-release, local-path);
            end;
            load-local-catalog(local-path)
          end
@@ -189,9 +201,11 @@ define function json-to-catalog
                category: optional-element(name, attributes, "category", <string>)
                  | $uncategorized,
                keywords: optional-element(name, attributes, "keywords", <seq>)
-                 | #[]);
+                 | #[],
+               releases: make(<stretchy-vector>));
       json-to-releases(package,
                        required-element(name, attributes, "releases", <table>));
+      sort!(package.package-releases, test: \>);
       packages[name] := package;
       nreleases := nreleases + package.package-releases.size;
     end if;
@@ -201,29 +215,35 @@ define function json-to-catalog
          nreleases)
 end function;
 
+// json-to-releases parses all the releases for a package and stores them in
+// package.package-releases. This side-effecting style is necessary because of
+// the circular data structure: packages have releases with back-pointers to
+// the package. (Or we could make the package-releases slot non-constant.)
 define function json-to-releases
     (package :: <package>, attributes :: <string-table>)
  => ()
   let name = package.package-name;
   let releases = package.package-releases;
+  let seen = make(<string-table>);
   for (release-attributes keyed-by vstring in attributes)
-    // TODO: This test will fail when I make "1.2" parse the same as "1.2.0"
-    if (element(releases, vstring, default: #f))
-      catalog-error("duplicate package version: %s %s", name, vstring);
-    end;
+    // Canonicalize the version string.
     let version = string-to-version(vstring);
     if (version = $latest)
       catalog-error("version 'latest' is not a valid package version in the catalog;"
-                      " it's only valid for lookup. Did you mean 'head'?");
+                      " specify a semantic version instead.");
     end;
-    releases[vstring]
-      := make(<release>,
+    let version-string = version-to-string(version);
+    if (element(seen, version-string, default: #f))
+      catalog-error("duplicate release version: %s@%s", name, vstring);
+    end;
+    add!(releases,
+         make(<release>,
               version: version,
               deps: map-as(<dep-vector>,
                            string-to-dep,
                            required-element(name, release-attributes, "deps", <seq>)),
               location: required-element(name, release-attributes, "location", <string>),
-              package: package);
+              package: package));
   end for;
 end function;
 
@@ -274,20 +294,8 @@ define method find-package-release
  => (p :: false-or(<release>))
   let package = find-package(cat, name);
   let releases = package & package.package-releases;
-  if (releases & releases.size > 0)
-    let newest-first = sort(value-sequence(releases),
-                            test: method (r1 :: <release>, r2 :: <release>)
-                                    r1.release-version > r2.release-version
-                                  end);
-    let latest = newest-first[0];
-    // The concept of "latest" doesn't mean much if it always returns
-    // the "head" version, which is latest by definition. So make sure
-    // to only return the "head" version if there are no numbered
-    // versions.
-    if (latest.release-version = $head & newest-first.size > 1)
-      latest := newest-first[1];
-    end;
-    latest
+  if ((releases | #[]).size > 0)        // does 0 releases even make sense?
+    releases[0]
   end
 end method;
 
@@ -295,38 +303,18 @@ define method find-package-release
     (cat :: <catalog>, name :: <string>, ver :: <version>)
  => (p :: false-or(<release>))
   let package = find-package(cat, name);
-  package & find-release(package, ver)
+  package & find-release(package, ver, exact?: #t)
 end method;
 
-// Signal <catalog-error> if there are any problems found in the catalog.
+// Signal an indirect instance of <package-error> if there are any problems found in the
+// catalog.
 define function validate-catalog
     (cat :: <catalog>) => ()
+  // A reusable memoization cache (release => result).
+  let cache = make(<table>);
   for (package keyed-by name in cat.all-packages)
     for (release keyed-by vstring in package.package-releases)
-      validate-deps(cat, release);
+      resolve-deps(release, cat, cache: cache);
     end;
-  end;
-end function;
-
-// Verify that all dependencies specified in the catalog also exist as packages
-// themselves in the catalog. Note this has nothing to do with whether or not
-// they're installed.
-define function validate-deps
-    (cat :: <catalog>, release :: <release>) => ()
-  local
-    method dep-missing (dep)
-      catalog-error("for package %s/%s, dependency %s is missing from the catalog",
-                    release.package-name,
-                    version-to-string(release.release-version),
-                    dep-to-string(dep));
-    end;
-  for (dep in release.release-deps)
-    let package = find-package(cat, dep.package-name);
-    package | dep-missing(dep);
-    any?(method (release)
-           satisfies?(dep, release.release-version)
-         end,
-         package.package-releases)
-      | dep-missing(dep);
   end;
 end function;

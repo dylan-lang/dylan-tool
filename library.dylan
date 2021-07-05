@@ -14,7 +14,7 @@ define library pacman
   use regular-expressions;
   use strings;
   use system,
-    import: { date, file-system, locators, operating-system };
+    import: { date, file-system, locators, operating-system, threads };
   use uncommon-dylan,
     import: { uncommon-dylan, uncommon-utils };
   export
@@ -54,19 +54,25 @@ define module pacman
     read-package-file,
 
     <release>,
+    release-to-string,
     release-deps,
     release-location,
     release-version,
-    do-resolved-deps,
 
     <dep>,
+    <dep-vector>,
+    dep-to-string,
+    dep-version,
+    resolve-deps,
 
     <version>,
-    $head,
     $latest,
+    <semantic-version>,
     version-major,
     version-minor,
-    version-patch;
+    version-patch,
+    <branch-version>,
+    version-branch;
 end module pacman;
 
 define module %pacman
@@ -104,19 +110,27 @@ define module %pacman
   use print,
     import: { print, print-object, printing-object, *print-escape?* };
   use regular-expressions,
-    import: { <regex>,
-              regex-parser,
+    prefix: "re/",
+    rename: { <regex> => <regex>,
+              regex-parser => regex-parser,  // #:regex:".*"
               compile-regex => re/compile,
               regex-pattern => re/pattern,
-              regex-search-strings => re/search-strings };
+              regex-search => re/search,
+              regex-search-strings => re/search-strings,
+              match-group => re/group };
   use streams,
     import: { read-to-end, <stream>, with-output-to-string, write };
   use strings,
-    import: { ends-with?,
+    import: { decimal-digit?,
+              ends-with?,
               find-substring,
               lowercase,
               starts-with?,
-              string-equal-ic? => istring= };
+              string-equal-ic? => istring=,
+              string-less-ic? => istring<,
+              strip };
+  use threads,
+    import: { dynamic-bind };
   use uncommon-dylan,
     exclude: { format-out, format-to-string };
   use uncommon-utils,
@@ -126,13 +140,15 @@ define module %pacman
 
   // For the test suite.
   export
-    <dep-vector>,
     all-packages,
+    <dep-error>,
+    <dep-conflict>,
+    <latest>,
+    max-release,
     string-parser,                 // #string:...
 
     string-to-version, version-to-string,
-    string-to-dep, dep-to-string,
-    satisfies?,
+    string-to-dep,
 
     read-json-catalog,
     validate-catalog;

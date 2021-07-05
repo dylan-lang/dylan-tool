@@ -1,11 +1,11 @@
 {
     "name": "pacman",
     "deps": [
-        "json head",
-        "logging head",
-        "regular-expressions head",
-        "testworks head",
-        "uncommon-dylan head"
+        "json@1.0",
+        "logging@2.0",
+        "regular-expressions@1.0",
+        "testworks@2.0",
+        "uncommon-dylan@0.2"
     ],
-    "location": "https://github.com/cgay/pacman"
+    "location": "https://github.com/dylan-lang/pacman"
 }

@@ -11,7 +11,7 @@ define library pacman-test
   use testworks;
   use uncommon-dylan,
     import: { uncommon-dylan, uncommon-utils };
-end;
+end library;
 
 define module pacman-test
   use file-system,
@@ -34,4 +34,4 @@ define module pacman-test
   use testworks;
   use uncommon-dylan,
     exclude: { format-to-string };
-end;
+end module;
