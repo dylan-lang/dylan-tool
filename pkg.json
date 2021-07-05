@@ -1,11 +1,13 @@
 {
     "name": "dylan-tool",
-    "deps": [ "command-line-parser head",
-              "json head",
-              "logging head",
-              "pacman head",
-              "regular-expressions head",
-              "uncommon-dylan head",
-              "workspaces head" ],
-    "location": "https://github.com/cgay/dylan-tool"
+    "deps": [
+        "command-line-parser@3.0",
+        "json@1.0",
+        "logging@2.1",
+        "pacman@0.0.2",
+        "regular-expressions@1.0",
+        "uncommon-dylan@0.2",
+        "workspaces@0.1.0"
+    ],
+    "location": "https://github.com/dylan-lang/dylan-tool"
 }
