@@ -164,7 +164,7 @@ define function resolve-deps
           let pkg-name = release.package-name;
           if (~(active & element(active, pkg-name, default: #f)))
             let current-max = element(maxima, pkg-name, default: #f);
-            maxima[pkg-name] := max-release(current-max, release);
+            maxima[pkg-name] := max-release(current-max, release, pair(pkg-name, seen));
           end;
         end;
       end;
@@ -179,9 +179,7 @@ end function;
 // which aren't really comparable. We prefer the branch version arbitrarily. Differing
 // branch versions or differing major version number for semantic versions causes a
 // `<dep-conflict>` error.
-//
-// TODO(cgay): include the path to each release in the error.
-define function max-release (current, release) => (r :: <release>)
+define function max-release (current, release, seen) => (r :: <release>)
   if (~current)
     release
   else
@@ -192,9 +190,10 @@ define function max-release (current, release) => (r :: <release>)
         if (relver ~= curver)
           dep-error(make(<dep-conflict>,
                          format-string: "dependencies on two different branches of"
-                           " the same package: %= and %=",
+                           " the same package: %= and %= (path: %s)",
                          format-arguments: list(release-to-string(current),
-                                                release-to-string(release))));
+                                                release-to-string(release),
+                                                join(reverse(seen), " => "))));
         end;
         current
       else
@@ -210,9 +209,10 @@ define function max-release (current, release) => (r :: <release>)
         if (release-major ~= current-major)
           dep-error(make(<dep-conflict>,
                          format-string: "dependencies on conflicting major versions"
-                           " of the same package: %= and %=",
+                           " of the same package: %= and %= (path: %s)",
                          format-arguments: list(release-to-string(current),
-                                                release-to-string(release))));
+                                                release-to-string(release),
+                                                join(reverse(seen), " => "))));
         end;
         max(current, release)
       end
