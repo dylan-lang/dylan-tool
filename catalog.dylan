@@ -55,7 +55,7 @@ define constant $pacman-catalog-release :: <release>
       let release = make(<release>,
                          package: package,
                          version: make(<branch-version>, branch: "master"),
-                         location: "https://github.com/cgay/pacman-catalog",
+                         location: "https://github.com/dylan-lang/pacman-catalog",
                          deps: as(<dep-vector>, #[]));
       add!(releases, release);
       release
