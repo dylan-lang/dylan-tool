@@ -19,3 +19,6 @@
 [submodule "ext/logging"]
 	path = ext/logging
 	url = https://github.com/dylan-lang/logging.git
+[submodule "ext/sphinx-extensions"]
+	path = ext/sphinx-extensions
+	url = https://github.com/dylan-lang/sphinx-extensions.git
