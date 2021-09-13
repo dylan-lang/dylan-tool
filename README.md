@@ -28,7 +28,7 @@ catalog.
 on `pkg.json` will be provided, so that the above toil can be avoided.
 
 A "workspace" is just a directory containing a `workspace.json` file. The
-workspace file specifies "active" packages, whuch are the packages you're
+workspace file specifies "active" packages, which are the packages you're
 actively developing, as opposed to packages installed in the package cache,
 `${DYLAN}/pkg/`.
 
