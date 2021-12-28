@@ -74,14 +74,14 @@ define module workspaces
     import: { err, iff, inc!, slice };
 
   export
-    find-workspace,
+    load-workspace,
     <workspace>,
       active-package-directory,
       active-package-file,
       active-package?,
       workspace-active-packages,
       workspace-directory,
-      workspace-file,
+      find-workspace-file,
       workspace-default-library-name,
     new,
     update,
