@@ -24,7 +24,7 @@ end library pacman;
 
 define module pacman
   export
-    dylan-directory,
+    dylan-directory,            // $DYLAN or $HOME/dylan or /opt/dylan
     load-catalog,
     <catalog-error>,
 
@@ -97,7 +97,8 @@ define module %pacman
               force-out };
   use json,
     import: { parse-json => json/parse,
-              encode-json => json/encode };
+              encode-json => json/encode,
+              <json-error> => json/<error> };
   use locators,
     import: { <directory-locator>,
               <file-locator>,
