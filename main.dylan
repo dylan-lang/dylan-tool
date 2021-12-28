@@ -11,7 +11,12 @@ end class;
 
 define class <new-subcommand> (<subcommand>)
   keyword name = "new";
-  keyword help = "Create a new workspace with the given packages.";
+  keyword help = "";
+end;
+
+define class <workspace-subcommand> (<subcommand>)
+  keyword name = "workspace";
+  keyword help = "Create a new workspace.";
 end class;
 
 define class <update-subcommand> (<subcommand>)
@@ -53,21 +58,18 @@ define function make-command-line-parser
               make(<list-subcommand>,
                    options: list(make(<flag-option>,
                                       names: #("all", "a"),
-                                      help: "List all packages whether installed or not."))),
+                                      help: "List all packages whether installed"
+                                        " or not."))),
               make(<new-subcommand>,
-                   options: list(make(<flag-option>,
-                                      names: #("skip-workspace-check"),
-                                      help: "Don't check whether already"
-                                        " inside a workspace directory."),
-                                 make(<positional-option>,
-                                      name: "name",
-                                      help: "Workspace directory name."),
-                                 make(<positional-option>,
-                                      name: "pkg",
-                                      repeated?: #t,
-                                      help: "Active packages to be added"
-                                        " to workspace file. The special name 'all'"
-                                        " will install all known packages."))),
+                   subcommands:
+                     // TODO: new package, new library
+                     list(make(<workspace-subcommand>,
+                               options: list(make(<parameter-option>,
+                                                  names: #("directory", "d"),
+                                                  help: "Create the workspace in this directory."),
+                                             make(<positional-option>,
+                                                  name: "name",
+                                                  help: "Workspace directory name."))))),
               make(<update-subcommand>),
               make(<status-subcommand>,
                    options: list(make(<flag-option>, // for tooling
@@ -96,13 +98,12 @@ define method execute-subcommand
 end method;
 
 define method execute-subcommand
-    (parser :: <command-line-parser>, subcmd :: <new-subcommand>)
+    (parser :: <command-line-parser>, subcmd :: <workspace-subcommand>)
  => (status :: false-or(<int>))
   let name = get-option-value(subcmd, "name");
-  let pkg-names = get-option-value(subcmd, "pkg");
-  let skip-workspace-check? = get-option-value(subcmd, "skip-workspace-check");
-  ws/new(name, pkg-names, skip-workspace-check?: skip-workspace-check?);
-  log-info("You may now run '%s update' in the new directory.", application-name());
+  let dir = get-option-value(subcmd, "directory");
+  ws/new(name, parent-directory: dir & as(<directory-locator>, dir));
+  0
 end method;
 
 define method execute-subcommand
@@ -114,7 +115,7 @@ end method;
 define method execute-subcommand
     (parser :: <command-line-parser>, subcmd :: <status-subcommand>)
  => (status :: false-or(<int>))
-  let workspace = ws/find-workspace();
+  let workspace = ws/load-workspace(fs/working-directory());
   if (~workspace)
     log-info("Not currently in a workspace.");
     abort-command(1);

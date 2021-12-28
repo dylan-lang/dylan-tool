@@ -53,12 +53,14 @@ release. For now, follow these steps to build and install.
     make sure that `$HOME/dylan/bin` is on your `$PATH`.
 
 
-You should now be able to run ``dylan help`` to see a list of subcommands. To fully test
-your installation, try creating a temp workspace and updating it::
+You should now be able to run ``dylan help`` to see a list of subcommands. To
+fully test your installation, try creating a temp workspace and updating
+it. Here's an example using the `logging` library::
 
     $ cd /tmp
-    $ dylan new my-workspace logging
+    $ dylan new workspace my-workspace
     $ cd my-workspace
+    $ git clone --recursive https://github.com/dylan-lang/logging
     $ dylan update
     $ dylan-compiler -build logging-test-suite   # optional
     $ _build/bin/logging-test-suite              # optional
@@ -95,35 +97,28 @@ Use `dylan help`, `dylan help <subcommand>`, or `dylan <subcommand> --help` to g
 on subcommands and options.
 
 .. index::
-   single: dylan new subcommand
-   single: subcommand; dylan new
+   single: dylan new workspace subcommand
+   single: subcommand; dylan new workspace
 
-dylan new
----------
+dylan new workspace
+-------------------
 
-The `new` subcommand creates a new workspace. It has two required positional arguments:
-the name of the workspace and then any number of active packages to add to the
-`workspace.json` file. This command simply creates a directory with a workspace.json file
-in it.
+The `new workspace` subcommand creates a new workspace directory and
+initializes it with a `workspace.json` file. The workspace name is the only
+required argument. ::
+
+  $ dylan new workspace http
+  $ cd http
+  $ ls -l
+  total 8
+  -rw-r--r-- 1 you you   28 Dec 29 18:03 workspace.json
 
 Options:
 ~~~~~~~~
 
-`--skip-workspace-check`
-  If true, then skip the check for whether you are already inside a workspace directory.
-  If this is false then creating a workspace within a workspace is an error.
-
-Example:
-~~~~~~~~
-
-Create a workspace named `http` with one active package, `http`, update it, and build its
-test suite::
-
-   $ dylan new http http
-   $ cd http
-   $ dylan update
-   $ dylan-compiler -build http-test-suite
-
+`--directory`
+  Create the workspace under this directory instead of the current working
+  directory.
 
 .. index::
    single: dylan update subcommand
@@ -139,16 +134,12 @@ dylan update
 
 The `update` subcommand must be run inside a workspace directory and performs two actions:
 
-1.  Installs all active packages into the top-level workspace directory (the directory
-    containing `workspace.json`).
+#.  Installs all package dependencies, as specified in their `pkg.json` files.
 
-#.  Installs all package dependencies, as specified in the active packages' `pkg.json`
-    files or their catalog entries if the have no `pkg.json` file, into `$DYLAN/pkg/`.
+#.  Updates the registry to have an entry for each library in the workspace
+    packages or their dependencies.
 
-#.  Updates the registry to have an entry for each LID file in an active package or in a
-    package dependency.
-
-    The "registry" directory is created at the same level as the `workspace.json` file
+    The `registry` directory is created at the same level as the `workspace.json` file
     and all registry files are written to a subdirectory named after the local platform.
 
     .. note::
@@ -157,24 +148,20 @@ The `update` subcommand must be run inside a workspace directory and performs tw
        machine. For example, on `x86_64-linux` LID files that specify `Platforms: win32`
        will not cause a registry file to be generated.
 
-Options:
-~~~~~~~~
-
-`--skip-workspace-check`
-  If true, then skip the check for whether you are already inside a workspace directory.
-  If this is false then creating a workspace within a workspace is an error.
-
 Example:
 ~~~~~~~~
 
-Create a workspace named `http` with one active package, `http`, update it, and build its
-test suite::
+Create a workspace named `http`, with one active package, `http`, update it, and
+build the test suite::
 
-   $ dylan new http http
+   $ dylan new workspace http
    $ cd http
+   $ git clone --recursive https://github.com/dylan-lang/http
    $ dylan update
-   $ dylan-compiler -build http-test-suite
+   $ dylan-compiler -build http-server-test-suite
 
+Note that `dylan-compiler` must always be invoked in the workspace directory so
+that it can find the `registry` directory.
 
 .. index::
    single: dylan status subcommand
