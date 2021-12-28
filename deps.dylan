@@ -164,7 +164,7 @@ define function resolve-deps
           let pkg-name = release.package-name;
           if (~(active & element(active, pkg-name, default: #f)))
             let current-max = element(maxima, pkg-name, default: #f);
-            maxima[pkg-name] := max-release(current-max, release, pair(pkg-name, seen));
+            maxima[pkg-name] := max-release(current-max, release, seen: pair(pkg-name, seen));
           end;
         end;
       end;
@@ -178,44 +178,47 @@ end function;
 // Find the newest of two releases. They could have semantic versions or branch versions,
 // which aren't really comparable. We prefer the branch version arbitrarily. Differing
 // branch versions or differing major version number for semantic versions causes a
-// `<dep-conflict>` error.
-define function max-release (current, release, seen) => (r :: <release>)
-  if (~current)
-    release
-  else
-    let relver = release.release-version;
-    let curver = current.release-version;
-    if (instance?(relver, <branch-version>))
-      if (instance?(curver, <branch-version>))
-        if (relver ~= curver)
-          dep-error(make(<dep-conflict>,
-                         format-string: "dependencies on two different branches of"
-                           " the same package: %= and %= (path: %s)",
-                         format-arguments: list(release-to-string(current),
-                                                release-to-string(release),
-                                                join(reverse(seen), " => "))));
-        end;
-        current
-      else
-        release                // prefer branch version
-      end
+// `<dep-conflict>` error. `seen` is for better error messages only, and should be a
+// sequence of package names seen so far during dependency resolution.
+define method max-release
+    (current == #f, release :: <release>, #key seen = #[]) => (r :: <release>)
+  release
+end method;
+
+define method max-release
+    (current :: <release>, release :: <release>, #key seen = #[]) => (r :: <release>)
+  let relver = release.release-version;
+  let curver = current.release-version;
+  if (instance?(relver, <branch-version>))
+    if (instance?(curver, <branch-version>))
+      if (relver ~= curver)
+        dep-error(make(<dep-conflict>,
+                       format-string: "dependencies on two different branches of"
+                         " the same package: %= and %= (path: %s)",
+                       format-arguments: list(release-to-string(current),
+                                              release-to-string(release),
+                                              join(reverse(seen), " => "))));
+      end;
+      current
     else
-      if (instance?(curver, <branch-version>))
-        current                 // prefer branch version
-      else
-        // Both releases are SemVer.
-        let release-major = release.release-version.version-major;
-        let current-major = current.release-version.version-major;
-        if (release-major ~= current-major)
-          dep-error(make(<dep-conflict>,
-                         format-string: "dependencies on conflicting major versions"
-                           " of the same package: %= and %= (path: %s)",
-                         format-arguments: list(release-to-string(current),
-                                                release-to-string(release),
-                                                join(reverse(seen), " => "))));
-        end;
-        max(current, release)
-      end
+      release                // prefer branch version
+    end
+  else
+    if (instance?(curver, <branch-version>))
+      current                 // prefer branch version
+    else
+      // Both releases are SemVer.
+      let release-major = release.release-version.version-major;
+      let current-major = current.release-version.version-major;
+      if (release-major ~= current-major)
+        dep-error(make(<dep-conflict>,
+                       format-string: "dependencies on conflicting major versions"
+                         " of the same package: %= and %= (path: %s)",
+                       format-arguments: list(release-to-string(current),
+                                              release-to-string(release),
+                                              join(reverse(seen), " => "))));
+      end;
+      max(current, release)
     end
   end
-end function;
+end method;

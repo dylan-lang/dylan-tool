@@ -24,6 +24,7 @@ end library pacman;
 
 define module pacman
   export
+    dylan-directory,
     load-catalog,
     <catalog-error>,
 
