@@ -43,7 +43,10 @@ define module dylan-tool
     prefix: "pm/";
   use regular-expressions,
     import: { regex-parser },      // #regex:"..."
-    rename: { regex-search-strings => re/search-strings };
+    rename: { compile-regex => re/compile,
+              regex-pattern => re/pattern,
+              regex-search => re/search,
+              regex-search-strings => re/search-strings };
   use standard-io,
     import: { *standard-output* => *stdout*,
               *standard-error* => *stderr* };

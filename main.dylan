@@ -14,9 +14,14 @@ define class <new-subcommand> (<subcommand>)
   keyword help = "";
 end;
 
-define class <workspace-subcommand> (<subcommand>)
+define class <new-workspace-subcommand> (<subcommand>)
   keyword name = "workspace";
   keyword help = "Create a new workspace.";
+end class;
+
+define class <new-library-subcommand> (<subcommand>)
+  keyword name = "library";
+  keyword help = "Create a new library and its test library.";
 end class;
 
 define class <update-subcommand> (<subcommand>)
@@ -62,8 +67,25 @@ define function make-command-line-parser
                                         " or not."))),
               make(<new-subcommand>,
                    subcommands:
-                     // TODO: new package, new library
-                     list(make(<workspace-subcommand>,
+                     // TODO: new package
+                     list(make(<new-library-subcommand>,
+                               // dylan new library --exe foo <dep> ...
+                               options:
+                                 list(make(<flag-option>,
+                                           names: #("executable", "x"),
+                                           help: "The library creates an executable binary"),
+                                      make(<positional-option>,
+                                           names: #("name"),
+                                           help: "Name of the library"),
+                                      make(<positional-option>,
+                                           names: #("deps"),
+                                           required?: #f,
+                                           repeated?: #t,
+                                           help: "Package dependencies in the form pkg@version."
+                                             " 'pkg' with no version gets the current latest"
+                                             " version. pkg@1.2 means a specific version. The test"
+                                             " library automatically depends on testworks."))),
+                          make(<new-workspace-subcommand>,
                                options: list(make(<parameter-option>,
                                                   names: #("directory", "d"),
                                                   help: "Create the workspace in this directory."),
@@ -98,11 +120,21 @@ define method execute-subcommand
 end method;
 
 define method execute-subcommand
-    (parser :: <command-line-parser>, subcmd :: <workspace-subcommand>)
+    (parser :: <command-line-parser>, subcmd :: <new-workspace-subcommand>)
  => (status :: false-or(<int>))
   let name = get-option-value(subcmd, "name");
   let dir = get-option-value(subcmd, "directory");
   ws/new(name, parent-directory: dir & as(<directory-locator>, dir));
+  0
+end method;
+
+define method execute-subcommand
+    (parser :: <command-line-parser>, subcmd :: <new-library-subcommand>)
+ => (status :: false-or(<int>))
+  let name = get-option-value(subcmd, "name");
+  let dep-specs = get-option-value(subcmd, "deps") | #[];
+  let exe? = get-option-value(subcmd, "executable");
+  new-library(name, fs/working-directory(), dep-specs, exe?);
   0
 end method;
 
