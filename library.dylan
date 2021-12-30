@@ -62,7 +62,7 @@ define module pacman
 
     <dep>,
     <dep-vector>,
-    dep-to-string,
+    dep-to-string, string-to-dep,
     dep-version,
     resolve-deps,
 
@@ -150,7 +150,6 @@ define module %pacman
     string-parser,                 // #string:...
 
     string-to-version, version-to-string,
-    string-to-dep,
 
     read-json-catalog,
     validate-catalog;
