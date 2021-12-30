@@ -35,6 +35,24 @@ install: build
 	  ln -s $(link_target) $(link_source); \
 	fi;
 
+# dylan-tool needs to be buildable with submodules so that it can be built on
+# new platforms without having to manually install deps. It's easy to forget to
+# test it both ways, hence this target.
+test: test-with-submodules test-with-packages
+
+test-with-submodules:
+	dylan-compiler -build pacman-test && _build/bin/pacman-test
+	dylan-compiler -build pacman-catalog-test \
+	  && DYLAN_CATALOG=pacman-catalog/catalog.json _build/bin/pacman-catalog-test
+	dylan-compiler -build workspaces-tests && _build/bin/workspaces-tests
+
+test-with-packages: build
+	_build/bin/dylan-tool update
+	cd .. && dylan-compiler -build pacman-test && _build/bin/pacman-test
+	cd .. && dylan-compiler -build pacman-catalog-test \
+	  && DYLAN_CATALOG=pacman-catalog/catalog.json _build/bin/pacman-catalog-test
+	cd .. && dylan-compiler -build workspaces-tests && _build/bin/workspaces-tests
+
 clean:
 	rm -rf _build
 
