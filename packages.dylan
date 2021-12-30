@@ -128,7 +128,11 @@ define function read-package-file
   log-trace("Reading package file %s", file);
   block ()
     with-open-file (stream = file)
-      let json = json/parse(stream, table-class: <istring-table>, strict?: #f);
+      let json = block ()
+                   json/parse(stream, table-class: <istring-table>, strict?: #f)
+                 exception (ex :: json/<error>)
+                   package-error("%s %s", file, ex);
+                 end;
       let name = element(json, "name", default: #f)
         | package-error("Invalid package file %s: expected a 'name' field.", file);
       let deps = element(json, "deps", default: #f)
@@ -143,6 +147,7 @@ define function read-package-file
                // in that more things are optional here.
                package: make(<package>,
                              name: name,
+                             file: file,
                              releases: releases,
                              summary: summary | "**no summary**",
                              description: optional-element(name, json, "description", <string>)
@@ -167,17 +172,23 @@ define function read-package-file
 end function;
 
 // Forward various methods from <release> to the <package> that contains them.
-define generic package-name         (o :: <object>) => (s :: <string>);
-define generic package-summary      (o :: <object>) => (s :: <string>);
-define generic package-description  (o :: <object>) => (s :: <string>);
-define generic package-contact      (o :: <object>) => (s :: <string>);
-define generic package-license-type (o :: <object>) => (s :: <string>);
-define generic package-category     (o :: <object>) => (s :: <string>);
-define generic package-keywords     (o :: <object>) => (s :: <seq>);
+define generic package-name         (o :: <object>) => (_ :: <string>);
+define generic package-file         (o :: <object>) => (_ :: false-or(<file-locator>));
+define generic package-summary      (o :: <object>) => (_ :: <string>);
+define generic package-description  (o :: <object>) => (_ :: <string>);
+define generic package-contact      (o :: <object>) => (_ :: <string>);
+define generic package-license-type (o :: <object>) => (_ :: <string>);
+define generic package-category     (o :: <object>) => (_ :: <string>);
+define generic package-keywords     (o :: <object>) => (_ :: <seq>);
 
 define not-inline method package-name
     (release :: <release>) => (s :: <string>)
   release.release-package.package-name
+end method;
+
+define not-inline method package-file
+    (release :: <release>) => (f :: false-or(<file-locator>))
+  release.release-package.package-file
 end method;
 
 define method package-summary
@@ -220,6 +231,11 @@ define class <package> (<object>)
   constant slot package-name :: <string>,
     required-init-keyword: name:;
 
+  // pkg.json file from which this package was parsed, or #f if it was created
+  // by loading the catalog.
+  constant slot package-file :: false-or(<file-locator>) = #f,
+    init-keyword: file:;
+
   // All releases of this package, ordered newest to oldest. Each release
   // contains the data that changes with each new versioned release, plus a
   // back-pointer to the package it's a part of. Currently it is possible for
@@ -234,7 +250,7 @@ define class <package> (<object>)
     required-init-keyword: summary:;
 
   // Full description of the package, which may be arbitrarily long. If this is
-  // not supplied the summary is used instead.
+  // not supplied the summary may be used instead.
   constant slot package-description :: <string>,
     required-init-keyword: description:;
 
