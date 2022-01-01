@@ -5,10 +5,11 @@
         "http@1.1",
         "json@1.0",
         "logging@2.1",
-        "pacman@0.2",
+        "pacman@0.3",
         "regular-expressions@1.0",
+        "testworks@2.0",
         "uncommon-dylan@0.2",
-        "workspaces@0.1.0"
+        "workspaces@0.3.0"
     ],
     "location": "https://github.com/dylan-lang/dylan-tool"
 }
