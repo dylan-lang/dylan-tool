@@ -50,7 +50,7 @@ test-with-packages: build
 	_build/bin/dylan-tool update
 	cd .. && dylan-compiler -build pacman-test && _build/bin/pacman-test
 	cd .. && dylan-compiler -build pacman-catalog-test \
-	  && DYLAN_CATALOG=pacman-catalog/catalog.json _build/bin/pacman-catalog-test
+	  && DYLAN_CATALOG=dylan-tool/ext/pacman-catalog/catalog.json _build/bin/pacman-catalog-test
 	cd .. && dylan-compiler -build workspaces-tests && _build/bin/workspaces-tests
 
 clean:
