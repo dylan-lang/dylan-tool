@@ -22,3 +22,6 @@
 [submodule "ext/sphinx-extensions"]
 	path = ext/sphinx-extensions
 	url = https://github.com/dylan-lang/sphinx-extensions.git
+[submodule "ext/pacman-catalog"]
+	path = ext/pacman-catalog
+	url = https://github.com/dylan-lang/pacman-catalog

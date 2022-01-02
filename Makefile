@@ -43,7 +43,7 @@ test: test-with-submodules test-with-packages
 test-with-submodules:
 	dylan-compiler -build pacman-test && _build/bin/pacman-test
 	dylan-compiler -build pacman-catalog-test \
-	  && DYLAN_CATALOG=pacman-catalog/catalog.json _build/bin/pacman-catalog-test
+	  && DYLAN_CATALOG=ext/pacman-catalog/catalog.json _build/bin/pacman-catalog-test
 	dylan-compiler -build workspaces-tests && _build/bin/workspaces-tests
 
 test-with-packages: build
