@@ -299,16 +299,22 @@ end function;
 
 // Write a registry file for `lid` if it doesn't exist or the content changed.
 define function write-registry-file (registry :: <registry>, lid :: <lid>)
-  let file = registry-file-locator(registry, lid);
-  let relative-path = relative-locator(lid.lid-locator, registry.root-directory);
-  let new-content = format-to-string("abstract://dylan/%s\n", relative-path);
-  let old-content = file-content(file);
+  let registry-file = registry-file-locator(registry, lid);
+  let lid-file = simplify-locator(lid.lid-locator);
+  // Write the absolute pathname of the LID file rather than
+  // abstract://dylan/<relative-path> because the latter doesn't work reliably
+  // on Windows. For example abstract://dylan/../../pkg/...  resolved to
+  // C:\..\pkg\... when compiling in c:\users\cgay\dylan\workspaces\dt
+  let new-content = format-to-string("%s\n", lid-file);
+  let old-content = file-content(registry-file);
   if (new-content ~= old-content)
-    fs/ensure-directories-exist(file);
-    fs/with-open-file(stream = file, direction: #"output", if-exists?: #"overwrite")
+    fs/ensure-directories-exist(registry-file);
+    fs/with-open-file(stream = registry-file,
+                      direction: #"output",
+                      if-exists?: #"replace")
       write(stream, new-content);
     end;
-    log-info("Wrote %s (%s)", file, lid.lid-locator);
+    log-info("Wrote %s (%s)", registry-file, lid-file);
   end;
 end function;
 

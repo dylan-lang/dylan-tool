@@ -38,7 +38,6 @@ define module workspaces
               locator-extension,
               locator-path,
               merge-locators,
-              relative-locator,
               simplify-locator,
               subdirectory-locator };
   use logging;
