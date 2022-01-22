@@ -85,11 +85,12 @@ end function;
 // Convert to table for outputing as JSON.
 define method to-table
     (release :: <release>) => (t :: <istring-table>)
-  tabling(<istring-table>,
+  let t = make(<istring-table>);
           // Name and version are encoded higher up in the JSON object
           // structure.
-          "deps" => map(dep-to-string, release.release-deps),
-          "location" => release.release-location)
+  t["deps"] := map(dep-to-string, release.release-deps);
+  t["location"] := release.release-location;
+  t
 end method;
 
 

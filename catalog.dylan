@@ -248,14 +248,14 @@ define function json-to-releases
 end function;
 
 define function required-element
-    (name :: <string>, table :: <table>, key :: <string>, expected-type :: <type>)
+    (name :: <string>, t :: <table>, key :: <string>, expected-type :: <type>)
  => (value :: <object>)
   // TODO: error message could be better if we had a `context` parameter.
-  let v = element(table, key, default: #f)
+  let v = element(t, key, default: #f)
     | catalog-error("package %= missing required key %=. table = %s",
                     name, key,
                     with-output-to-string (s)
-                      for (v keyed-by k in table)
+                      for (v keyed-by k in t)
                         format(s, "%= => %=\n", k, v)
                       end;
                     end);
@@ -266,10 +266,10 @@ define function required-element
 end function;
 
 define function optional-element
-    (package-name :: <string>, table :: <table>, key :: <string>, expected-type :: <type>)
+    (package-name :: <string>, t :: <table>, key :: <string>, expected-type :: <type>)
  => (value :: <object>)
   // TODO: error message could be better if we had a `context` parameter.
-  let v = element(table, key, default: #f);
+  let v = element(t, key, default: #f);
   if (v & ~instance?(v, expected-type))
     catalog-error("package %=, incorrect type for key %=: %=",
                   package-name, key, expected-type);
