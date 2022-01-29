@@ -1,4 +1,4 @@
-Module: pacman-test
+Module: pacman-test-suite
 
 define test test-install ()
   let release = make-test-release("pacman@0.0.2"); // must be in catalog
