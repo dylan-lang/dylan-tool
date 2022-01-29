@@ -1,6 +1,6 @@
 module: dylan-user
 
-define library workspaces-tests
+define library workspaces-test-suite
   use common-dylan;
   use json;
   use system,
@@ -9,7 +9,7 @@ define library workspaces-tests
   use workspaces;
 end;
 
-define module workspaces-tests
+define module workspaces-test-suite
   use common-dylan;
   use file-system,
     prefix: "fs/";

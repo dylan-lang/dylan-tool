@@ -1,4 +1,4 @@
-module: workspaces-tests
+module: workspaces-test-suite
 
 define test test-new ()
   let test-dir = test-temp-directory();
