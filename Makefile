@@ -25,6 +25,8 @@ link_source     = $(DYLAN)/bin/dylan
 build:
 	dylan-compiler -build dylan-tool
 
+# After the next OD release this should install a static exe built with the
+# -unify flag.
 install: build
 	mkdir -p $(install_bin)
 	mkdir -p $(install_lib)
@@ -37,7 +39,8 @@ install: build
 
 # dylan-tool needs to be buildable with submodules so that it can be built on
 # new platforms without having to manually install deps. It's easy to forget to
-# test it both ways, hence this target.
+# test it both ways, hence this target. (We should be able to ditch submodules
+# after there's a stable 1.0 version available for bootstrapping.)
 test: test-with-submodules test-with-packages
 
 test-with-submodules:
