@@ -1,4 +1,4 @@
-library: pacman-test
+library: pacman-test-suite
 files: library.dylan
        test-utils.dylan
        catalog-test.dylan

@@ -1,4 +1,4 @@
-Module: pacman-test
+Module: pacman-test-suite
 
 define test test-string-to-version ()
   for (vstring in #["4.5.6-beta1", // may be supported in future

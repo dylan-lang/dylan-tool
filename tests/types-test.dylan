@@ -1,4 +1,4 @@
-Module: pacman-test
+Module: pacman-test-suite
 
 define test version-=-test ()
   for (item in #[#["latest", "latest", #t],

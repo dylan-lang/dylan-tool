@@ -1,4 +1,4 @@
-Module: pacman-test
+Module: pacman-test-suite
 
 define constant $catalog-text =
   #:string:({

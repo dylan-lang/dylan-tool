@@ -1,4 +1,4 @@
-Module: pacman-test
+Module: pacman-test-suite
 
 // Make a <release> from a dependency spec like "pkg@1.2.3". If a catalog is given then
 // the release is added to the package with the same name in the catalog, if

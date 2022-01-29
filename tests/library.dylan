@@ -1,6 +1,6 @@
 Module: dylan-user
 
-define library pacman-test
+define library pacman-test-suite
   use io,
     import: { format, streams };
   use json;
@@ -13,7 +13,7 @@ define library pacman-test
     import: { uncommon-dylan, uncommon-utils };
 end library;
 
-define module pacman-test
+define module pacman-test-suite
   use file-system,
     import: { file-exists? };
   use format,
