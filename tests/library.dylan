@@ -24,7 +24,8 @@ define module pacman-test-suite
               merge-locators,
               subdirectory-locator };
   use operating-system,
-    import: { environment-variable-setter };
+    import: { environment-variable,
+              environment-variable-setter };
   use %pacman;
   use pacman;
   use strings,

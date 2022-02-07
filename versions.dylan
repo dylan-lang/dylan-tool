@@ -1,6 +1,11 @@
 Module: %pacman
 Synopsis: Support for semantic versions and branch versions
 
+// I'm not sure if branch versions need to exist. Leaving the code here for
+// now, but I'm certain branch versions don't ever belong in the catalog. My
+// current thinking is that branches are only ever used for active packages,
+// and those are checked out into the workspace manually.
+
 // A version is a specification that points to a specific version control commit so that
 // an exact version of code may be retrieved. It might be a tag, a branch, or even a
 // specific commit hash.

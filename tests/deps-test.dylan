@@ -34,22 +34,19 @@ define test test-dep-= ()
 end test;
 
 define test test-max-release ()
-  let p123 = make-test-release("p@1.2.3");
-  let p124 = make-test-release("p@1.2.4");
-  let p133 = make-test-release("p@1.3.3");
-  let p223 = make-test-release("p@2.2.3");
-  let bfoo = make-test-release("p@foo");
-  let bbar = make-test-release("p@bar");
+  let pkg = make-test-package("p", versions: #("1.2.3", "1.2.4", "1.3.3", "2.3.3"));
+  let p123 = find-release(pkg, string-to-version("1.2.3"));
+  let p124 = find-release(pkg, string-to-version("1.2.4"));
+  let p133 = find-release(pkg, string-to-version("1.3.3"));
+  let p223 = find-release(pkg, string-to-version("2.2.3"));
   assert-equal(p123, max-release(p123, p123));
   assert-equal(p124, max-release(p123, p124)); // patch different
   assert-equal(p133, max-release(p123, p133)); // minor different
-  assert-equal(bfoo, max-release(p123, bfoo)); // branch considered newer
   assert-signals(<dep-conflict>, max-release(p123, p223)); // different major incompatible
-  assert-signals(<dep-conflict>, max-release(bfoo, bbar)); // 2 branches not comparable
 end test;
 
 define test test-circular-dependency ()
-  // The most direct cyclic relationship.
+  // The most direct cyclic relationship. A depends on B and B on A.
   assert-signals(<dep-error>,
                  make-test-catalog(#("A@1.0", "B@1.0"),
                                    #("B@1.0", "A@1.0")));
@@ -57,8 +54,8 @@ define test test-circular-dependency ()
   assert-signals(<dep-error>,
                  make-test-catalog(#("A@1.0", "B@1.0"),
                                    #("B@1.0", "C@1.0"),
-                                   #("C@1.0", "D@foo"),
-                                   #("D@foo", "E@2.2"),
+                                   #("C@1.0", "D@3.4"),
+                                   #("D@3.4", "E@2.2"),
                                    #("E@2.2", "A@1.0")));
   // Same as previous but cirularity based on different release of A.  (In other words,
   // this tests that circularities are solely based on the package name, not the release
@@ -67,8 +64,8 @@ define test test-circular-dependency ()
                  make-test-catalog(#("A@1.0", "B@1.0"),
                                    #("A@2.0", "B@1.0"), // added
                                    #("B@1.0", "C@1.0"),
-                                   #("C@1.0", "D@foo"),
-                                   #("D@foo", "E@2.2"),
+                                   #("C@1.0", "D@3.4"),
+                                   #("D@3.4", "E@2.2"),
                                    #("E@2.2", "A@2.0"))); // changed
 end test;
 
@@ -106,12 +103,6 @@ define test test-dependency-conflict ()
                                      #("C@1.0", "strings@1.2"),
                                      #("A@1.0", "B@1.0", "C@1.0")));
   // A depends on B and C which want different branches of "strings".
-  assert-signals(<dep-conflict>,
-                 make-test-catalog(#("strings@foo"),
-                                   #("strings@bar"),
-                                   #("B@1.0", "strings@foo"),
-                                   #("C@1.0", "strings@bar"),
-                                   #("A@1.0", "B@1.0", "C@1.0")));
 end test;
 
 define test test-minimal-version-selection ()

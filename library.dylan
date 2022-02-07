@@ -24,22 +24,20 @@ end library pacman;
 
 define module pacman
   export
+    catalog,
     dylan-directory,            // $DYLAN or $HOME/dylan or /opt/dylan
-    load-catalog,
     <catalog-error>,
 
     <catalog>,
     find-package,
     find-package-release,
-    package-names,
+    validate-catalog,
 
     <package>,
     package-name,
     package-releases,
-    package-summary,
     package-description,
     package-contact,
-    package-license-type,
     package-category,
     package-keywords,
 
@@ -53,11 +51,16 @@ define module pacman
     release-directory,
     source-directory,
     read-package-file,
+    load-all-packages,
+    load-package,
 
     <release>,
-    release-to-string,
     release-deps,
-    release-location,
+    release-license,
+    // TODO:
+    // release-license-url,
+    release-url,
+    release-to-string,
     release-version,
 
     <dep>,
@@ -83,6 +86,8 @@ define module %pacman
     import: { delete-directory,
               directory-contents,
               directory-empty?,
+              do-directory,
+              ensure-directories-exist,
               file-property,
               <file-system-error>,
               <file-does-not-exist-error>,
@@ -98,10 +103,13 @@ define module %pacman
   use json,
     import: { parse-json => json/parse,
               encode-json => json/encode,
+              print-json => json/print,
+              do-print-json => json/do-print,
               <json-error> => json/<error> };
   use locators,
     import: { <directory-locator>,
               <file-locator>,
+              <locator>,
               locator-name,
               merge-locators,
               subdirectory-locator };
@@ -142,15 +150,18 @@ define module %pacman
 
   // For the test suite.
   export
-    all-packages,
-    <dep-error>,
+    $dylan-env-var,
     <dep-conflict>,
+    <dep-error>,
     <latest>,
+    add-release,
+    cache-package,
+    cached-package,
+    catalog-directory,
+    catalog-package-cache,
+    find-release,
     max-release,
     string-parser,                 // #string:...
-
     string-to-version, version-to-string,
-
-    read-json-catalog,
-    validate-catalog;
+    write-package-file;
 end module %pacman;
