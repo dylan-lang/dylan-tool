@@ -159,8 +159,11 @@ run-test-application()
 // published in the catalog, at which time the user should be gently informed.
 define constant $pkg-template
   = #:string:'{
-    "name": "%s",
     "deps": [ %s ],
+    "description": "** put description here **",
+    "name": %=,
+    "version": "0.1.0",
+    "url": "** put repo url here **"
 }
 ';
 
@@ -238,7 +241,7 @@ define function make-dylan-library
            make(<template>,
                 output-file: file("pkg.json"),
                 format-string: $pkg-template,
-                format-arguments: list(name, deps-string))); 
+                format-arguments: list(deps-string, name))); 
   for (template in templates)
     write-template(template)
   end;
@@ -248,7 +251,7 @@ end function;
 // resolved to a specific released semantic version.
 define function parse-dep-specs
     (specs :: <seq>) => (deps :: pm/<dep-vector>)
-  let cat = pm/load-catalog();
+  let cat = pm/catalog();
   map-as(pm/<dep-vector>,
          method (spec)
            let dep = pm/string-to-dep(spec);

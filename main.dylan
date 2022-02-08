@@ -104,7 +104,7 @@ define method execute-subcommand
  => (status :: false-or(<int>))
   for (package-name in get-option-value(subcmd, "pkg"))
     let vstring = get-option-value(subcmd, "version");
-    let release = pm/find-package-release(pm/load-catalog(), package-name, vstring)
+    let release = pm/find-package-release(pm/catalog(), package-name, vstring)
       | begin
           log-info("Package %= not found.", package-name);
           abort-command(1);
@@ -203,18 +203,23 @@ end function;
 // true, show all packages. Installed and latest versions are shown.
 define function list-catalog
     (#key all? :: <bool>)
-  let cat = pm/load-catalog();
-  for (pkg-name in sort(pm/package-names(cat)))
-    let versions = pm/installed-versions(pkg-name, head?: #f);
+  let cat = pm/catalog();
+  let packages = pm/load-all-packages(cat);
+  local method package-< (p1, p2)
+          p1.pm/package-name < p2.pm/package-name
+        end;
+  for (package in sort(packages, test: package-<))
+    let name = pm/package-name(package);
+    let versions = pm/installed-versions(name, head?: #f);
     let latest-installed = versions.size > 0 & versions[0];
-    let package = pm/find-package(cat, pkg-name);
-    let latest = pm/find-package-release(cat, pkg-name, pm/$latest);
+    let package = pm/find-package(cat, name);
+    let latest = pm/find-package-release(cat, name, pm/$latest);
     if (all? | latest-installed)
-      log-info("%s (%s/%s) - %s",
-               pkg-name,
+      log-info("%s (Installed: %s, Latest: %s) - %s",
+               name,
                latest-installed | "-",
                pm/release-version(latest),
-               pm/package-summary(package));
+               pm/package-description(package));
     end;
   end;
 end function;
