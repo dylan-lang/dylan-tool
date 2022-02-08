@@ -54,7 +54,7 @@ end function;
 define function update () => ()
   let ws = load-workspace(fs/working-directory());
   log-info("Workspace directory is %s.", ws.workspace-directory);
-  let cat = pm/load-catalog();
+  let cat = pm/catalog();
   update-deps(ws, cat);
   update-registry(ws, cat);
 end function;
@@ -179,6 +179,9 @@ define function update-deps
   end;
 end function;
 
+// Find the transitive dependencies of the active packages in workspace `ws` by
+// creating a fake release with the combined dependencies and calling
+// resolve-deps on it.
 define function find-active-package-deps
     (ws :: <workspace>, cat :: pm/<catalog>)
   let actives = make(<istring-table>);
@@ -199,17 +202,18 @@ define function find-active-package-deps
   end;
   let releases = make(<stretchy-vector>);
   let root = make(pm/<release>,
+                  url: "unknown",
                   version: make(pm/<branch-version>, branch: "__no_branch__"),
                   deps: as(pm/<dep-vector>, deps),
+                  license: "unknown",
+                  license-url: "unknown",
                   package: make(pm/<package>,
                                 name: "ROOT__",
                                 releases: releases,
-                                summary: "workspace dummy package",
                                 description: "workspace dummy package",
-                                license-type: "unknown",
                                 contact: "unknown",
                                 category: "unknown",
-                                location: $workspace-file));
+                                keywords: #[]));
   add!(releases, root); // back pointer
   let releases-to-install = pm/resolve-deps(root, cat, active: actives);
   values(releases-to-install, actives)
