@@ -1,6 +1,6 @@
 Module: %pacman
 
-// This enables the #string: prefix to "parse" raw string literals.
+// This enables the #:string: prefix to "parse" raw string literals.
 define function string-parser (s :: <string>) => (s :: <string>) s end;
 
 // Name of the directory under $DYLAN where installed versions are stored.

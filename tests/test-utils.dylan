@@ -1,51 +1,52 @@
 Module: pacman-test-suite
 
-// Make a <release> from a dependency spec like "pkg@1.2.3". If a catalog is given then
-// the release is added to the package with the same name in the catalog, if
-// any. Otherwise a new package is created. `deps` is also a sequence of dep specs for
-// the release.
-define function make-test-release
-    (dep-spec :: <string>, #key catalog, deps = #[]) => (release :: <release>)
-  let dep = string-to-dep(dep-spec);
-  let name = dep.package-name;
-  let pkg = catalog & find-package(catalog, name);
-  let package = pkg | make(<package>,
-                           name: name,
-                           summary: "summary",
-                           description: "description",
-                           contact: "contact@contact",
-                           license-type: "license-type",
-                           category: "category",
-                           releases: make(<stretchy-vector>));
-  let rel = catalog & find-package-release(catalog, name, dep.dep-version);
-  let release
-    = rel | make(<release>,
-                 package: package,
-                 version: dep.dep-version,
-                 deps: map-as(<dep-vector>, string-to-dep, deps),
-                 // test-install depends on this being a real repo.
-                 location: format-to-string("https://github.com/cgay/%s", name));
-  add!(package.package-releases, release);
-  sort!(package.package-releases, test: \>);
-  if (catalog & ~pkg)
-    // This is a new package; add it to the catalog.
-    catalog.all-packages[name] := package;
+// Make a package with a release for each version in `versions`, each release
+// having the given deps. If catalog is provided, the package and releases are
+// fetched from it if they exist and added to it if they don't.
+define function make-test-package
+    (name, #key versions, deps = #(), catalog) => (p :: <package>)
+  let package = catalog & cached-package(catalog, name);
+  if (~package)
+    package := make(<package>,
+                    name: name,
+                    description: "description",
+                    contact: "a@b.c",
+                    category: "category",
+                    keywords: #["key1", "key2"]);
+    catalog & cache-package(catalog, package);
   end;
-  release
+  let deps = as(<dep-vector>, map(string-to-dep, deps));
+  for (v in versions)
+    let version = string-to-version(v);
+    let release = find-release(package, version);
+    if (~release)
+      add-release(package,
+                  make(<release>,
+                       package: package,
+                       version: version,
+                       deps: deps,
+                       url: format-to-string("https://github.com/dylan-lang/%s", name),
+                       license: "MIT",
+                       license-url: "https://github.com/dylan-lang/package/LICENSE"));
+    end;
+  end;
+  package
 end function;
 
-// Make a catalog from a list of package specs. Each "spec" is a list like
-// #("p@1.2.3", "d@1.2.3", ...) where the first element is a release to add
-// to the catalog and the remaining elements are dependencies for that release.
-//
+// Make a catalog from a set of specs, each of which is a list of dep strings
+// like #("p@1.2", "d@3.4.5"). The first string in each spec is taken as a new
+// package to create, with one release, and the remaining strings, if any, are
+// taken as dependencies for that release.
 define function make-test-catalog
     (#rest package-specs) => (c :: <catalog>)
-  let catalog = make(<catalog>,
-                     packages: make(<istring-table>));
-  for (package-spec in package-specs)
-    // Mutate catalog...
-    make-test-release(head(package-spec), catalog: catalog, deps: tail(package-spec));
+  let catalog = make(<catalog>, directory: test-temp-directory());
+  for (spec in package-specs)
+    let dep = string-to-dep(spec[0]);
+    make-test-package(dep.package-name,
+                      versions: list(version-to-string(dep.dep-version)),
+                      deps: copy-sequence(spec, start: 1),
+                      catalog: catalog);
   end;
-  validate-catalog(catalog);
+  validate-catalog(catalog, cached?: #t);
   catalog
 end function;

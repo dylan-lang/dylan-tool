@@ -85,8 +85,8 @@ end function;
 // package will be used during the build process anyway. The returned deps do not include
 // the active releases.
 //
-// Signal <dep-error> if dependencies can't be resolved due to circularities or
-// conflicting constraints.
+// Signal <dep-error> if dependencies can't be resolved due to circularities,
+// conflicting constraints, or if they are simply missing from the catalog.
 //
 // The algorithm used here is based on my understanding of
 // https://research.swtch.com/vgo-principles, which can be very roughly summarized as
@@ -171,7 +171,13 @@ define function resolve-deps
       let deps = as(<list>, value-sequence(maxima));
       trace(depth, deps, "<= %s", deps);
     end method;
-  let deps = resolve-release(release, #(), 0);
+  let deps = block ()
+               resolve-release(release, #(), 0)
+             exception (ex :: <package-missing-error>)
+               dep-error(make(<dep-error>,
+                              format-string: "package %= not in catalog",
+                              format-arguments: list(ex.package-name)));
+             end;
   trace(0, deps, "Resolved %= to %s", release, deps)
 end function;
 

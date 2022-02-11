@@ -65,7 +65,7 @@ define method %download
   let command
     = format-to-string("git clone%s --quiet --branch=%s -- %s %s",
                        (update-submodules? & " --recurse-submodules") | "",
-                       branch, release.release-location, dest-dir);
+                       branch, release.release-url, dest-dir);
   let (exit-code, signal-code /* , process, #rest streams */)
     = os/run(command, output: #"null", error: #"null");
   if (exit-code = 0)
@@ -111,9 +111,8 @@ end method;
 // re-install all dependencies.
 define method install-deps
     (release :: <release>, #key force? :: <bool>)
-  let cat = load-catalog();
   // TODO(cgay): pass correct `active:` arg.
-  for (rel in resolve-deps(release, cat))
+  for (rel in resolve-deps(release, catalog()))
     if (force? | ~installed?)
       install(rel, force?: force?, deps?: #t);
     end;
