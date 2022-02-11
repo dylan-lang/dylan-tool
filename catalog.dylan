@@ -70,6 +70,8 @@ end class;
 // Access this via catalog() rather than directly.
 define thread variable *catalog* :: false-or(<catalog>) = #f;
 
+define variable *override-logged?* = #f;
+
 // Get the package catalog. Packages are loaded lazily and stored in the
 // catalog's cache. If the DYLAN_CATALOG environment variable is set then that
 // directory is used and no attempt is made to download the latest catalog.
@@ -81,7 +83,10 @@ define function catalog
     let override = os/getenv($catalog-env-var);
     let directory
       = if (override)
-          log-warning("Using override catalog from $%s: %s", $catalog-env-var, override);
+          if (~*override-logged?*)
+            log-warning("Using override catalog from $%s: %s", $catalog-env-var, override);
+            *override-logged?* := #t;
+          end;
           subdirectory-locator(as(<directory-locator>, override), $catalog-format)
         else
           subdirectory-locator(package-manager-directory(),
