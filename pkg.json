@@ -1,5 +1,10 @@
 {
     "name": "dylan-tool",
+    "version": "0.4.0",
+    "category": "language-tools",
+    "contact": "dylan-lang@googlegroups.com",
+    "description": "Manage Dylan workspaces, packages, and registries",
+    "keywords": ["workspace", "package"],
     "deps": [
         "command-line-parser@3.1",
         "http@1.1",
@@ -11,5 +16,5 @@
         "uncommon-dylan@0.2",
         "workspaces@0.3.0"
     ],
-    "location": "https://github.com/dylan-lang/dylan-tool"
+    "url": "https://github.com/dylan-lang/dylan-tool"
 }
