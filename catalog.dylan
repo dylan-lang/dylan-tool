@@ -91,15 +91,19 @@ define function catalog
         else
           subdirectory-locator(package-manager-directory(),
                                $catalog-local-directory-name,
+                               $pacman-catalog-release.release-version.version-to-string,
+                               $source-directory-name,
                                $catalog-format)
         end;
     // We pass deps?: #f here to prevent infinite recursion when `catalog` is
     // called again. pacman-catalog is a data-only package and will never have
     // any deps.
     if (~override)
-      install($pacman-catalog-release, force?: too-old?(directory), deps?: #f);
+      install($pacman-catalog-release,
+              force?: too-old?(directory),
+              deps?: #f);
     end;
-    make(<catalog>, directory: directory)
+    *catalog* := make(<catalog>, directory: directory)
   end
 end function;
 
