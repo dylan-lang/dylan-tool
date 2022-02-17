@@ -131,21 +131,34 @@ define function lid-files (lid :: <lid>) => (files :: <seq>)
 end function;
 
 
-
-// Find all the LID files in `pkg-dir` that are marked as being for the current
-// platform and create registry files for the corresponding libraries. First do
-// a pass over the entire directory reading lid files, then write registry
-// files for the ones that aren't included in other LID files. (This avoids
-// writing the same registry file twice for the same library without resorting
-// to putting "Platforms: none" in LID files that are included in other LID
-// files.)
+// Update `registry` so that it knows about the LID files in `dir` and then
+// write a file for each of the new libraries found. This is called, for
+// example, when a new dependency is added and `dylan update` wants to update
+// the registry for the libraries in the new package directory.
 define function update-for-directory
-    (registry :: <registry>, pkg-dir :: <directory-locator>) => ()
-  find-libraries(registry, pkg-dir);
+    (registry :: <registry>, dir :: <directory-locator>) => ()
+  for (lid :: <lid> in update-lids(registry, dir))
+    write-registry-file(registry, lid);
+  end;
+end function;
+
+// Find all the LID files in `dir` that are marked as being for the current
+// platform and add them to `registry`. First do a pass over the entire
+// directory reading lid files, then write registry files for the ones that
+// aren't included in other LID files. (This avoids writing the same registry
+// file twice for the same library without resorting to putting "Platforms:
+// none" in LID files that are included in other LID files.)
+define function update-lids
+    (registry :: <registry>, dir :: <directory-locator>,
+     #key platform :: <symbol> = os/$platform-name)
+ => (lids :: <seq>)
+  // First find all the LIDs, then trim them down based on platform.
+  let lids = find-lids(registry, dir);
+  let keep = #();
   // For each library, write a LID if there's one explicitly for this platform,
   // or there's one with no Platforms: specified at all (as long as it isn't
   // included in another LID).
-  let current-platform = as(<string>, os/$platform-name);
+  let current-platform = lowercase(as(<string>, platform));
   for (lids keyed-by library-name in registry.lids-by-library)
     let candidates = #();
     block (done)
@@ -162,7 +175,8 @@ define function update-for-directory
       0 =>
         log-warning("For library %=, no LID candidates for platform %=.",
                     library-name, current-platform);
-      1 => write-registry-file(registry, candidates[0]);
+      1 =>
+        keep := pair(candidates[0], keep);
       otherwise =>
         log-warning("For library %= multiple .lid files apply to platform %=.\n"
                       "  %s\nRegistry will point to the first one, arbitrarily.",
@@ -170,20 +184,22 @@ define function update-for-directory
                     join(candidates, "\n  ", key: method (lid)
                                                     as(<string>, lid.lid-locator)
                                                   end));
-        write-registry-file(registry, candidates[0]);
+        keep := pair(candidates[0], keep);
     end select;
   end for;
+  keep
 end function;
 
 // Descend pkg-dir parsing .lid, .hdp, or .spec files. Updates `registry`s
-// internal maps.  HDP files are (I believe) obsolecent so the .lid file is
+// internal maps.  .hdp files are (I believe) obsolecent so the .lid file is
 // preferred. For .spec files the corresponding .hdp file may not exist yet so
 // the table returned for it just has a #"library" key, which is enough.
 //
-// TODO(cgay): this probably assumes case sensitive filenames and will need to
-// be fixed for Windows at some point.
-define function find-libraries
-    (registry :: <registry>, pkg-dir :: <directory-locator>) => ()
+// TODO(cgay): this assumes case sensitive filenames and will need to be fixed
+// for Windows at some point.
+define function find-lids
+    (registry :: <registry>, pkg-dir :: <directory-locator>) => (lids :: <seq>)
+  let lids = #();
   local
     method parse-lids (dir, name, type)
       select (type)
@@ -191,10 +207,13 @@ define function find-libraries
           let lid-path = merge-locators(as(<file-locator>, name), dir);
           if (~has-lid?(registry, lid-path))
             select (name by rcurry(ends-with?, test: char-icompare))
-              ".lid", ".hdp"
-                => ingest-lid-file(registry, lid-path);
-              ".spec"
-                => ingest-spec-file(registry, lid-path);
+              ".lid", ".hdp" =>
+                let lid = ingest-lid-file(registry, lid-path);
+                if (lid)
+                  lids := pair(lid, lids);
+                end;
+              ".spec" =>
+                lids := concat(lids, ingest-spec-file(registry, lid-path));
               otherwise
                 => #f;
             end;
@@ -212,22 +231,19 @@ define function find-libraries
       end select;
     end method;
   fs/do-directory(parse-lids, pkg-dir);
+  lids
 end function;
 
-// Read a <lid> from `lid-path` and store it in `registry`.  Returns a the
-// <lid>, or #f if nothing ingested.
+// Read a <lid> from `lid-path` and store it in `registry`.  Returns the <lid>,
+// or #f if nothing ingested.
 define function ingest-lid-file
     (registry :: <registry>, lid-path :: <file-locator>)
  => (lid :: false-or(<lid>))
   let lid = parse-lid-file(registry, lid-path);
   let library-name = lid-value(lid, $library-key, error?: #t);
-
   if (empty?(lid-files(lid)))
     log-trace("LID file %s has no 'Files' property", lid-path);
   end;
-
-  let ext :: <string> = locator-extension(lid-path);
-  let ext = ext & lowercase(ext); // Windows
   if (skip-lid?(registry, lid))
     log-info("Skipping %s, preferring previous .lid file.", lid-path);
     #f
@@ -257,9 +273,10 @@ end function;
 // Read a CORBA spec file and store a <lid> into `registry` for each of the
 // generated libraries.
 define function ingest-spec-file
-    (registry :: <registry>, spec-path :: <file-locator>) => ()
+    (registry :: <registry>, spec-path :: <file-locator>) => (lids :: <seq>)
   let spec :: <lid> = parse-lid-file(registry, spec-path);
   let origin = lid-value(spec, $origin-key, error?: #t);
+  let lids = #();
   if (istring=?(origin, "omg-idl"))
     // Generate "protocol", "skeletons", and "stubs" registries for CORBA projects.
     // The sources for these projects won't exist until generated by the build.
@@ -285,16 +302,19 @@ define function ingest-spec-file
         let simple-hdp-path = simplify-locator(hdp-path);
         log-trace("  %s: hdp-path = %s", lib-name, hdp-path);
         log-trace("  %s: simple-hdp-path = %s", lib-name, simple-hdp-path);
-        add-lid(registry, make(<lid>,
-                               locator: hdp-path,
-                               data: begin
-                                       let t = make(<table>);
-                                       t[$library-key] := vector(lib-name);
-                                       t
-                                     end));
+        let lid = make(<lid>,
+                       locator: hdp-path,
+                       data: begin
+                               let t = make(<table>);
+                               t[$library-key] := vector(lib-name);
+                               t
+                             end);
+        add-lid(registry, lid);
+        lids := pair(lid, lids);
       end;
     end for;
   end if;
+  lids
 end function;
 
 // Write a registry file for `lid` if it doesn't exist or the content changed.
@@ -346,7 +366,6 @@ define constant $keyword-line-regex = #:regex:"^([a-zA-Z0-9-]+):[ \t]+(.+)$";
 //
 // `registry` is not modified; it is only needed in order to access other,
 // related LID files.
-// TODO(cgay): refactor to call a new function parse-lid-text, and test that.
 define function parse-lid-file
     (registry :: <registry>, path :: <file-locator>)
  => (lid :: <lid>)
@@ -398,4 +417,13 @@ define function parse-lid-file
     end while;
   end;
   lid
+end function;
+
+define function find-library-names
+    (dir :: <directory-locator>) => (names :: <seq>)
+  let registry = make(<registry>, root-directory: dir);
+  // It's possible for a LID included via the LID: keyword to not have a library.
+  choose(identity,
+         map(rcurry(lid-value, $library-key),
+             find-lids(registry, dir)))
 end function;

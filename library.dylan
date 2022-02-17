@@ -84,5 +84,6 @@ define module workspaces
       workspace-default-library-name,
     new,
     update,
-    <workspace-error>;
+    <workspace-error>,
+    find-library-names;
 end module workspaces;
