@@ -7,7 +7,7 @@
     "keywords": ["package"],
     "deps": [
         "json@1.0",
-        "logging@2.0",
+        "logging@2.1",
         "regular-expressions@1.0",
         "testworks@2.0",
         "uncommon-dylan@0.2"
