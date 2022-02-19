@@ -7,14 +7,13 @@
     "keywords": ["workspace", "package"],
     "deps": [
         "command-line-parser@3.1",
-        "http@1.1",
         "json@1.0",
         "logging@2.1",
-        "pacman@0.3",
+        "pacman@0.4",
         "regular-expressions@1.0",
         "testworks@2.0",
         "uncommon-dylan@0.2",
-        "workspaces@0.3.0"
+        "workspaces@0.4"
     ],
     "url": "https://github.com/dylan-lang/dylan-tool"
 }
