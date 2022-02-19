@@ -1,14 +1,14 @@
 {
     "name": "workspaces",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "category": "development tools",
     "contact": "dylan-lang@googlegroups.com",
     "description": "Manipulate Dylan development workspaces",
     "keywords": [],
     "deps": [
         "json@1.0",
-        "logging@2.0",
-        "pacman@0.3",
+        "logging@2.1",
+        "pacman@0.4",
         "regular-expressions@1.0",
         "testworks@2.0",
         "uncommon-dylan@0.2"
