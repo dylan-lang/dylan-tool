@@ -241,11 +241,11 @@ end function;
 define function update-registry
     (ws :: <workspace>, cat :: pm/<catalog>)
   let (deps, actives) = find-active-package-deps(ws, cat);
+  let registry = ws.workspace-registry;
   for (rel in actives)
-    update-for-directory(ws.workspace-registry,
-                         active-package-directory(ws, rel.pm/package-name));
+    update-for-directory(registry, active-package-directory(ws, rel.pm/package-name));
   end;
   for (rel in deps)
-    update-for-directory(ws.workspace-registry, pm/source-directory(rel));
+    update-for-directory(registry, pm/source-directory(rel));
   end;
 end function;

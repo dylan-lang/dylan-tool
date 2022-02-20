@@ -25,11 +25,22 @@ define class <registry> (<object>)
   constant slot root-directory :: <directory-locator>,
     required-init-keyword: root-directory:;
 
-  // A map from library names to sequences of <lid>s.
+  // A map from library names to sequences of <lid>s that define the library.
+  // (A library with platform-specific definitions may have multiple lids.)
   constant slot lids-by-library :: <istring-table> = make(<istring-table>);
 
   // A map from full absolute pathname to the associated <lid>.
   constant slot lids-by-pathname :: <istring-table> = make(<istring-table>);
+
+  // This is a hack to prevent logging warning messages multiple times.  I
+  // could probably have avoided this if I'd written the code in a more
+  // functional style rather than mutating the registry everywhere, but at this
+  // point it would require a big rewrite: find all lids for all active
+  // packages and dependencies without generating any warnings, then iterate
+  // over the library=>lid map deciding which files to write and logging
+  // warnings once for a given library. Another way (but also kind of a hack)
+  // would be if the logging library supported log-warning-every(duration ...).
+  constant slot updated-libraries :: <istring-table> = make(<istring-table>);
 end class;
 
 define function has-lid?
@@ -130,11 +141,13 @@ define function lid-files (lid :: <lid>) => (files :: <seq>)
          end)
 end function;
 
-
-// Update `registry` so that it knows about the LID files in `dir` and then
-// write a file for each of the new libraries found. This is called, for
-// example, when a new dependency is added and `dylan update` wants to update
-// the registry for the libraries in the new package directory.
+// Find all the LID files in `pkg-dir` that are marked as being for the current
+// platform and create registry files for the corresponding libraries. First do
+// a pass over the entire directory reading lid files, then write registry
+// files for the ones that aren't included in other LID files. (This avoids
+// writing the same registry file twice for the same library without resorting
+// to putting "Platforms: none" in LID files that are included in other LID
+// files.)
 define function update-for-directory
     (registry :: <registry>, dir :: <directory-locator>) => ()
   for (lid :: <lid> in update-lids(registry, dir))
@@ -156,9 +169,10 @@ define function update-lids
   let lids = find-lids(registry, dir);
   let keep = #();
   // For each library, write a LID if there's one explicitly for this platform,
-  // or there's one with no Platforms: specified at all (as long as it isn't
+  // or there's one with no platforms specified at all (as long as it isn't
   // included in another LID).
-  let current-platform = lowercase(as(<string>, platform));
+  let current-platform = as(<string>, os/$platform-name);
+  let updated-libs = registry.updated-libraries;
   for (lids keyed-by library-name in registry.lids-by-library)
     let candidates = #();
     block (done)
@@ -173,19 +187,24 @@ define function update-lids
     end block;
     select (candidates.size)
       0 =>
-        log-warning("For library %=, no LID candidates for platform %=.",
-                    library-name, current-platform);
+        if (~element(updated-libs, library-name, default: #f))
+          log-warning("Library %= has no LID file for platform %=.",
+                      library-name, current-platform);
+        end;
       1 =>
-        keep := pair(candidates[0], keep);
+        write-registry-file(registry, candidates[0]);
       otherwise =>
-        log-warning("For library %= multiple .lid files apply to platform %=.\n"
-                      "  %s\nRegistry will point to the first one, arbitrarily.",
-                    library-name, current-platform,
-                    join(candidates, "\n  ", key: method (lid)
-                                                    as(<string>, lid.lid-locator)
-                                                  end));
-        keep := pair(candidates[0], keep);
+        if (~element(updated-libs, library-name, default: #f))
+          log-warning("Library %= has multiple .lid files for platform %=.\n"
+                        "  %s\nRegistry will point to the first one, arbitrarily.",
+                      library-name, current-platform,
+                      join(candidates, "\n  ", key: method (lid)
+                                                      as(<string>, lid.lid-locator)
+                                                    end));
+        end;
+        write-registry-file(registry, candidates[0]);
     end select;
+    updated-libs[library-name] := #t;
   end for;
   keep
 end function;
