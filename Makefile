@@ -44,17 +44,20 @@ install: build
 test: test-with-submodules test-with-packages
 
 test-with-submodules:
-	dylan-compiler -build pacman-test && _build/bin/pacman-test
-	dylan-compiler -build pacman-catalog-test \
-	  && DYLAN_CATALOG=ext/pacman-catalog/catalog.json _build/bin/pacman-catalog-test
-	dylan-compiler -build workspaces-tests && _build/bin/workspaces-tests
+	dylan-compiler -build pacman-test-suite && _build/bin/pacman-test-suite
+	dylan-compiler -build pacman-catalog-test-suite \
+	  && DYLAN_CATALOG=ext/pacman-catalog _build/bin/pacman-catalog-test-suite
+	dylan-compiler -build workspaces-test-suite && _build/bin/workspaces-test-suite
 
+# Note that whereas test-with-submodules tests the submoduled catalog this
+# tests the installed catalog since we don't know if pacman-catalog is an
+# active package or not.
 test-with-packages: build
 	_build/bin/dylan-tool update
-	cd .. && dylan-compiler -build pacman-test && _build/bin/pacman-test
-	cd .. && dylan-compiler -build pacman-catalog-test \
-	  && DYLAN_CATALOG=dylan-tool/ext/pacman-catalog/catalog.json _build/bin/pacman-catalog-test
-	cd .. && dylan-compiler -build workspaces-tests && _build/bin/workspaces-tests
+	cd .. && dylan-compiler -build pacman-test-suite && _build/bin/pacman-test-suite
+	cd .. && dylan-compiler -build pacman-catalog-test-suite \
+	  && _build/bin/pacman-catalog-test-suite
+	cd .. && dylan-compiler -build workspaces-test-suite && _build/bin/workspaces-test-suite
 
 clean:
 	rm -rf _build
