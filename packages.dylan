@@ -171,10 +171,10 @@ define function decode-pkg-json
       v
     end method,
     method optional-element
-        (key :: <string>, expected-type :: <type>) => (value :: <object>)
-      let v = element(json, key, default: #f);
+        (key :: <string>, expected-type :: <type>, default-value) => (value :: <object>)
+      let v = element(json, key, default: default-value);
       if (v & ~instance?(v, expected-type))
-        catalog-error("%s: incorrect type for key %=: got %=, want %=",
+        package-error("%s: incorrect type for key %=: got %=, want %=",
                       file, key, object-class(v), expected-type);
       end;
       v
@@ -185,12 +185,12 @@ define function decode-pkg-json
   let description = required-element("description", <string>);
   let version = string-to-version(required-element("version", <string>));
   let url = required-element("url", <string>);
-  // Optionalelements
-  let contact = optional-element("contact", <string>);
-  let category = optional-element("category", <string>);
-  let keywords = optional-element("keywords", <seq>);
-  let license = optional-element("license", <string>);
-  let license-url = optional-element("license-url", <string>);
+  // Optional elements
+  let contact = optional-element("contact", <string>, "");
+  let category = optional-element("category", <string>, "");
+  let keywords = optional-element("keywords", <seq>, #[]);
+  let license = optional-element("license", <string>, "");
+  let license-url = optional-element("license-url", <string>, "");
   let package = block ()
                   load-package(catalog(), name)
                 exception (<catalog-error>)
