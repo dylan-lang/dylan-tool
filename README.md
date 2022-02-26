@@ -40,6 +40,7 @@ The "package cache" is the directory where package dependencies are installed
 and is defined as `${DYLAN}/pkg/`. The `dylan update` command reinstalls needed
 dependencies here if they are deleted.
 
+
 ## Quick Start
 
 1.  Make sure you have `git`, `make`, and `dylan-compiler` installed.
@@ -66,13 +67,13 @@ dependencies here if they are deleted.
 1.  Make sure that `${DYLAN}/bin` is on your `$PATH`. If you prefer not to set
     `$DYLAN`, make sure that `${HOME}/dylan/bin` is on your `$PATH`.
 
-1.  Create a new workspace. For example if you want to work on the `strings`
+1.  Create a new workspace. For example if you want to work on the `pacman`
     library:
 
         $ cd ${DYLAN}/workspaces     # or wherever you want your workspace
-        $ dylan new workspace strings
+        $ dylan new workspace pacman
 
-    A directory named `strings` and a file named `strings/workspace.json` are
+    A directory named `pacman` and a file named `pacman/workspace.json` are
     created.  In general, the `dylan` command may be run from anywhere inside a
     workspace directory and it will search up for `workspace.json` to determine
     the workspace root.
@@ -80,8 +81,8 @@ dependencies here if they are deleted.
     Clone the repository (or repositories) you want to work on in this
     workspace.
 
-        $ cd strings
-        $ git clone https://github.com/dylan-lang/strings
+        $ cd pacman
+        $ git clone https://github.com/dylan-lang/pacman
 
 1.  Run `dylan update` to install dependencies and create the registry that
     tells `dylan-compiler` how to find libraries:
@@ -91,27 +92,27 @@ dependencies here if they are deleted.
     The `update` subcommand finds "active" packages in the workspace, and their
     dependencies (or deps), by looking for `pkg.json` files in directories just
     below the workspace directory. In this case the only one is
-    `strings/pkg.json`.
+    `pacman/pkg.json`.
 
 1.  You should now see a `registry` directory in your workspace. Look at the
     generated files:
 
         $ find registry
-        $ cat registry/x86_64-linux/strings
+        $ cat registry/x86_64-linux/pacman
 
-    The filename will be different depending on your host platform.
+    (The pathname will be different depending on your host platform.)
 
-1.  Build and run your code (still in the `strings` workspace directory):
+1.  Build and run your code (still in the `pacman` workspace directory):
 
-        $ dylan-compiler -build strings-test-suite-app
-        $ _build/bin/strings-test-suite-app
+        $ dylan-compiler -build pacman-test-suite
+        $ _build/bin/pacman-test-suite
 
     **Note:** You must invoke `dylan-compiler` in the top-level workspace
     directory so that all the active packages are built into the same "_build"
     directory and so that `dylan-compiler` can find the auto-generated
     "registry" directory.  For example:
 
-        $ cd ${DYLAN}/workspaces/strings && dylan-compiler -build strings
+        $ cd ${DYLAN}/workspaces/pacman && dylan-compiler -build pacman
 
 If you want to create a new package, rather than doing development on one that
 already exists, simply create a new directory for it in the workspace root and
@@ -120,19 +121,20 @@ add a `pkg.json` for it. Then run `dylan update` again.
 For example, to create a new workspace and package called "protobufs" that uses
 the `logging` and `regular-expressions` packages:
 
-1.  `dylan workspace --new protobufs`
+1.  `dylan new workspace protobufs`
 1.  `cd protobufs`
-1.  `make-dylan-app protobufs`
+1.  `dylan new library protobufs`
 1.  `cd protobufs`
-1.  Create a `pkg.json` like this:
+1.  Edit the `pkg.json` to fill in the required settings and add any necessary
+    dependencies. When the file is created by `dylan new library` it should
+    look like this:
 
         {
+            "deps": [ "testworks@2.0.0" ],
+            "description": "** put description here **",
             "name": "protobufs",
-            "deps": [
-                "logging@2.0",
-                "regular-expressions@1.0",
-            ],
-            "location": "https://github.com/{your-username}/protobufs"
+            "version": "0.1.0",
+            "url": "** put repo url here **"
         }
 
 1.  Run `dylan update` to install the deps and update the registry.
