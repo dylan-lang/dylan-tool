@@ -1,6 +1,6 @@
 {
     "name": "dylan-tool",
-    "version": "0.4.0",
+    "version": "0.4.1",
     "category": "language-tools",
     "contact": "dylan-lang@googlegroups.com",
     "description": "Manage Dylan workspaces, packages, and registries",
@@ -9,7 +9,7 @@
         "command-line-parser@3.1",
         "json@1.0",
         "logging@2.1",
-        "pacman@0.4",
+        "pacman@0.4.1",
         "regular-expressions@1.0",
         "testworks@2.0",
         "uncommon-dylan@0.2",
