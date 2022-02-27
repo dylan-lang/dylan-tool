@@ -2,10 +2,14 @@ name: Makefile CI
 
 on:
   push:
-    branches: [ github-ci ]
+    branches:
+      - github-ci
+      - master
   pull_request:
-    branches: [ github-ci ]
-  # This enables the Run Workflow button on the Actions tab.
+    branches:
+      - github-ci
+      - master
+  # This enables the Run Workflow button on the Actions tab. (Or does it?)
   workflow_dispatch:
 
 jobs:
@@ -18,16 +22,6 @@ jobs:
       with:
         submodules: recursive
 
-    - name: debug
-      run: |
-        ls -l
-        find .
-
-#    - name: Checkout json
-#      uses: actions/checkout@v2
-#      with:
-#        repository: dylan-lang/json
-
     - name: Install Open Dylan
       run: |
           echo "Installing Open Dylan..."
@@ -36,5 +30,20 @@ jobs:
           echo -n "This is Open Dylan "
           opendylan-2020.1/bin/dylan-compiler -version
 
+    # Build and run test suites as individual steps rather than just using
+    # `make test`, so we get better feedback in the GitHub UI.
+
     - name: Build dylan-tool
-      run: PATH=opendylan-2020.1/bin:$PATH make test
+      run: opendylan-2020.1/bin/dylan-compiler -build -jobs 3 dylan-tool
+
+    - name: Build pacman-test-suite
+      run: opendylan-2020.1/bin/dylan-compiler -build -jobs 3 pacman-test-suite
+
+    - name: Run pacman-test-suite
+      run: _build/bin/pacman-test-suite
+
+    - name: Build workspaces-test-suite
+      run: opendylan-2020.1/bin/dylan-compiler -build -jobs 3 workspaces-test-suite
+
+    - name: Run workspaces-test-suite
+      run: _build/bin/workspaces-test-suite
