@@ -24,14 +24,9 @@ jobs:
       with:
         submodules: recursive
 
-    - name: Install Open Dylan
-      run: |
-        echo "Installing Open Dylan..."
-        curl -L -o opendylan.tar.bz2 https://github.com/dylan-lang/opendylan/releases/download/v2020.1.0/opendylan-2020.1-x86_64-linux.tar.bz2
-        tar xfj opendylan.tar.bz2
-        ln -s opendylan-2020.1/bin/dylan-compiler
-        echo -n "Open Dylan "
-        ./dylan-compiler -version
+    - uses: dylan-lang/dylan-github-support/install-opendylan.yml@main
+      with:
+        opendylan-version: 2020.1
 
     # Build and run test suites as individual steps rather than just using
     # `make test`, so we get better feedback in the GitHub UI.
