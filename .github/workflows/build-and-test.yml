@@ -2,19 +2,20 @@ name: build-and-test
 
 on:
   push:
-    branches:
-      - github-ci
-      - master
   pull_request:
     branches:
-      - github-ci
       - master
 
   # This enables the Run Workflow button on the Actions tab.
   workflow_dispatch:
 
 jobs:
-  build:
+
+  # This is the name you have to search for when enabling branch protection
+  # mechanisms in the repository settings. Not mentioned in the docs. Here it
+  # happens to be the same as the workflow name at the top, but don't be
+  # fooled, this is the name that matters in the UI.
+  build-and-test:
 
     runs-on: ubuntu-latest
 
@@ -35,9 +36,6 @@ jobs:
     # Build and run test suites as individual steps rather than just using
     # `make test`, so we get better feedback in the GitHub UI.
 
-    - name: Build dylan-tool
-      run: ./dylan-compiler -build -jobs 3 dylan-tool
-
     - name: Build pacman-test-suite
       run: ./dylan-compiler -build -jobs 3 pacman-test-suite
 
@@ -49,3 +47,22 @@ jobs:
 
     - name: Run workspaces-test-suite
       run: _build/bin/workspaces-test-suite
+
+    - name: Build and install dylan-tool
+      run: |
+        DYLAN=. PATH=.:$PATH make install
+        # TODO: Not sure why the link step in the install file doesn't work.
+        ln -s ./install/dylan-tool/bin/dylan-tool dylan
+
+    - name: Exercise dylan-tool
+      env:
+        DYLAN: .
+      run: |
+        ./dylan new workspace work
+        cd work
+        ../dylan new library abc strings@1.1
+        ../dylan update
+        ../dylan status
+        ../dylan list
+        ../dylan-compiler -build abc-test-suite
+        _build/bin/abc-test-suite
