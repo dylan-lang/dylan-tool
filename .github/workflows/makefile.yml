@@ -37,4 +37,4 @@ jobs:
           opendylan-2020.1/bin/dylan-compiler -version
 
     - name: Build dylan-tool
-      run: PATH=opendylan-2020.1/bin:$PATH make test-with-submodules
+      run: PATH=opendylan-2020.1/bin:$PATH make test
