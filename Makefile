@@ -41,23 +41,11 @@ install: build
 # new platforms without having to manually install deps. It's easy to forget to
 # test it both ways, hence this target. (We should be able to ditch submodules
 # after there's a stable 1.0 version available for bootstrapping.)
-test: test-with-submodules test-with-packages
-
-test-with-submodules:
+test: build
 	dylan-compiler -build pacman-test-suite && _build/bin/pacman-test-suite
 	dylan-compiler -build pacman-catalog-test-suite \
 	  && DYLAN_CATALOG=ext/pacman-catalog _build/bin/pacman-catalog-test-suite
 	dylan-compiler -build workspaces-test-suite && _build/bin/workspaces-test-suite
-
-# Note that whereas test-with-submodules tests the submoduled catalog this
-# tests the installed catalog since we don't know if pacman-catalog is an
-# active package or not.
-test-with-packages: build
-	_build/bin/dylan-tool update
-	cd .. && dylan-compiler -build pacman-test-suite && _build/bin/pacman-test-suite
-	cd .. && dylan-compiler -build pacman-catalog-test-suite \
-	  && _build/bin/pacman-catalog-test-suite
-	cd .. && dylan-compiler -build workspaces-test-suite && _build/bin/workspaces-test-suite
 
 clean:
 	rm -rf _build
@@ -65,3 +53,19 @@ clean:
 distclean: clean
 	rm -rf $(install_dir)
 	rm -f $(link_source)
+
+pkg-build:
+	cd .. && dylan-compiler -build dylan-tool
+
+# Note that whereas test-with-submodules tests the submoduled catalog this
+# tests the installed catalog since we don't know if pacman-catalog is an
+# active package or not.
+pkg-test: pkg-build
+	../_build/bin/dylan-tool update
+	cd .. && dylan-compiler -build pacman-test-suite && _build/bin/pacman-test-suite
+	cd .. && dylan-compiler -build pacman-catalog-test-suite \
+	  && _build/bin/pacman-catalog-test-suite
+	cd .. && dylan-compiler -build workspaces-test-suite && _build/bin/workspaces-test-suite
+
+pkg-clean:
+	rm -rf ../_build

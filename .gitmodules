@@ -25,3 +25,6 @@
 [submodule "ext/pacman-catalog"]
 	path = ext/pacman-catalog
 	url = https://github.com/dylan-lang/pacman-catalog
+[submodule "ext/testworks"]
+	path = ext/testworks
+	url = https://github.com/dylan-lang/testworks
