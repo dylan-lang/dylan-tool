@@ -24,7 +24,7 @@ jobs:
       with:
         submodules: recursive
 
-    - uses: cgay/dylan-github-support/install-opendylan.yml@main
+    - uses: cgay/dylan-github-support/.github/workflows/install-opendylan.yml@main
       with:
         opendylan-version: 2020.1
 
