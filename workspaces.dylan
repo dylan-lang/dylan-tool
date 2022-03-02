@@ -108,12 +108,11 @@ define function load-workspace
   end
 end function;
 
-// Search up from `directory` to find the workspace file. If `directory` is not
-// supplied it defaults to the current working directory.
+// Search up from `directory` to find the workspace file.
 define function find-workspace-file
     (directory :: <directory-locator>) => (file :: false-or(<file-locator>))
   let ws-file = as(<file-locator>, $workspace-file);
-  iterate loop (dir = directory)
+  iterate loop (dir = simplify-locator(directory))
     if (dir)
       let file = merge-locators(ws-file, dir);
       if (fs/file-exists?(file))
