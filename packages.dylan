@@ -32,8 +32,14 @@ define class <release> (<object>)
   constant slot release-version :: <version>,
     required-init-keyword: version:;
 
+  // Dependencies required to build the main libraries. These are transitive to
+  // anything depending on this release.
   constant slot release-deps :: <dep-vector> = as(<dep-vector>, #[]),
-    required-init-keyword: deps:;
+    init-keyword: deps:;
+
+  // Development dependencies, for example testworks. These are not transitive.
+  constant slot release-dev-dependencies :: <dep-vector> = as(<dep-vector>, #[]),
+    init-keyword: dev-deps:;
 
   // Where the package can be downloaded from.
   constant slot release-url :: <string>,
@@ -197,9 +203,9 @@ define function decode-pkg-json
     end method;
   // Warn about unrecognized keys.
   for (ignore keyed-by key in json)
-    if (~member?(key, #["name", "deps", "dependencies", "description", "version",
-                        "url", "contact", "category", "keywords", "license",
-                        "license-url"],
+    if (~member?(key, #["category", "contact", "dependencies", "deps",
+                        "description", "dev-dependencies", "keywords",
+                        "license", "license-url", "name", "url", "version"],
                  test: istring=))
       log-warning("%s: unrecognized key %= (ignored)", file, key);
     end;

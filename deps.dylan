@@ -100,8 +100,8 @@ end function;
 // tree gets big fast. The result for any given release is memoized.
 //
 // Each dep specifies only its minimum required version, e.g., P 1.2.3.  These are
-// semantic versions so if two P dependencies specify different major versions it is an
-// error.
+// semantic versions so if two dependencies on P specify different major versions it is
+// an error.
 //
 // Releases with no deps terminate the recursion and as results percolate up the stack
 // they are combined with other results to keep only the maximum minimum version for each
@@ -137,7 +137,7 @@ define function resolve-deps
           dep-error("circular dependencies: %=", pair(pname, seen))
         end;
         // TODO: shouldn't need as(<list>) here
-        let resolved = resolve-deps(as(<list>, rel.release-deps), pair(pname, seen), depth + 1);
+        let resolved = %resolve-deps(as(<list>, rel.release-deps), pair(pname, seen), depth + 1);
         cache[rel] := resolved;
         trace(depth, resolved, "caching %s => %s", rel, resolved);
       end
@@ -147,8 +147,8 @@ define function resolve-deps
     // release version needed for each package.  When looking up deps, always prefer the
     // active packages, so that it isn't necessary for the package to exist in the
     // catalog.
-    method resolve-deps (deps, seen, depth)
-      trace(depth, #f, "resolve-deps(deps: %s, seen: %=)", deps, seen);
+    method %resolve-deps (deps, seen, depth)
+      trace(depth, #f, "%resolve-deps(deps: %s, seen: %=)", deps, seen);
       let maxima = make(<istring-table>);
       for (dep in deps)
         let pname = dep.package-name;

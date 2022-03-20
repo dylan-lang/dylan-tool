@@ -11,8 +11,10 @@
         "json@1.0",
         "logging@2.1",
         "regular-expressions@1.0",
-        "testworks@2.0",
         "uncommon-dylan@0.2"
+    ],
+    "dev-dependencies": [
+        "testworks@2.0"
     ],
     "url": "https://github.com/dylan-lang/pacman"
 }
