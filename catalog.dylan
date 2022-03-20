@@ -283,6 +283,9 @@ define function load-package
   load-package-file(cat, name, file);
 end function;
 
+// TODO: Not to be confused with read-package-file which reads pkg.json. Rename
+// this to load-catalog-package-file and rename the other to
+// load-dylan-package-file (because we'll rename it to dylan-package.json).
 define function load-package-file
     (cat :: <catalog>, name :: <string>, file :: <file-locator>) => (package :: <package>)
   log-debug("loading %s", file);
@@ -314,7 +317,7 @@ define function load-package-file
       make(<release>,
            package: package,
            version: string-to-version(t["version"]),
-           deps: map-as(<dep-vector>, string-to-dep, t["deps"]),
+           deps: map-as(<dep-vector>, string-to-dep, t["dependencies"]),
            url: element(t, "url", default: #f)
              | element(t, "location", default: ""),
            license: t["license"],

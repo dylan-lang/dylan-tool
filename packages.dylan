@@ -98,7 +98,7 @@ define method to-table
     (release :: <release>) => (t :: <istring-table>)
   let t = make(<istring-table>);
   t["version"] := version-to-string(release.release-version);
-  t["deps"] := map-as(<vector>, dep-to-string, release.release-deps);
+  t["dependencies"] := map-as(<vector>, dep-to-string, release.release-deps);
   t["url"] := release.release-url;
   t["license"] := release.release-license;
   t["license-url"] := release.release-license-url;
@@ -178,10 +178,26 @@ define function decode-pkg-json
                       file, key, object-class(v), expected-type);
       end;
       v
+    end method,
+    method dependencies () => (deps :: <seq>)
+      optional-element("dependencies", <seq>, #f)
+        | begin
+            let deps =  optional-element("deps", <seq>, #f);
+            if (deps)
+              // Even though we're in major version 0 I'm giving this a little
+              // time to be updated since it will take me a while to get to all
+              // the existing pkg.json files.
+              log-warning("%s: the \"deps\" attribute is deprecated;"
+                            " use \"dependencies\" instead.", file);
+              deps
+            else
+              required-element("dependencies", <seq>)
+            end
+          end
     end method;
   // Required elements
   let name = required-element("name", <string>);
-  let deps = map-as(<dep-vector>, string-to-dep, required-element("deps", <seq>));
+  let deps = map-as(<dep-vector>, string-to-dep, dependencies());
   let description = required-element("description", <string>);
   let version = string-to-version(required-element("version", <string>));
   let url = required-element("url", <string>);

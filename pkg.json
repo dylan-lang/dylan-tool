@@ -4,8 +4,10 @@
     "category": "development tools",
     "contact": "dylan-lang@googlegroups.com",
     "description": "Dylan package manager -- search for, download, and install available Dylan software packages.",
-    "keywords": ["package"],
-    "deps": [
+    "keywords": [
+        "package"
+    ],
+    "dependencies": [
         "json@1.0",
         "logging@2.1",
         "regular-expressions@1.0",
