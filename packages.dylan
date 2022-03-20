@@ -195,6 +195,15 @@ define function decode-pkg-json
             end
           end
     end method;
+  // Warn about unrecognized keys.
+  for (ignore keyed-by key in json)
+    if (~member?(key, #["name", "deps", "dependencies", "description", "version",
+                        "url", "contact", "category", "keywords", "license",
+                        "license-url"],
+                 test: istring=))
+      log-warning("%s: unrecognized key %= (ignored)", file, key);
+    end;
+  end;
   // Required elements
   let name = required-element("name", <string>);
   let deps = map-as(<dep-vector>, string-to-dep, dependencies());
