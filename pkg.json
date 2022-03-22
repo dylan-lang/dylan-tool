@@ -5,7 +5,7 @@
     "contact": "dylan-lang@googlegroups.com",
     "description": "Manipulate Dylan development workspaces",
     "keywords": [],
-    "deps": [
+    "dependencies": [
         "json@1.0",
         "logging@2.1",
         "pacman@0.4.1",
