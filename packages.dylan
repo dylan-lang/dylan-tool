@@ -50,7 +50,7 @@ define class <release> (<object>)
     required-init-keyword: license:;
 
   // Location of full license text.
-  constant slot release-license-url :: <string>,
+  constant slot release-license-url :: false-or(<string>),
     init-keyword: license-url:;
 end class;
 
@@ -105,9 +105,13 @@ define method to-table
   let t = make(<istring-table>);
   t["version"] := version-to-string(release.release-version);
   t["dependencies"] := map-as(<vector>, dep-to-string, release.release-deps);
+  // TODO: delete this after converting catalog
+  t["deps"] := map-as(<vector>, dep-to-string, release.release-deps);
   t["url"] := release.release-url;
   t["license"] := release.release-license;
-  t["license-url"] := release.release-license-url;
+  if (release.release-license-url)
+    t["license-url"] := release.release-license-url;
+  end;
   t
 end method;
 
@@ -220,25 +224,22 @@ define function decode-pkg-json
   let contact = optional-element("contact", <string>, "");
   let category = optional-element("category", <string>, "");
   let keywords = optional-element("keywords", <seq>, #[]);
-  let license = optional-element("license", <string>, "");
-  let license-url = optional-element("license-url", <string>, "");
-  let package = block ()
-                  load-package(catalog(), name)
-                exception (<catalog-error>)
-                  make(<package>,
-                       name: name,
-                       description: description,
-                       contact: contact | "",
-                       category: category | $uncategorized,
-                       keywords: keywords)
-                end;
+  let license = optional-element("license", <string>, "Unknown");
+  let license-url = optional-element("license-url", <string>, #f);
+
+  let package = make(<package>,
+                     name: name,
+                     description: description,
+                     contact: contact | "",
+                     category: category | $uncategorized,
+                     keywords: keywords);
   make(<release>,
        package: package,
        version: version,
        deps: deps,
        url: url,
-       license: license | "Unknown",
-       license-url: license-url | "")
+       license: license,
+       license-url: license-url)
 end function;
 
 define generic package-name (o :: <object>) => (_ :: <string>);

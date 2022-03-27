@@ -29,9 +29,11 @@ define module pacman
     <catalog-error>,
 
     <catalog>,
+    catalog-directory,
     find-package,
     find-package-release,
     validate-catalog,
+    write-package-file,
 
     <package>,
     package-name,
@@ -40,6 +42,7 @@ define module pacman
     package-contact,
     package-category,
     package-keywords,
+    package-locator,
 
     <package-error>,
     download,
@@ -157,11 +160,9 @@ define module %pacman
     add-release,
     cache-package,
     cached-package,
-    catalog-directory,
     catalog-package-cache,
     find-release,
     max-release,
     string-parser,                 // #string:...
-    string-to-version, version-to-string,
-    write-package-file;
+    string-to-version, version-to-string;
 end module %pacman;

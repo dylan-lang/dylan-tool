@@ -223,24 +223,26 @@ end function;
 // Write a package to the catalog in JSON format.
 define function write-package-file
     (cat :: <catalog>, package :: <package>) => ()
-  let file = package-locator(cat, package);
+  let file = package-locator(cat.catalog-directory, package);
   ensure-directories-exist(file);
   with-open-file (stream = file, direction: #"output", if-exists: #"replace")
-    json/print(package, stream, indent: 2);
+    json/print(package, stream, indent: 2, sort-keys?: #t);
   end;
 end function;
 
+// Generate a locator for the given package (or package name). `root` is the
+// directory that contains the 1-or-2 letter subdirectory names, which is
+// usually a version directory like "v1".
 define generic package-locator
-    (cat :: <catalog>, package) => (file :: <file-locator>);
+    (root :: <directory-locator>, package) => (file :: <file-locator>);
 
 define method package-locator
-    (cat :: <catalog>, package :: <package>) => (file :: <file-locator>)
-  package-locator(cat, package.package-name)
+    (root :: <directory-locator>, package :: <package>) => (file :: <file-locator>)
+  package-locator(root, package.package-name)
 end method;
 
 define method package-locator
-    (cat :: <catalog>, name :: <string>) => (file :: <file-locator>)
-  let root = cat.catalog-directory;
+    (root :: <directory-locator>, name :: <string>) => (file :: <file-locator>)
   let dir = select (name.size)
               1 => subdirectory-locator(root, "1");
               2 => subdirectory-locator(root, "2");
@@ -256,12 +258,15 @@ end method;
 
 define method json/do-print
     (package :: <package>, stream :: <stream>)
-  json/print(to-table(package), stream);
+  // TODO: Once https://github.com/dylan-lang/json/pull/12 is in a release,
+  // update to use that json release and remove the keyword args in the three
+  // calls to json/print below.
+  json/print(to-table(package), stream, indent: 2, sort-keys?: #t);
 end method;
 
 define method json/do-print
     (release :: <release>, stream :: <stream>)
-  json/print(to-table(release), stream);
+  json/print(to-table(release), stream, indent: 2, sort-keys?: #t);
 end method;
 
 define method json/do-print
@@ -269,17 +274,17 @@ define method json/do-print
   let t = make(<istring-table>);
   t["name"]    := dep.package-name;
   t["version"] := dep.dep-version;
-  json/print(t, stream);
+  json/print(t, stream, indent: 2, sort-keys?: #t);
 end method;
 
 define method json/do-print
     (version :: <version>, stream :: <stream>)
-  json/print(version-to-string(version), stream);
+  json/print(version-to-string(version), stream, indent: 2, sort-keys?: #t);
 end method;
 
 define function load-package
     (cat :: <catalog>, name :: <string>) => (package :: <package>)
-  let file = package-locator(cat, name);
+  let file = package-locator(cat.catalog-directory, name);
   load-package-file(cat, name, file);
 end function;
 
@@ -311,6 +316,7 @@ define function load-package-file
                      description: json["description"],
                      contact: json["contact"],
                      keywords: json["keywords"],
+                     category: json["category"],
                      releases: releases);
   local
     method to-release (t :: <table>) => (r :: <release>)
@@ -321,7 +327,7 @@ define function load-package-file
            url: element(t, "url", default: #f)
              | element(t, "location", default: ""),
            license: t["license"],
-           license-url: element(t, "license-url", default: ""))
+           license-url: element(t, "license-url", default: #f))
     end;
   map-into(releases, to-release, json["releases"]);
   sort!(releases, test: \>);
