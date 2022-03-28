@@ -112,10 +112,10 @@ define function find-package
   let name = lowercase(name);
   let cache = catalog-package-cache(cat);
   cached-package(cat, name)
-    | cache-package(cat, load-package(cat, name))
+    | cache-package(cat, load-catalog-package(cat, name))
 end function;
 
-define function load-all-packages
+define function load-all-catalog-packages
     (cat :: <catalog>) => (packages :: <seq>)
   let packages = make(<stretchy-vector>);
   local
@@ -127,7 +127,7 @@ define function load-all-packages
           // TODO: in release after 2020.1 use file-locator here.
           let file = merge-locators(as(<file-locator>, name), dir);
           log-debug("loading %s", file);
-          add!(packages, load-package-file(cat, name, file));
+          add!(packages, load-catalog-package-file(cat, name, file));
       end;
     end method;
   do-directory(load-one, cat.catalog-directory);
@@ -208,7 +208,7 @@ define function validate-catalog
   let packages = if (cached?)
                    value-sequence(cat.catalog-package-cache)
                  else
-                   load-all-packages(cat)
+                   load-all-catalog-packages(cat)
                  end;
   if (empty?(packages))
     catalog-error("no packages found in catalog. Wrong directory?");
@@ -282,16 +282,13 @@ define method json/do-print
   json/print(version-to-string(version), stream, indent: 2, sort-keys?: #t);
 end method;
 
-define function load-package
+define function load-catalog-package
     (cat :: <catalog>, name :: <string>) => (package :: <package>)
   let file = package-locator(cat.catalog-directory, name);
-  load-package-file(cat, name, file);
+  load-catalog-package-file(cat, name, file);
 end function;
 
-// TODO: Not to be confused with read-package-file which reads pkg.json. Rename
-// this to load-catalog-package-file and rename the other to
-// load-dylan-package-file (because we'll rename it to dylan-package.json).
-define function load-package-file
+define function load-catalog-package-file
     (cat :: <catalog>, name :: <string>, file :: <file-locator>) => (package :: <package>)
   log-debug("loading %s", file);
   let json

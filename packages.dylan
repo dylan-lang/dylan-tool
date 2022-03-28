@@ -146,12 +146,13 @@ define function package-transport
   end
 end function;
 
-// Read the pkg.json file, which is subtly different from a package file in the
+// Load the pkg.json file, which is subtly different from a package file in the
 // catalog. People shouldn't have to know which attributes are package
 // attributes and which are release attributes so in pkg.json they are all
 // specified in one table and here we extract them and put them in the right
-// place.
-define function read-package-file
+// place. There is no conflict since the file doesn't contain multiple
+// releases.
+define function load-dylan-package-file
     (file :: <file-locator>) => (release :: <release>)
   log-trace("Reading package file %s", file);
   with-open-file (stream = file)

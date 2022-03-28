@@ -53,9 +53,9 @@ define module pacman
     package-directory,
     release-directory,
     source-directory,
-    read-package-file,
-    load-all-packages,
-    load-package,
+    load-dylan-package-file,
+    load-all-catalog-packages,
+    load-catalog-package,
 
     <release>,
     release-deps,
