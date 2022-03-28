@@ -132,7 +132,7 @@ define function find-active-packages
     if (instance?(locator, <directory-locator>))
       let loc = merge-locators(as(<file-locator>, "pkg.json"), locator);
       if (fs/file-exists?(loc))
-        let pkg = pm/read-package-file(loc);
+        let pkg = pm/load-dylan-package-file(loc);
         add!(packages, pkg);
       end;
     end;
@@ -214,7 +214,7 @@ define function find-active-package-release
     (ws :: <workspace>, name :: <string>, cat :: pm/<catalog>)
  => (p :: false-or(pm/<release>))
   let path = active-package-file(ws, name);
-  pm/read-package-file(path)
+  pm/load-dylan-package-file(path)
     | begin
         log-warning("No package found in %s, falling back to catalog.", path);
         pm/find-package-release(cat, name, pm/$latest)
