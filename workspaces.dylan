@@ -201,18 +201,14 @@ define function find-active-package-deps
   end;
   let releases = make(<stretchy-vector>);
   let root = make(pm/<release>,
-                  url: "unknown",
-                  version: make(pm/<branch-version>, branch: "__no_branch__"),
+                  url: concat("file://", as(<string>, ws.workspace-directory)),
+                  version: pm/$latest,
                   deps: as(pm/<dep-vector>, deps),
-                  license: "unknown",
-                  license-url: "unknown",
+                  license: "none",
                   package: make(pm/<package>,
-                                name: "ROOT__",
+                                name: "WORKSPACE__",
                                 releases: releases,
-                                description: "workspace dummy package",
-                                contact: "unknown",
-                                category: "unknown",
-                                keywords: #[]));
+                                description: "workspace active packages"));
   add!(releases, root); // back pointer
   let releases-to-install = pm/resolve-deps(root, cat, active: actives);
   values(releases-to-install, actives)
