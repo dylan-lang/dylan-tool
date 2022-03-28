@@ -205,7 +205,7 @@ end function;
 define function list-catalog
     (#key all? :: <bool>)
   let cat = pm/catalog();
-  let packages = pm/load-all-packages(cat);
+  let packages = pm/load-all-catalog-packages(cat);
   local method package-< (p1, p2)
           p1.pm/package-name < p2.pm/package-name
         end;
