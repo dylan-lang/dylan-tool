@@ -194,9 +194,7 @@ define function find-active-package-deps
                       version: rel.pm/release-version));
     else
       log-warning("Skipping active package %=, not found in catalog.", pkg-name);
-      log-warning("         If this is a new or private project then this is normal.");
-      log-warning("         Create a pkg.json file for it and run update again to install");
-      log-warning("         dependencies.");
+      log-warning("  If this is a new or private project then this is normal.");
     end;
   end;
   let releases = make(<stretchy-vector>);
