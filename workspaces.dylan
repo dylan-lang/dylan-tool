@@ -133,11 +133,7 @@ define function find-active-packages
       let loc = merge-locators(as(<file-locator>, "pkg.json"), locator);
       if (fs/file-exists?(loc))
         let pkg = pm/read-package-file(loc);
-        if (pkg)
-          add!(packages, pkg);
-        else
-          log-warning("No package found in %s; ignored", loc);
-        end;
+        add!(packages, pkg);
       end;
     end;
   end;
