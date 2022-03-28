@@ -77,6 +77,7 @@ define function make-command-line-parser
                                       make(<positional-option>,
                                            names: #("name"),
                                            help: "Name of the library"),
+                                      // TODO: dev-dependencies
                                       make(<positional-option>,
                                            names: #("deps"),
                                            required?: #f,

@@ -127,10 +127,10 @@ the `logging` and `regular-expressions` packages:
 1.  `cd protobufs`
 1.  Edit the `pkg.json` to fill in the required settings and add any necessary
     dependencies. When the file is created by `dylan new library` it should
-    look like this:
+    look something like this:
 
         {
-            "deps": [ "testworks@2.0.0" ],
+            "dependencies": [],
             "description": "** put description here **",
             "name": "protobufs",
             "version": "0.1.0",
@@ -162,7 +162,7 @@ will be able to find everything.
 
 After initial checkout you may create a new branch or perform whatever git
 operations are necessary. If you decide to add a new dependency, just add it to
-the "deps" in `pkg.json` and run `dylan update` again.
+the "dependencies" in `pkg.json` and run `dylan update` again.
 
 
 ## The Registry

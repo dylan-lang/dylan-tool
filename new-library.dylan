@@ -159,7 +159,7 @@ run-test-application()
 // published in the catalog, at which time the user should be gently informed.
 define constant $pkg-template
   = #:string:'{
-    "deps": [ %s ],
+    "dependencies": [ %s ],
     "description": "** put description here **",
     "name": %=,
     "version": "0.1.0",
