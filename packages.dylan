@@ -152,7 +152,7 @@ end function;
 // specified in one table and here we extract them and put them in the right
 // place.
 define function read-package-file
-    (file :: <file-locator>) => (release :: false-or(<release>))
+    (file :: <file-locator>) => (release :: <release>)
   log-trace("Reading package file %s", file);
   with-open-file (stream = file)
     let json = block ()
