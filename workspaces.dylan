@@ -183,20 +183,19 @@ end function;
 // Resolve active package dependencies and install them.
 define function update-deps
     (ws :: <workspace>, cat :: pm/<catalog>)
-  let (deps, actives) = find-active-package-deps(ws, cat);
-  // Install dependencies. Note that resolve-deps doesn't return any of the packages
-  // passed in `actives`, so all of the following packages will be installed to
-  // ${DYLAN}/pkg.
+  let (deps, actives) = find-active-package-deps(ws, cat, dev?: #t);
+  // Install dependencies to ${DYLAN}/pkg.
   for (release in deps)
-    pm/install(release, deps?: #f, force?: #f);
+    pm/install(release, deps?: #f, force?: #f, active: actives);
   end;
 end function;
 
-// Find the transitive dependencies of the active packages in workspace `ws` by
-// creating a fake release with the combined dependencies and calling
-// resolve-deps on it.
+// Find the transitive dependencies of the active packages in workspace
+// `ws`. If `dev?` is true then include dev dependencies in the result.
 define function find-active-package-deps
-    (ws :: <workspace>, cat :: pm/<catalog>)
+    (ws :: <workspace>, cat :: pm/<catalog>, #key dev?)
+ => (releases :: <seq>, actives :: <istring-table>)
+  // Make a combined list of dependencies for all the active packages.
   let actives = make(<istring-table>);
   let deps = make(<stretchy-vector>);
   for (pkg-name in ws.active-package-names)
@@ -211,6 +210,7 @@ define function find-active-package-deps
       log-warning("  If this is a new or private project then this is normal.");
     end;
   end;
+  // Make a "root" release with the combined dependencies.
   let releases = make(<stretchy-vector>);
   let root = make(pm/<release>,
                   url: concat("file://", as(<string>, ws.workspace-directory)),
@@ -222,6 +222,7 @@ define function find-active-package-deps
                                 releases: releases,
                                 description: "workspace active packages"));
   add!(releases, root); // back pointer
+  // Resolve.
   let releases-to-install = pm/resolve-deps(root, cat, active: actives);
   values(releases-to-install, actives)
 end function;
@@ -235,6 +236,10 @@ define function find-active-package-release
   let path = active-package-file(ws, name);
   pm/load-dylan-package-file(path)
     | begin
+        // TODO: Remove this and the warnings in find-active-package-deps. We
+        // should never get here because the workspace's active packages are
+        // from find-active-packages, which only returns those that have a
+        // dylan-package.json file.
         log-warning("No package found in %s, falling back to catalog.", path);
         pm/find-package-release(cat, name, pm/$latest)
       end
