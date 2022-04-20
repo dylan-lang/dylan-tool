@@ -82,18 +82,21 @@ end method;
 //   force? - if true, the existing package is removed, if present, and
 //     the package is re-installed. This applies transitively to dependencies.
 //   deps? - if true, also install dependencies recursively.
+//   active - #f or an <istring-table> mapping package names to <release>s.
+//     These packages are omitted from the dependency version compatibility
+//     checks because they're active in the current dev workspace.
 // Values:
 //   installed? - #t if an installation was performed or #f if the package was
 //     already installed and `force?` was #f.
 define sealed generic install
-    (release :: <release>, #key force?, deps?)
+    (release :: <release>, #key force?, deps?, active)
  => (installed? :: <bool>);
 
 define method install
-    (release :: <release>, #key force? :: <bool>, deps? :: <bool> = #t)
+    (release :: <release>, #key force? :: <bool>, deps? :: <bool> = #t, active)
  => (installed? :: <bool>)
   if (deps?)
-    install-deps(release, force?: force?);
+    install-deps(release, force?: force?, active: active);
   end;
   if (force? & installed?(release))
     log-trace("Deleting package %s for forced install.", release);
@@ -110,9 +113,8 @@ end method;
 // Install dependencies of `release`. If `force?` is true, remove and
 // re-install all dependencies.
 define method install-deps
-    (release :: <release>, #key force? :: <bool>)
-  // TODO(cgay): pass correct `active:` arg.
-  for (rel in resolve-deps(release, catalog()))
+    (release :: <release>, #key force? :: <bool>, active)
+  for (rel in resolve-deps(release, catalog(), active: active))
     if (force? | ~installed?)
       install(rel, force?: force?, deps?: #t);
     end;
