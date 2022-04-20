@@ -146,12 +146,12 @@ define function package-transport
   end
 end function;
 
-// Load the pkg.json file, which is subtly different from a package file in the
-// catalog. People shouldn't have to know which attributes are package
-// attributes and which are release attributes so in pkg.json they are all
-// specified in one table and here we extract them and put them in the right
-// place. There is no conflict since the file doesn't contain multiple
-// releases.
+// Load the dylan-package.json file, which is subtly different from a package
+// file in the catalog. People shouldn't have to know which attributes are
+// package attributes and which are release attributes so in dylan-package.json
+// they are all specified in one table and here we extract them and put them in
+// the right place. There is no conflict since the file doesn't contain
+// multiple releases.
 define function load-dylan-package-file
     (file :: <file-locator>) => (release :: <release>)
   log-trace("Reading package file %s", file);
@@ -165,11 +165,11 @@ define function load-dylan-package-file
       package-error("%s is not well-formed. It must be a JSON object like"
                       " { ...package attributes... }");
     end;
-    decode-pkg-json(file, json)
+    decode-dylan-package-json(file, json)
   end
 end function;
 
-define function decode-pkg-json
+define function decode-dylan-package-json
     (file :: <file-locator>, json :: <istring-table>) => (r :: <release>)
   local
     method required-element
@@ -197,7 +197,7 @@ define function decode-pkg-json
             if (deps)
               // Even though we're in major version 0 I'm giving this a little
               // time to be updated since it will take me a while to get to all
-              // the existing pkg.json files.
+              // the existing dylan-package.json files.
               log-warning("%s: the \"deps\" attribute is deprecated;"
                             " use \"dependencies\" instead.", file);
               deps
@@ -252,8 +252,8 @@ end method;
 
 // Describes a package and its releases.  Attributes defined here are expected
 // to always apply to all releases of this package.  Some slots are optional
-// because they're not required in pkg.json files.  The catalog enforces more
-// requirements itself.
+// because they're not required in dylan-package.json files.  The catalog
+// enforces more requirements itself.
 define class <package> (<object>)
   // See validate-package-name for naming requirements.
   constant slot package-name :: <string>,
@@ -353,17 +353,19 @@ end method;
 // Find a release for a branch version. Branches are arbitrary; we simply assume the
 // branch exists and create a release for it.
 //
-// TODO(cgay): this is temporary while I attempt to bootstrap dylan-tool and right now it
-// only works for packages that exist in the catalog because we need to find the location
-// and deps. For now we find the latest release and take the information from it, but
-// that's obviously not always going to be correct. I suspect the right solution for
-// branch versions is to specify them fully in the deps. So instead of just
-// "pacman@my-branch" we would have "https://gitlab.com/org/pacman@my-branch". That takes
-// care of the location, but what about the deps? Do we rely on it having a pkg.json file
-// and the user running `dylan update` again? That's terrible. Auto-detect pkg.json after
-// download, and recompute deps? Try and fetch the pkg.json file right here? Assume no
-// deps at all for branch versions? Don't support branch versions at all and make the
-// user checkout the branch manually?
+// TODO(cgay): this is temporary while I attempt to bootstrap dylan-tool and
+// right now it only works for packages that exist in the catalog because we
+// need to find the location and deps. For now we find the latest release and
+// take the information from it, but that's obviously not always going to be
+// correct. I suspect the right solution for branch versions is to specify them
+// fully in the deps. So instead of just "pacman@my-branch" we would have
+// "https://gitlab.com/org/pacman@my-branch". That takes care of the location,
+// but what about the deps? Do we rely on it having a dylan-package.json file
+// and the user running `dylan update` again? That's terrible. Auto-detect
+// dylan-package.json after download, and recompute deps? Try and fetch the
+// dylan-package.json file right here? Assume no deps at all for branch
+// versions? Don't support branch versions at all and make the user checkout
+// the branch manually?
 define method find-release
     (p :: <package>, v :: <branch-version>, #key exact? :: <bool>) => (r :: false-or(<release>))
   ignore(exact?);
