@@ -73,6 +73,7 @@ define module workspaces
     import: { err, iff, inc!, slice };
 
   export
+    $dylan-package-file-name,
     load-workspace,
     <workspace>,
       active-package-directory,

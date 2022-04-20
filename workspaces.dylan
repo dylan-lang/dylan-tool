@@ -18,6 +18,7 @@ define function workspace-error
 end function;
 
 define constant $workspace-file = "workspace.json";
+define constant $dylan-package-file-name = "dylan-package.json";
 define constant $default-library-key = "default-library";
 
 // Create a new workspace named `name` under `parent-directory`. If `parent-directory` is
@@ -63,8 +64,8 @@ end function;
 // that knows the layout of the workspace directory:
 //       workspace/
 //         _build
-//         active-package-1/pkg.json
-//         active-package-2/pkg.json
+//         active-package-1/dylan-package.json
+//         active-package-2/dylan-package.json
 //         registry/
 define class <workspace> (<object>)
   constant slot workspace-directory :: <directory-locator>,
@@ -124,15 +125,24 @@ define function find-workspace-file
   end
 end function;
 
-// Find `directory`/*/pkg.json and turn them into a sequence of package <release>s.
+// Find `directory`/*/dylan-package.json and turn them into a sequence of
+// package <release>s.
 define function find-active-packages
     (directory :: <directory-locator>) => (pkgs :: <seq>)
   let packages = make(<stretchy-vector>);
   for (locator in fs/directory-contents(directory))
     if (instance?(locator, <directory-locator>))
-      let loc = merge-locators(as(<file-locator>, "pkg.json"), locator);
+      let loc = merge-locators(as(<file-locator>, $dylan-package-file-name), locator);
+      let loc2 = merge-locators(as(<file-locator>, "pkg.json"), locator);
       if (fs/file-exists?(loc))
         let pkg = pm/load-dylan-package-file(loc);
+        add!(packages, pkg);
+      elseif (fs/file-exists?(loc2))
+        // TODO: remove support for deprecated pkg.json file in the 1.0 version
+        // or once they're all converted, whichever comes first.
+        log-warning("Please rename %s to %s; support for 'pkg.json' will be"
+                      " removed soon.", loc2, $dylan-package-file-name);
+        let pkg = pm/load-dylan-package-file(loc2);
         add!(packages, pkg);
       end;
     end;
@@ -153,8 +163,16 @@ end function;
 
 define function active-package-file
     (ws :: <workspace>, pkg-name :: <string>) => (f :: <file-locator>)
-  merge-locators(as(<file-locator>, "pkg.json"),
-                 active-package-directory(ws, pkg-name))
+  // TODO: remove support for deprecated pkg.json file in the 1.0 version
+  // or once they're all converted, whichever comes first.
+  let dir = active-package-directory(ws, pkg-name);
+  let loc = merge-locators(as(<file-locator>, $dylan-package-file-name), dir);
+  let loc2 = merge-locators(as(<file-locator>, "pkg.json"), dir);
+  if (fs/file-exists?(loc2) & ~fs/file-exists?(loc))
+    loc2
+  else
+    loc
+  end
 end function;
 
 define function active-package?
@@ -208,8 +226,9 @@ define function find-active-package-deps
   values(releases-to-install, actives)
 end function;
 
-// Find or create a <release> for the given active package name by first reading the
-// pkg.json file and then falling back to the latest release in the catalog, if any.
+// Find or create a <release> for the given active package name by first
+// reading the dylan-package.json file and then falling back to the latest
+// release in the catalog, if any.
 define function find-active-package-release
     (ws :: <workspace>, name :: <string>, cat :: pm/<catalog>)
  => (p :: false-or(pm/<release>))
