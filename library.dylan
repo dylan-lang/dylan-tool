@@ -59,6 +59,7 @@ define module pacman
 
     <release>,
     release-deps,
+    release-dev-dependencies,
     release-license,
     // TODO:
     // release-license-url,

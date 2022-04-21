@@ -110,13 +110,14 @@ define test test-minimal-version-selection ()
     method verify (cat, top, expected-deps)
       let dep = string-to-dep(top);
       let release = find-package-release(cat, dep.package-name, dep.dep-version);
-      let got-deps = resolve-deps(release, cat);
+      let deps = release.release-deps;
+      let dev-deps = release.release-dev-dependencies;
+      let got-deps = resolve-deps(cat, deps, dev-deps, /* actives: */ #f);
       let want-deps = map(method (d)
                             let dep = string-to-dep(d);
                             find-package-release(cat, dep.package-name, dep.dep-version);
                           end,
                           expected-deps);
-      // Note that resolve-deps does not include the given release in the return value.
       assert-equal(got-deps.size, want-deps.size);
       assert-equal(got-deps.size, intersection(got-deps, want-deps).size);
     end;

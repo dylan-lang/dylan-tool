@@ -114,8 +114,9 @@ end function;
 // ignoring these issues for now to avoid unnecessary complexity. For now deps only work
 // at the package level.)
 define function resolve-deps
-    (release :: <release>, cat :: <catalog>,
-     #key active :: false-or(<istring-table>), cache = make(<table>))
+    (cat :: <catalog>, deps :: <dep-vector>, dev-deps :: <dep-vector>,
+     actives :: false-or(<istring-table>),
+     #key cache = make(<table>))
  => (releases :: <seq>)
   local
     method trace (depth, return-value, fmt, #rest format-args)
@@ -137,7 +138,8 @@ define function resolve-deps
           dep-error("circular dependencies: %=", pair(pname, seen))
         end;
         // TODO: shouldn't need as(<list>) here
-        let resolved = %resolve-deps(as(<list>, rel.release-deps), pair(pname, seen), depth + 1);
+        let resolved
+          = %resolve-deps(as(<list>, rel.release-deps), pair(pname, seen), depth + 1);
         cache[rel] := resolved;
         trace(depth, resolved, "caching %s => %s", rel, resolved);
       end
@@ -148,11 +150,11 @@ define function resolve-deps
     // active packages, so that it isn't necessary for the package to exist in the
     // catalog.
     method %resolve-deps (deps, seen, depth)
-      trace(depth, #f, "%resolve-deps(deps: %s, seen: %=)", deps, seen);
+      trace(depth, #f, "%%resolve-deps(deps: %s, seen: %=)", as(<list>, deps), seen);
       let maxima = make(<istring-table>);
       for (dep in deps)
         let pname = dep.package-name;
-        let rel = (active & element(active, pname, default: #f))
+        let rel = (actives & element(actives, pname, default: #f))
                   | begin
                       let pkg = find-package(cat, pname)
                         | dep-error("package not found for %=", dep-to-string(dep));
@@ -162,7 +164,7 @@ define function resolve-deps
                     end;
         for (release in pair(rel, resolve-release(rel, seen, depth + 1)))
           let pkg-name = release.package-name;
-          if (~(active & element(active, pkg-name, default: #f)))
+          if (~(actives & element(actives, pkg-name, default: #f)))
             let current-max = element(maxima, pkg-name, default: #f);
             maxima[pkg-name] := max-release(current-max, release, seen: pair(pkg-name, seen));
           end;
@@ -171,14 +173,15 @@ define function resolve-deps
       let deps = as(<list>, value-sequence(maxima));
       trace(depth, deps, "<= %s", deps);
     end method;
-  let deps = block ()
-               resolve-release(release, #(), 0)
-             exception (ex :: <package-missing-error>)
-               dep-error(make(<dep-error>,
-                              format-string: "package %= not in catalog",
-                              format-arguments: list(ex.package-name)));
-             end;
-  trace(0, deps, "Resolved %= to %s", release, deps)
+  let releases
+    = block ()
+        %resolve-deps(deps, #(), 0)
+      exception (ex :: <package-missing-error>)
+        dep-error(make(<dep-error>,
+                       format-string: "package %= not in catalog",
+                       format-arguments: list(ex.package-name)));
+      end;
+  trace(0, releases, "Resolved to %s", releases)
 end function;
 
 // Find the newest of two releases. They could have semantic versions or branch versions,

@@ -34,6 +34,7 @@ define class <release> (<object>)
 
   // Dependencies required to build the main libraries. These are transitive to
   // anything depending on this release.
+  // TODO: rename to release-dependencies
   constant slot release-deps :: <dep-vector> = as(<dep-vector>, #[]),
     init-keyword: deps:;
 
