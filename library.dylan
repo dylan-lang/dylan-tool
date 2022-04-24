@@ -72,6 +72,7 @@ define module pacman
     dep-to-string, string-to-dep,
     dep-version,
     resolve-deps,
+    resolve-release-deps,
 
     <version>,
     $latest,

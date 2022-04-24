@@ -40,6 +40,7 @@ define class <release> (<object>)
 
   // Development dependencies, for example testworks. These are not transitive.
   constant slot release-dev-dependencies :: <dep-vector> = as(<dep-vector>, #[]),
+    // TODO: rename to dev-dependencies:
     init-keyword: dev-deps:;
 
   // Where the package can be downloaded from.
@@ -202,14 +203,14 @@ define function decode-dylan-package-json
               log-warning("%s: the \"deps\" attribute is deprecated;"
                             " use \"dependencies\" instead.", file);
               deps
-            else
-              required-element("dependencies", <seq>)
             end
           end
+        | #()
     end method;
   // Warn about unrecognized keys.
   for (ignore keyed-by key in json)
-    if (~member?(key, #["category", "contact", "dependencies", "deps",
+    if (~member?(key, #["category", "contact", "dependencies",
+                        "deps", // TODO: remove deprecated key
                         "description", "dev-dependencies", "keywords",
                         "license", "license-url", "name", "url", "version"],
                  test: istring=))
@@ -218,13 +219,15 @@ define function decode-dylan-package-json
   end;
   // Required elements
   let name = required-element("name", <string>);
-  let deps = map-as(<dep-vector>, string-to-dep, dependencies());
   let description = required-element("description", <string>);
   let version = string-to-version(required-element("version", <string>));
   let url = required-element("url", <string>);
   // Optional elements
   let contact = optional-element("contact", <string>, "");
   let category = optional-element("category", <string>, "");
+  let deps = map-as(<dep-vector>, string-to-dep, dependencies());
+  let dev-deps = map-as(<dep-vector>, string-to-dep,
+                        optional-element("dev-dependencies", <seq>, #()));
   let keywords = optional-element("keywords", <seq>, #[]);
   let license = optional-element("license", <string>, "Unknown");
   let license-url = optional-element("license-url", <string>, #f);
@@ -239,6 +242,7 @@ define function decode-dylan-package-json
        package: package,
        version: version,
        deps: deps,
+       dev-deps: dev-deps,
        url: url,
        license: license,
        license-url: license-url)
@@ -319,17 +323,25 @@ define method find-release
   // Releases are ordered newest to oldest, so avoid checking all of them.
   block (return)
     let min = #f;
+    let v-major = v.version-major;
     for (release in p.package-releases)
-      let version = release.release-version;
-      if (version = v)
-        return(release)
-      elseif (version < v)
-        return(~exact? & min)
-      elseif (version.version-major = v.version-major)
-        // version is > v and it's compatible because they have the same major version.
-        min := release;
+      let current = release.release-version;
+      let c-major = current.version-major;
+      if (c-major < v-major)
+        return(~exact? & min);
+      elseif (c-major = v-major)
+        if (current = v)
+          return(release);
+        elseif (current < v)
+          return(~exact? & min);
+        else
+          // current is > v and it's compatible because they have the same major version.
+          // Keep going because there may be another minor version that is still > v but
+          // closer to it.
+          min := release;
+        end;
       end;
-    end;
+    end for;
     ~exact? & min
   end block
 end method;

@@ -215,9 +215,7 @@ define function validate-catalog
   end;
   for (package in packages)
     for (release in package.package-releases)
-      let deps = release.release-deps;
-      let dev-deps = release.release-dev-dependencies;
-      resolve-deps(cat, deps, dev-deps, /* actives: */ #f, cache: cache);
+      resolve-release-deps(cat, release, dev?: #t, cache: cache);
     end;
   end;
 end function;

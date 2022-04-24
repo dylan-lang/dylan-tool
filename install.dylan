@@ -115,9 +115,8 @@ end method;
 // re-install all dependencies.
 define method install-deps
     (release :: <release>, #key force? :: <bool>, actives :: false-or(<istring-table>))
-  let deps = release.release-deps;
-  let dev-deps = release.release-dev-dependencies;
-  for (rel in resolve-deps(catalog(), deps, dev-deps, actives))
+  let cat = catalog();
+  for (rel in resolve-release-deps(cat, release, dev?: #t, actives: actives))
     if (force? | ~installed?)
       install(rel, force?: force?, deps?: #t);
     end;
