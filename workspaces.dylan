@@ -186,7 +186,9 @@ define function update-deps
   let (deps, actives) = find-active-package-deps(ws, cat, dev?: #t);
   // Install dependencies to ${DYLAN}/pkg.
   for (release in deps)
-    pm/install(release, deps?: #f, force?: #f, active: actives);
+    if (~element(actives, release.pm/package-name, default: #f))
+      pm/install(release, deps?: #f, force?: #f, actives: actives);
+    end;
   end;
 end function;
 
@@ -195,54 +197,29 @@ end function;
 define function find-active-package-deps
     (ws :: <workspace>, cat :: pm/<catalog>, #key dev?)
  => (releases :: <seq>, actives :: <istring-table>)
-  // Make a combined list of dependencies for all the active packages.
   let actives = make(<istring-table>);
   let deps = make(<stretchy-vector>);
+  // Dev deps could go into deps, above, but they're kept separate so that
+  // pacman can give more specific error messages.
+  let dev-deps = make(<stretchy-vector>);
   for (pkg-name in ws.active-package-names)
-    let rel = find-active-package-release(ws, pkg-name, cat);
+    let rel = pm/load-dylan-package-file(active-package-file(ws, pkg-name));
     if (rel)
       actives[rel.pm/package-name] := rel;
-      add!(deps, make(pm/<dep>,
-                      package-name: rel.pm/package-name,
-                      version: rel.pm/release-version));
+      if (dev?)
+        for (dep in rel.pm/release-dev-dependencies)
+          add!(dev-deps, dep);
+        end;
+      end;
     else
       log-warning("Skipping active package %=, not found in catalog.", pkg-name);
       log-warning("  If this is a new or private project then this is normal.");
     end;
   end;
-  // Make a "root" release with the combined dependencies.
-  let releases = make(<stretchy-vector>);
-  let root = make(pm/<release>,
-                  url: concat("file://", as(<string>, ws.workspace-directory)),
-                  version: pm/$latest,
-                  deps: as(pm/<dep-vector>, deps),
-                  license: "none",
-                  package: make(pm/<package>,
-                                name: "WORKSPACE__",
-                                releases: releases,
-                                description: "workspace active packages"));
-  add!(releases, root); // back pointer
-  // Resolve.
-  let releases-to-install = pm/resolve-deps(root, cat, active: actives);
+  let deps = as(pm/<dep-vector>, deps);
+  let dev-deps = as(pm/<dep-vector>, dev-deps);
+  let releases-to-install = pm/resolve-deps(cat, deps, dev-deps, actives);
   values(releases-to-install, actives)
-end function;
-
-// Find or create a <release> for the given active package name by first
-// reading the dylan-package.json file and then falling back to the latest
-// release in the catalog, if any.
-define function find-active-package-release
-    (ws :: <workspace>, name :: <string>, cat :: pm/<catalog>)
- => (p :: false-or(pm/<release>))
-  let path = active-package-file(ws, name);
-  pm/load-dylan-package-file(path)
-    | begin
-        // TODO: Remove this and the warnings in find-active-package-deps. We
-        // should never get here because the workspace's active packages are
-        // from find-active-packages, which only returns those that have a
-        // dylan-package.json file.
-        log-warning("No package found in %s, falling back to catalog.", path);
-        pm/find-package-release(cat, name, pm/$latest)
-      end
 end function;
 
 // Create/update a single registry directory having an entry for each library
