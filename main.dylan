@@ -233,7 +233,7 @@ define function main () => (status :: false-or(<int>))
   let parser = make-command-line-parser();
   block (exit)
     parse-command-line(parser, application-arguments());
-    if (get-option-value(parser, "verbose"))
+    if (get-option-value(parser, "debug") & get-option-value(parser, "verbose"))
       log-level(*log*) := $trace-level;
     end;
     execute-command(parser);
