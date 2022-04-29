@@ -25,7 +25,7 @@ jobs:
         with:
           submodules: recursive
 
-      - uses: dylan-lang/install-opendylan@v1
+      - uses: dylan-lang/install-opendylan@v2
 
       # Build and run test suites as individual steps rather than just using
       # `make test`, so we get better feedback in the GitHub UI.
