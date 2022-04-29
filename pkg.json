@@ -1,0 +1,17 @@
+{
+    "name": "workspaces",
+    "version": "0.4.1",
+    "category": "development tools",
+    "contact": "dylan-lang@googlegroups.com",
+    "description": "Manipulate Dylan development workspaces",
+    "keywords": [],
+    "deps": [
+        "json@1.0",
+        "logging@2.1",
+        "pacman@0.4.1",
+        "regular-expressions@1.0",
+        "testworks@2.0",
+        "uncommon-dylan@0.2"
+    ],
+    "url": "https://github.com/dylan-lang/workspaces"
+}
