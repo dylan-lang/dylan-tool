@@ -12,51 +12,75 @@ on:
   workflow_dispatch:
 
 jobs:
-
-  # This is the name you have to search for when enabling branch protection
-  # mechanisms in the repository settings. Not mentioned in the docs. Here it
-  # happens to be the same as the workflow name at the top, but they may differ
-  # and this is the name that matters in the UI.
   build-and-test:
     runs-on: ubuntu-latest
+    env:
+      # Install packages and `dylan` binary in a known location.
+      DYLAN: ./dylan-root
 
     steps:
+      - uses: dylan-lang/install-dylan-tool@v1
+
+      - name: Create workspace
+        run: ./dylan new workspace dt
+
+      # The Makefile assumes dylan-compiler is in the path.
+      - name: Create symlinks
+        run: |
+          cd dt
+          ln -s ../dylan-compiler
+
       - uses: actions/checkout@v2
         with:
-          submodules: recursive
+          path: dt/dylan-tool
 
-      - uses: dylan-lang/install-opendylan@v2
+      - uses: actions/checkout@v2
+        with:
+          repository: dylan-lang/workspaces
+          ref: master
+          path: dt/workspaces
 
-      # Build and run test suites as individual steps rather than just using
-      # `make test`, so we get better feedback in the GitHub UI.
+      - uses: actions/checkout@v2
+        with:
+          repository: dylan-lang/pacman
+          ref: master
+          path: dt/pacman
 
-      - name: Build pacman-test-suite
-        run: ./dylan-compiler -build -jobs 3 pacman-test-suite
+      - uses: actions/checkout@v2
+        with:
+          repository: dylan-lang/pacman-catalog
+          ref: master
+          path: dt/pacman-catalog
 
-      - name: Run pacman-test-suite
-        run: _build/bin/pacman-test-suite
-
-      - name: Build workspaces-test-suite
-        run: ./dylan-compiler -build -jobs 3 workspaces-test-suite
-
-      - name: Run workspaces-test-suite
-        run: _build/bin/workspaces-test-suite
-
-      - name: Build and install dylan-tool
+      - name: Update workspace
         run: |
-          DYLAN=. PATH=.:$PATH make install
-          # TODO: Not sure why the link step in the install file doesn't work.
-          ln -s ./install/dylan-tool/bin/dylan-tool dylan
+          cd dt
+          DYLAN_CATALOG=./pacman-catalog ../dylan update
+          # debug
+          find registry -type f -exec cat {} \; | sort
+
+      # The setting of PATH is a little bit tricky below. It is to make sure
+      # dylan-compiler is on the path. dylan-compiler is in the job's top-level
+      # directory. 
+
+      - name: make test
+        run: |
+          cd dt/dylan-tool
+          DYLAN_CATALOG=./pacman-catalog PATH=..:$PATH make pkg-test
+
+      - name: make install
+        run: |
+          cd dt/dylan-tool
+          # Installs to ${DYLAN}/bin/dylan
+          PATH=..:$PATH make install
 
       - name: Exercise dylan-tool
-        env:
-          DYLAN: .
         run: |
-          ./dylan new workspace work
-          cd work
-          ../dylan new library abc strings@1.1
-          ../dylan update
-          ../dylan status
-          ../dylan list
+          ${DYLAN}/bin/dylan new workspace test-workspace
+          cd test-workspace
+          ${DYLAN}/bin/dylan new library abc strings@1.1
+          DYLAN_CATALOG=./pacman-catalog ${DYLAN}/bin/dylan update
+          ${DYLAN}/bin/dylan status
+          ${DYLAN}/bin/dylan list
           ../dylan-compiler -build abc-test-suite
           _build/bin/abc-test-suite
