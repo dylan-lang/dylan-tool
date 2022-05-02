@@ -62,10 +62,12 @@ pkg-build:
 # or not.
 pkg-test: pkg-build
 	../_build/bin/dylan-tool update
-	cd .. && dylan-compiler -build pacman-test-suite && _build/bin/pacman-test-suite
+	cd .. && dylan-compiler -build pacman-test-suite \
+	      && DYLAN_CATALOG=./pacman-catalog _build/bin/pacman-test-suite
 	cd .. && dylan-compiler -build pacman-catalog-test-suite \
-	  && _build/bin/pacman-catalog-test-suite
-	cd .. && dylan-compiler -build workspaces-test-suite && _build/bin/workspaces-test-suite
+	      && DYLAN_CATALOG=./pacman-catalog _build/bin/pacman-catalog-test-suite
+	cd .. && dylan-compiler -build workspaces-test-suite \
+	      && _build/bin/workspaces-test-suite
 
 pkg-clean:
 	rm -rf ../_build
