@@ -77,6 +77,7 @@ define function make-command-line-parser
                                       make(<positional-option>,
                                            names: #("name"),
                                            help: "Name of the library"),
+                                      // TODO: dev-dependencies
                                       make(<positional-option>,
                                            names: #("deps"),
                                            required?: #f,
@@ -204,7 +205,7 @@ end function;
 define function list-catalog
     (#key all? :: <bool>)
   let cat = pm/catalog();
-  let packages = pm/load-all-packages(cat);
+  let packages = pm/load-all-catalog-packages(cat);
   local method package-< (p1, p2)
           p1.pm/package-name < p2.pm/package-name
         end;
@@ -232,7 +233,7 @@ define function main () => (status :: false-or(<int>))
   let parser = make-command-line-parser();
   block (exit)
     parse-command-line(parser, application-arguments());
-    if (get-option-value(parser, "verbose"))
+    if (get-option-value(parser, "debug") & get-option-value(parser, "verbose"))
       log-level(*log*) := $trace-level;
     end;
     execute-command(parser);

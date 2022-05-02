@@ -2,7 +2,7 @@ Module: dylan-tool
 Synopsis: The `dylan new library` subcommand
 
 // Creates source files for a new library (app or shared lib), its
-// corresponding test library app, and a pkg.json file.
+// corresponding test library app, and a dylan-package.json file.
 
 // Define #:string: syntax.
 define function string-parser (s) s end;
@@ -159,7 +159,7 @@ run-test-application()
 // published in the catalog, at which time the user should be gently informed.
 define constant $pkg-template
   = #:string:'{
-    "deps": [ %s ],
+    "dependencies": [ %s ],
     "description": "** put description here **",
     "name": %=,
     "version": "0.1.0",
@@ -239,7 +239,7 @@ define function make-dylan-library
                                    $lib-test-main-template),
                 format-arguments: list(name, name)),
            make(<template>,
-                output-file: file("pkg.json"),
+                output-file: file(ws/$dylan-package-file-name),
                 format-string: $pkg-template,
                 format-arguments: list(deps-string, name))); 
   for (template in templates)
@@ -274,9 +274,9 @@ end function;
 // by beginners.
 define constant $library-name-regex = re/compile("^[a-z][a-z0-9-]*$");
 
-// TODO: We currently always create a pkg.json file. Detect whether the new
-// library is inside an existing package, at workspace top-level, or what,
-// since it's valid to create a new library inside an existing package.
+// TODO: We currently always create a dylan-package.json file. Detect whether
+// the new library is inside an existing package, at workspace top-level, or
+// what, since it's valid to create a new library inside an existing package.
 define function new-library
     (name :: <string>, dir :: <directory-locator>, dep-specs :: <seq>, exe? :: <bool>)
   if (~re/search($library-name-regex, name))

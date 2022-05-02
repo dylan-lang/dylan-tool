@@ -57,15 +57,17 @@ distclean: clean
 pkg-build:
 	cd .. && dylan-compiler -build dylan-tool
 
-# Note that whereas test-with-submodules tests the submoduled catalog this
-# tests the installed catalog since we don't know if pacman-catalog is an
-# active package or not.
+# Note that whereas the test target tests the submoduled catalog this tests the
+# installed catalog since we don't know if pacman-catalog is an active package
+# or not.
 pkg-test: pkg-build
 	../_build/bin/dylan-tool update
-	cd .. && dylan-compiler -build pacman-test-suite && _build/bin/pacman-test-suite
+	cd .. && dylan-compiler -build pacman-test-suite \
+	      && DYLAN_CATALOG=./pacman-catalog _build/bin/pacman-test-suite
 	cd .. && dylan-compiler -build pacman-catalog-test-suite \
-	  && _build/bin/pacman-catalog-test-suite
-	cd .. && dylan-compiler -build workspaces-test-suite && _build/bin/workspaces-test-suite
+	      && DYLAN_CATALOG=./pacman-catalog _build/bin/pacman-catalog-test-suite
+	cd .. && dylan-compiler -build workspaces-test-suite \
+	      && _build/bin/workspaces-test-suite
 
 pkg-clean:
 	rm -rf ../_build
