@@ -7,7 +7,7 @@
     "keywords": [
         "package"
     ],
-    "deps": [
+    "dependencies": [
         "json@1.0",
         "logging@2.1",
         "regular-expressions@1.0",

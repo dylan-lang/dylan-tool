@@ -4,7 +4,7 @@ Module: pacman-test-suite
 // having the given deps. If catalog is provided, the package and releases are
 // fetched from it if they exist and added to it if they don't.
 define function make-test-package
-    (name, #key versions, deps = #(), catalog) => (p :: <package>)
+    (name, #key versions, deps, dev-deps, catalog) => (p :: <package>)
   let package = catalog & cached-package(catalog, name);
   if (~package)
     package := make(<package>,
@@ -15,7 +15,8 @@ define function make-test-package
                     keywords: #["key1", "key2"]);
     catalog & cache-package(catalog, package);
   end;
-  let deps = as(<dep-vector>, map(string-to-dep, deps));
+  let deps = as(<dep-vector>, map(string-to-dep, deps | #()));
+  let dev-deps = as(<dep-vector>, map(string-to-dep, dev-deps | #()));
   for (v in versions)
     let version = string-to-version(v);
     let release = find-release(package, version);
@@ -25,6 +26,7 @@ define function make-test-package
                        package: package,
                        version: version,
                        deps: deps,
+                       dev-deps: dev-deps,
                        url: format-to-string("https://github.com/dylan-lang/%s", name),
                        license: "MIT",
                        license-url: "https://github.com/dylan-lang/package/LICENSE"));
@@ -33,18 +35,24 @@ define function make-test-package
   package
 end function;
 
-// Make a catalog from a set of specs, each of which is a list of dep strings
-// like #("p@1.2", "d@3.4.5"). The first string in each spec is taken as a new
-// package to create, with one release, and the remaining strings, if any, are
-// taken as dependencies for that release.
+// Make a catalog from a set of specs. Each spec is a sequence in this form:
+//   #(package-name-and-version, deps, dev-deps)
+// Example:
+//   #("P@1.2", #("D@3.4.5"), #("DD@9.9", "T@4.0")) means create package P and a
+//   release for P@1.2 with dep D@3.4.5 and dev deps DD@9.9 and T@4.0.
+// Example:
+//   #("P@1.2", #("D@3.4.5")) means to make the same package as above but with no
+//   dev deps.
 define function make-test-catalog
     (#rest package-specs) => (c :: <catalog>)
   let catalog = make(<catalog>, directory: test-temp-directory());
   for (spec in package-specs)
-    let dep = string-to-dep(spec[0]);
+    let (name, deps, dev-deps) = apply(values, spec);
+    let dep = string-to-dep(name);
     make-test-package(dep.package-name,
                       versions: list(version-to-string(dep.dep-version)),
-                      deps: copy-sequence(spec, start: 1),
+                      deps: deps,
+                      dev-deps: dev-deps,
                       catalog: catalog);
   end;
   validate-catalog(catalog, cached?: #t);

@@ -112,10 +112,10 @@ define function find-package
   let name = lowercase(name);
   let cache = catalog-package-cache(cat);
   cached-package(cat, name)
-    | cache-package(cat, load-package(cat, name))
+    | cache-package(cat, load-catalog-package(cat, name))
 end function;
 
-define function load-all-packages
+define function load-all-catalog-packages
     (cat :: <catalog>) => (packages :: <seq>)
   let packages = make(<stretchy-vector>);
   local
@@ -127,7 +127,7 @@ define function load-all-packages
           // TODO: in release after 2020.1 use file-locator here.
           let file = merge-locators(as(<file-locator>, name), dir);
           log-debug("loading %s", file);
-          add!(packages, load-package-file(cat, name, file));
+          add!(packages, load-catalog-package-file(cat, name, file));
       end;
     end method;
   do-directory(load-one, cat.catalog-directory);
@@ -208,14 +208,14 @@ define function validate-catalog
   let packages = if (cached?)
                    value-sequence(cat.catalog-package-cache)
                  else
-                   load-all-packages(cat)
+                   load-all-catalog-packages(cat)
                  end;
   if (empty?(packages))
     catalog-error("no packages found in catalog. Wrong directory?");
   end;
   for (package in packages)
     for (release in package.package-releases)
-      resolve-deps(release, cat, cache: cache);
+      resolve-release-deps(cat, release, dev?: #t, cache: cache);
     end;
   end;
 end function;
@@ -223,24 +223,26 @@ end function;
 // Write a package to the catalog in JSON format.
 define function write-package-file
     (cat :: <catalog>, package :: <package>) => ()
-  let file = package-locator(cat, package);
+  let file = package-locator(cat.catalog-directory, package);
   ensure-directories-exist(file);
   with-open-file (stream = file, direction: #"output", if-exists: #"replace")
-    json/print(package, stream, indent: 2);
+    json/print(package, stream, indent: 2, sort-keys?: #t);
   end;
 end function;
 
+// Generate a locator for the given package (or package name). `root` is the
+// directory that contains the 1-or-2 letter subdirectory names, which is
+// usually a version directory like "v1".
 define generic package-locator
-    (cat :: <catalog>, package) => (file :: <file-locator>);
+    (root :: <directory-locator>, package) => (file :: <file-locator>);
 
 define method package-locator
-    (cat :: <catalog>, package :: <package>) => (file :: <file-locator>)
-  package-locator(cat, package.package-name)
+    (root :: <directory-locator>, package :: <package>) => (file :: <file-locator>)
+  package-locator(root, package.package-name)
 end method;
 
 define method package-locator
-    (cat :: <catalog>, name :: <string>) => (file :: <file-locator>)
-  let root = cat.catalog-directory;
+    (root :: <directory-locator>, name :: <string>) => (file :: <file-locator>)
   let dir = select (name.size)
               1 => subdirectory-locator(root, "1");
               2 => subdirectory-locator(root, "2");
@@ -256,12 +258,15 @@ end method;
 
 define method json/do-print
     (package :: <package>, stream :: <stream>)
-  json/print(to-table(package), stream);
+  // TODO: Once https://github.com/dylan-lang/json/pull/12 is in a release,
+  // update to use that json release and remove the keyword args in the three
+  // calls to json/print below.
+  json/print(to-table(package), stream, indent: 2, sort-keys?: #t);
 end method;
 
 define method json/do-print
     (release :: <release>, stream :: <stream>)
-  json/print(to-table(release), stream);
+  json/print(to-table(release), stream, indent: 2, sort-keys?: #t);
 end method;
 
 define method json/do-print
@@ -269,21 +274,21 @@ define method json/do-print
   let t = make(<istring-table>);
   t["name"]    := dep.package-name;
   t["version"] := dep.dep-version;
-  json/print(t, stream);
+  json/print(t, stream, indent: 2, sort-keys?: #t);
 end method;
 
 define method json/do-print
     (version :: <version>, stream :: <stream>)
-  json/print(version-to-string(version), stream);
+  json/print(version-to-string(version), stream, indent: 2, sort-keys?: #t);
 end method;
 
-define function load-package
+define function load-catalog-package
     (cat :: <catalog>, name :: <string>) => (package :: <package>)
-  let file = package-locator(cat, name);
-  load-package-file(cat, name, file);
+  let file = package-locator(cat.catalog-directory, name);
+  load-catalog-package-file(cat, name, file);
 end function;
 
-define function load-package-file
+define function load-catalog-package-file
     (cat :: <catalog>, name :: <string>, file :: <file-locator>) => (package :: <package>)
   log-debug("loading %s", file);
   let json
@@ -308,32 +313,22 @@ define function load-package-file
                      description: json["description"],
                      contact: json["contact"],
                      keywords: json["keywords"],
+                     category: json["category"],
                      releases: releases);
   local
     method to-release (t :: <table>) => (r :: <release>)
+      let deps = element(t, "dependencies", default: #f)
+        | element(t, "deps", default: #()); // deprecated name
       make(<release>,
            package: package,
            version: string-to-version(t["version"]),
-           deps: map-as(<dep-vector>, string-to-dep, t["deps"]),
+           deps: map-as(<dep-vector>, string-to-dep, deps),
            url: element(t, "url", default: #f)
              | element(t, "location", default: ""),
            license: t["license"],
-           license-url: element(t, "license-url", default: ""))
+           license-url: element(t, "license-url", default: #f))
     end;
   map-into(releases, to-release, json["releases"]);
   sort!(releases, test: \>);
   cat.catalog-package-cache[name] := package
 end function;
-
-/* TODO: validate each release...
-
-    if (version = $latest)
-      catalog-error("version 'latest' is not a valid package version in the catalog;"
-                      " specify a semantic version instead.");
-    end;
-    let version-string = version-to-string(version);
-    if (element(seen, version-string, default: #f))
-      catalog-error("duplicate release version: %s@%s", name, vstring);
-    end;
-
-*/

@@ -32,8 +32,16 @@ define class <release> (<object>)
   constant slot release-version :: <version>,
     required-init-keyword: version:;
 
+  // Dependencies required to build the main libraries. These are transitive to
+  // anything depending on this release.
+  // TODO: rename to release-dependencies
   constant slot release-deps :: <dep-vector> = as(<dep-vector>, #[]),
-    required-init-keyword: deps:;
+    init-keyword: deps:;
+
+  // Development dependencies, for example testworks. These are not transitive.
+  constant slot release-dev-dependencies :: <dep-vector> = as(<dep-vector>, #[]),
+    // TODO: rename to dev-dependencies:
+    init-keyword: dev-deps:;
 
   // Where the package can be downloaded from.
   constant slot release-url :: <string>,
@@ -44,7 +52,7 @@ define class <release> (<object>)
     required-init-keyword: license:;
 
   // Location of full license text.
-  constant slot release-license-url :: <string>,
+  constant slot release-license-url :: false-or(<string>),
     init-keyword: license-url:;
 end class;
 
@@ -98,10 +106,14 @@ define method to-table
     (release :: <release>) => (t :: <istring-table>)
   let t = make(<istring-table>);
   t["version"] := version-to-string(release.release-version);
+  t["dependencies"] := map-as(<vector>, dep-to-string, release.release-deps);
+  // TODO: delete this after converting catalog
   t["deps"] := map-as(<vector>, dep-to-string, release.release-deps);
   t["url"] := release.release-url;
   t["license"] := release.release-license;
-  t["license-url"] := release.release-license-url;
+  if (release.release-license-url)
+    t["license-url"] := release.release-license-url;
+  end;
   t
 end method;
 
@@ -136,13 +148,14 @@ define function package-transport
   end
 end function;
 
-// Read the pkg.json file, which is subtly different from a package file in the
-// catalog. People shouldn't have to know which attributes are package
-// attributes and which are release attributes so in pkg.json they are all
-// specified in one table and here we extract them and put them in the right
-// place.
-define function read-package-file
-    (file :: <file-locator>) => (release :: false-or(<release>))
+// Load the dylan-package.json file, which is subtly different from a package
+// file in the catalog. People shouldn't have to know which attributes are
+// package attributes and which are release attributes so in dylan-package.json
+// they are all specified in one table and here we extract them and put them in
+// the right place. There is no conflict since the file doesn't contain
+// multiple releases.
+define function load-dylan-package-file
+    (file :: <file-locator>) => (release :: <release>)
   log-trace("Reading package file %s", file);
   with-open-file (stream = file)
     let json = block ()
@@ -154,11 +167,11 @@ define function read-package-file
       package-error("%s is not well-formed. It must be a JSON object like"
                       " { ...package attributes... }");
     end;
-    decode-pkg-json(file, json)
+    decode-dylan-package-json(file, json)
   end
 end function;
 
-define function decode-pkg-json
+define function decode-dylan-package-json
     (file :: <file-locator>, json :: <istring-table>) => (r :: <release>)
   local
     method required-element
@@ -178,36 +191,61 @@ define function decode-pkg-json
                       file, key, object-class(v), expected-type);
       end;
       v
+    end method,
+    method dependencies () => (deps :: <seq>)
+      optional-element("dependencies", <seq>, #f)
+        | begin
+            let deps =  optional-element("deps", <seq>, #f);
+            if (deps)
+              // Even though we're in major version 0 I'm giving this a little
+              // time to be updated since it will take me a while to get to all
+              // the existing dylan-package.json files.
+              log-warning("%s: the \"deps\" attribute is deprecated;"
+                            " use \"dependencies\" instead.", file);
+              deps
+            end
+          end
+        | #()
     end method;
+  // Warn about unrecognized keys.
+  for (ignore keyed-by key in json)
+    if (~member?(key, #["category", "contact", "dependencies",
+                        "deps", // TODO: remove deprecated key
+                        "description", "dev-dependencies", "keywords",
+                        "license", "license-url", "name", "url", "version"],
+                 test: istring=))
+      log-warning("%s: unrecognized key %= (ignored)", file, key);
+    end;
+  end;
   // Required elements
   let name = required-element("name", <string>);
-  let deps = map-as(<dep-vector>, string-to-dep, required-element("deps", <seq>));
   let description = required-element("description", <string>);
   let version = string-to-version(required-element("version", <string>));
   let url = required-element("url", <string>);
   // Optional elements
   let contact = optional-element("contact", <string>, "");
   let category = optional-element("category", <string>, "");
+  let deps = map-as(<dep-vector>, string-to-dep, dependencies());
+  let dev-deps = map-as(<dep-vector>, string-to-dep,
+                        optional-element("dev-dependencies", <seq>, #()));
   let keywords = optional-element("keywords", <seq>, #[]);
-  let license = optional-element("license", <string>, "");
-  let license-url = optional-element("license-url", <string>, "");
-  let package = block ()
-                  load-package(catalog(), name)
-                exception (<catalog-error>)
-                  make(<package>,
-                       name: name,
-                       description: description,
-                       contact: contact | "",
-                       category: category | $uncategorized,
-                       keywords: keywords)
-                end;
+  let license = optional-element("license", <string>, "Unknown");
+  let license-url = optional-element("license-url", <string>, #f);
+
+  let package = make(<package>,
+                     name: name,
+                     description: description,
+                     contact: contact | "",
+                     category: category | $uncategorized,
+                     keywords: keywords);
   make(<release>,
        package: package,
        version: version,
        deps: deps,
+       dev-deps: dev-deps,
        url: url,
-       license: license | "Unknown",
-       license-url: license-url | "")
+       license: license,
+       license-url: license-url)
 end function;
 
 define generic package-name (o :: <object>) => (_ :: <string>);
@@ -219,8 +257,8 @@ end method;
 
 // Describes a package and its releases.  Attributes defined here are expected
 // to always apply to all releases of this package.  Some slots are optional
-// because they're not required in pkg.json files.  The catalog enforces more
-// requirements itself.
+// because they're not required in dylan-package.json files.  The catalog
+// enforces more requirements itself.
 define class <package> (<object>)
   // See validate-package-name for naming requirements.
   constant slot package-name :: <string>,
@@ -285,17 +323,25 @@ define method find-release
   // Releases are ordered newest to oldest, so avoid checking all of them.
   block (return)
     let min = #f;
+    let v-major = v.version-major;
     for (release in p.package-releases)
-      let version = release.release-version;
-      if (version = v)
-        return(release)
-      elseif (version < v)
-        return(~exact? & min)
-      elseif (version.version-major = v.version-major)
-        // version is > v and it's compatible because they have the same major version.
-        min := release;
+      let current = release.release-version;
+      let c-major = current.version-major;
+      if (c-major < v-major)
+        return(~exact? & min);
+      elseif (c-major = v-major)
+        if (current = v)
+          return(release);
+        elseif (current < v)
+          return(~exact? & min);
+        else
+          // current is > v and it's compatible because they have the same major version.
+          // Keep going because there may be another minor version that is still > v but
+          // closer to it.
+          min := release;
+        end;
       end;
-    end;
+    end for;
     ~exact? & min
   end block
 end method;
@@ -320,17 +366,19 @@ end method;
 // Find a release for a branch version. Branches are arbitrary; we simply assume the
 // branch exists and create a release for it.
 //
-// TODO(cgay): this is temporary while I attempt to bootstrap dylan-tool and right now it
-// only works for packages that exist in the catalog because we need to find the location
-// and deps. For now we find the latest release and take the information from it, but
-// that's obviously not always going to be correct. I suspect the right solution for
-// branch versions is to specify them fully in the deps. So instead of just
-// "pacman@my-branch" we would have "https://gitlab.com/org/pacman@my-branch". That takes
-// care of the location, but what about the deps? Do we rely on it having a pkg.json file
-// and the user running `dylan update` again? That's terrible. Auto-detect pkg.json after
-// download, and recompute deps? Try and fetch the pkg.json file right here? Assume no
-// deps at all for branch versions? Don't support branch versions at all and make the
-// user checkout the branch manually?
+// TODO(cgay): this is temporary while I attempt to bootstrap dylan-tool and
+// right now it only works for packages that exist in the catalog because we
+// need to find the location and deps. For now we find the latest release and
+// take the information from it, but that's obviously not always going to be
+// correct. I suspect the right solution for branch versions is to specify them
+// fully in the deps. So instead of just "pacman@my-branch" we would have
+// "https://gitlab.com/org/pacman@my-branch". That takes care of the location,
+// but what about the deps? Do we rely on it having a dylan-package.json file
+// and the user running `dylan update` again? That's terrible. Auto-detect
+// dylan-package.json after download, and recompute deps? Try and fetch the
+// dylan-package.json file right here? Assume no deps at all for branch
+// versions? Don't support branch versions at all and make the user checkout
+// the branch manually?
 define method find-release
     (p :: <package>, v :: <branch-version>, #key exact? :: <bool>) => (r :: false-or(<release>))
   ignore(exact?);

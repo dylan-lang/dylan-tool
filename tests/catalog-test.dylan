@@ -14,8 +14,8 @@ define test test-write-and-restore-package ()
   let cat = make(<catalog>, directory: dir);
   write-package-file(cat, $http-package);
   write-package-file(cat, $json-package);
-  let http = load-package(cat, "http");
-  let json = load-package(cat, "json");
+  let http = load-catalog-package(cat, "http");
+  let json = load-catalog-package(cat, "json");
   assert-equal(2, size(catalog-package-cache(cat)));
   // This depends on being able to resolve the json@1.2.3 dep in the http
   // package.

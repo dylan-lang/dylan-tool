@@ -112,8 +112,8 @@ end method;
 // <latest> is a special version representing whatever the latest <semantic-version> for
 // a package. There is no way to compare <latest> to <branch-version>, and there is no
 // need to compare it to <semantic-version> since semantic versions in the catalog are
-// always sorted newest to oldest. <latest> is only allowed as a dependency in pkg.json
-// files, not in the catalog.
+// always sorted newest to oldest. <latest> is only allowed as a dependency in
+// dylan-package.json files, not in the catalog.
 define class <latest> (<version>, <singleton-object>) end;
 
 define constant $latest :: <latest> = make(<latest>);

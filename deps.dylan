@@ -77,6 +77,26 @@ define function string-to-dep
        version: if (version) string-to-version(version) else $latest end)
 end function;
 
+// A convenience interface to resolve-deps.
+define function resolve-release-deps
+    (cat :: <catalog>, release :: <release>,
+     #key dev? :: <bool>, actives :: false-or(<istring-table>), cache)
+ => (deps :: <seq>)
+  let dev-deps = if (dev?)
+                   release.release-dev-dependencies
+                 else
+                   as(<dep-vector>, #())
+                 end;
+  // Add the release as a dependency of itself so that it will be included in circular
+  // dependency checking. Note that this is mostly for releases in the catalog; workspace
+  // packages are normally included in `actives` and won't be checked.
+  let reldep = make(<dep>,
+                    package-name: release.package-name,
+                    version: release.release-version);
+  let deps = as(<dep-vector>, add!(release.release-deps, reldep));
+  resolve-deps(cat, deps, dev-deps, actives, cache: cache)
+end function;
+
 // Resolve `release` to a set of releases it depends on, using `cat` as the world of
 // potential releases. `release` itself is not included in the result. `active` maps
 // package names to releases that are "active" in the current workspace and therefore
@@ -100,8 +120,8 @@ end function;
 // tree gets big fast. The result for any given release is memoized.
 //
 // Each dep specifies only its minimum required version, e.g., P 1.2.3.  These are
-// semantic versions so if two P dependencies specify different major versions it is an
-// error.
+// semantic versions so if two dependencies on P specify different major versions it is
+// an error.
 //
 // Releases with no deps terminate the recursion and as results percolate up the stack
 // they are combined with other results to keep only the maximum minimum version for each
@@ -114,10 +134,13 @@ end function;
 // ignoring these issues for now to avoid unnecessary complexity. For now deps only work
 // at the package level.)
 define function resolve-deps
-    (release :: <release>, cat :: <catalog>,
-     #key active :: false-or(<istring-table>), cache = make(<table>))
+    (cat :: <catalog>, deps :: <dep-vector>, dev-deps :: <dep-vector>,
+     actives :: false-or(<istring-table>), #key cache)
  => (releases :: <seq>)
+  let cache = cache | make(<table>);
   local
+    // Use `dylan --debug --verbose update` to see this trace output. For tests I'm
+    // afraid one has to change log-trace to log-info.
     method trace (depth, return-value, fmt, #rest format-args)
       let indent = make(<string>, size: depth * 2, fill: ' ');
       apply(log-trace, concat(indent, fmt), format-args);
@@ -126,7 +149,7 @@ define function resolve-deps
     // Resolve the deps for a single release into a set of specific releases
     // required in order to build it. The recursion terminates when a release
     // has no deps or if a cached result exists.
-    method resolve-release (rel, seen, depth) => (releases)
+    method resolve-release (rel, seen, depth) => (releases :: <list>)
       trace(depth, #f, "resolve-release(rel: %=, seen: %=)", rel, seen);
       let memo = element(cache, rel, default: #f); // use memoized result
       if (memo)
@@ -134,10 +157,11 @@ define function resolve-deps
       else
         let pname = rel.package-name;
         if (member?(pname, seen, test: \=))
-          dep-error("circular dependencies: %=", pair(pname, seen))
+          dep-error("circular dependency: %=", pair(pname, seen))
         end;
         // TODO: shouldn't need as(<list>) here
-        let resolved = resolve-deps(as(<list>, rel.release-deps), pair(pname, seen), depth + 1);
+        let resolved
+          = %resolve-deps(as(<list>, rel.release-deps), pair(pname, seen), depth + 1);
         cache[rel] := resolved;
         trace(depth, resolved, "caching %s => %s", rel, resolved);
       end
@@ -145,14 +169,14 @@ define function resolve-deps
     // Iterate over a single release's deps resolving them to lists of specific minimum
     // releases, then combine those releases into one list by taking the maximum minimum
     // release version needed for each package.  When looking up deps, always prefer the
-    // active packages, so that it isn't necessary for the package to exist in the
+    // active packages, so that it isn't necessary for active packages to exist in the
     // catalog.
-    method resolve-deps (deps, seen, depth)
-      trace(depth, #f, "resolve-deps(deps: %s, seen: %=)", deps, seen);
+    method %resolve-deps (deps, seen, depth) => (releases :: <list>)
+      trace(depth, #f, "%%resolve-deps(deps: %s, seen: %=)", as(<list>, deps), seen);
       let maxima = make(<istring-table>);
       for (dep in deps)
         let pname = dep.package-name;
-        let rel = (active & element(active, pname, default: #f))
+        let rel = (actives & element(actives, pname, default: #f))
                   | begin
                       let pkg = find-package(cat, pname)
                         | dep-error("package not found for %=", dep-to-string(dep));
@@ -162,23 +186,67 @@ define function resolve-deps
                     end;
         for (release in pair(rel, resolve-release(rel, seen, depth + 1)))
           let pkg-name = release.package-name;
-          if (~(active & element(active, pkg-name, default: #f)))
+          if (~(actives & element(actives, pkg-name, default: #f)))
             let current-max = element(maxima, pkg-name, default: #f);
             maxima[pkg-name] := max-release(current-max, release, seen: pair(pkg-name, seen));
           end;
         end;
       end;
-      let deps = as(<list>, value-sequence(maxima));
-      trace(depth, deps, "<= %s", deps);
+      let releases = as(<list>, value-sequence(maxima));
+      trace(depth, releases, "<= %s", releases);
     end method;
-  let deps = block ()
-               resolve-release(release, #(), 0)
-             exception (ex :: <package-missing-error>)
-               dep-error(make(<dep-error>,
-                              format-string: "package %= not in catalog",
-                              format-arguments: list(ex.package-name)));
-             end;
-  trace(0, deps, "Resolved %= to %s", release, deps)
+  block ()
+    let releases = %resolve-deps(deps, #(), 0);
+    if (~empty?(dev-deps))
+      // TODO: this doesn't need to be a separate call to %resolve-deps unless we want to
+      // give a more contextualized error message, which isn't currently done.
+      let dev-releases = %resolve-deps(dev-deps, #(), 0);
+      // Some refactoring may be needed, to make %resolve-deps return a list of deps
+      // instead of releases, but this'll do for now.
+      let all-deps = as(<dep-vector>,
+                        map(method (r)
+                              make(<dep>,
+                                   package-name: r.package-name,
+                                   version: r.release-version)
+                            end,
+                            concat(releases, dev-releases)));
+      // Re-resolve the combined list to ensure maximin'd versions of shared packages
+      // and no major version conflicts.
+      let combined = %resolve-deps(all-deps, #(), 0);
+      releases := reconcile-prod-dev-deps(combined, releases)
+    end;
+    releases
+  exception (ex :: <package-missing-error>)
+    dep-error(make(<dep-error>,
+                   format-string: "package %= not in catalog",
+                   format-arguments: list(ex.package-name)));
+  end
+end function;
+
+
+// Adjust result to prefer non-dev dependencies and ensure that what is tested is what is
+// run in production. Ex: for prod-dep->a@1.0->b@1.0 and dev-dep->c@1.0->b@1.1 the b@1.0
+// release should be preferred even though it's a lower minor version, because it's what
+// will be used in production.
+define function reconcile-prod-dev-deps
+    (combined-releases, main-releases) => (releases)
+  let releases = #();
+  for (combined in combined-releases)
+    let main = find-element(main-releases,
+                            method (r)
+                              r.package-name = combined.package-name
+                            end);
+    if (~main | combined == main)
+      releases := pair(combined, releases);
+    else
+      // TODO: should have a flag to use the dev dependency if user believes it's safe.
+      log-warning("Using %s instead of higher dev dependency %s to ensure consistent"
+                    " dev and non-dev builds.",
+                  main, combined);
+      releases := pair(main, releases);
+    end
+  end;
+  releases
 end function;
 
 // Find the newest of two releases. They could have semantic versions or branch versions,
