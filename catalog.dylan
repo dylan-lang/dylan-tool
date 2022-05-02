@@ -317,10 +317,12 @@ define function load-catalog-package-file
                      releases: releases);
   local
     method to-release (t :: <table>) => (r :: <release>)
+      let deps = element(t, "dependencies", default: #f)
+        | element(t, "deps", default: #()); // deprecated name
       make(<release>,
            package: package,
            version: string-to-version(t["version"]),
-           deps: map-as(<dep-vector>, string-to-dep, t["dependencies"]),
+           deps: map-as(<dep-vector>, string-to-dep, deps),
            url: element(t, "url", default: #f)
              | element(t, "location", default: ""),
            license: t["license"],
@@ -330,16 +332,3 @@ define function load-catalog-package-file
   sort!(releases, test: \>);
   cat.catalog-package-cache[name] := package
 end function;
-
-/* TODO: validate each release...
-
-    if (version = $latest)
-      catalog-error("version 'latest' is not a valid package version in the catalog;"
-                      " specify a semantic version instead.");
-    end;
-    let version-string = version-to-string(version);
-    if (element(seen, version-string, default: #f))
-      catalog-error("duplicate release version: %s@%s", name, vstring);
-    end;
-
-*/
