@@ -1,4 +1,4 @@
-Module: dylan-tool
+Module: dylan-tool-commands
 Synopsis: The `dylan new library` subcommand
 
 // Creates source files for a new library (app or shared lib), its
