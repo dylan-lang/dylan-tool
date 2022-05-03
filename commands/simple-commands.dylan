@@ -9,6 +9,18 @@ define class <install-subcommand> (<subcommand>)
   keyword help = "Install Dylan packages.";
 end class;
 
+define constant $install-subcommand
+  = make(<install-subcommand>,
+         options: list(make(<parameter-option>,
+                            // TODO: type: <version>
+                            names: #("version", "v"),
+                            default: "latest",
+                            help: "The version to install."),
+                       make(<positional-option>,
+                            name: "pkg",
+                            repeated?: #t,
+                            help: "Packages to install.")));
+
 define method execute-subcommand
     (parser :: <command-line-parser>, subcmd :: <install-subcommand>)
  => (status :: false-or(<int>))
@@ -30,6 +42,13 @@ define class <list-subcommand> (<subcommand>)
   keyword name = "list";
   keyword help = "List installed Dylan packages.";
 end class;
+
+define constant $list-subcommand
+  = make(<list-subcommand>,
+         options: list(make(<flag-option>,
+                            names: #("all", "a"),
+                            help: "List all packages whether installed"
+                              " or not.")));
 
 define method execute-subcommand
     (parser :: <command-line-parser>, subcmd :: <list-subcommand>)
@@ -65,15 +84,19 @@ end function;
 
 /// dylan new workspace
 
-define class <new-subcommand> (<subcommand>)
-  keyword name = "new";
-  keyword help = "";
-end;
-
 define class <new-workspace-subcommand> (<subcommand>)
   keyword name = "workspace";
   keyword help = "Create a new workspace.";
 end class;
+
+define constant $new-workspace-subcommand
+  = make(<new-workspace-subcommand>,
+         options: list(make(<parameter-option>,
+                            names: #("directory", "d"),
+                            help: "Create the workspace in this directory."),
+                       make(<positional-option>,
+                            name: "name",
+                            help: "Workspace directory name.")));
 
 define method execute-subcommand
     (parser :: <command-line-parser>, subcmd :: <new-workspace-subcommand>)
@@ -85,30 +108,15 @@ define method execute-subcommand
 end method;
 
 
-/// dylan new library
-
-define class <new-library-subcommand> (<subcommand>)
-  keyword name = "library";
-  keyword help = "Create a new library and its test library.";
-end class;
-
-define method execute-subcommand
-    (parser :: <command-line-parser>, subcmd :: <new-library-subcommand>)
- => (status :: false-or(<int>))
-  let name = get-option-value(subcmd, "name");
-  let dep-specs = get-option-value(subcmd, "deps") | #[];
-  let exe? = get-option-value(subcmd, "executable");
-  new-library(name, fs/working-directory(), dep-specs, exe?);
-  0
-end method;
-
-
 /// dylan update
 
 define class <update-subcommand> (<subcommand>)
   keyword name = "update";
   keyword help = "Bring the current workspace up-to-date with the workspace.json file.";
 end class;
+
+define constant $update-subcommand
+  = make(<update-subcommand>);
 
 define method execute-subcommand
     (parser :: <command-line-parser>, subcmd :: <update-subcommand>)
@@ -123,6 +131,12 @@ define class <status-subcommand> (<subcommand>)
   keyword name = "status";
   keyword help = "Display information about the current workspace.";
 end class;
+
+define constant $status-subcommand
+  = make(<status-subcommand>,
+         options: list(make(<flag-option>, // for tooling
+                            name: "directory",
+                            help: "Only show the workspace directory.")));
 
 define method execute-subcommand
     (parser :: <command-line-parser>, subcmd :: <status-subcommand>)
