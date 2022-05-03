@@ -1,0 +1,41 @@
+name: build-and-test
+
+on:
+  push:
+    # all branches
+  pull_request:
+    branches:
+      - main
+      - master
+
+  # This enables the Run Workflow button on the Actions tab.
+  workflow_dispatch:
+
+# We use dylan-tool here so that the library will be tested with the package
+# deps specified in pkg.json.
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+
+      - uses: dylan-lang/install-dylan-tool@v1
+
+      - name: Create workspace
+        run: |
+          ./dylan new workspace work
+
+      - uses: actions/checkout@v2
+        with:
+          path: work/pacman
+
+      - name: Build pacman-test-suite
+        run: |
+          cd work
+          ../dylan update
+          ../dylan-compiler -build -jobs 3 pacman-test-suite
+
+      - name: Run pacman-test-suite
+        run: |
+          cd work
+          _build/bin/pacman-test-suite

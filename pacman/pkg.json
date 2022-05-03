@@ -1,0 +1,20 @@
+{
+    "name": "pacman",
+    "version": "0.4.0",
+    "category": "development tools",
+    "contact": "dylan-lang@googlegroups.com",
+    "description": "Dylan package manager -- search for, download, and install available Dylan software packages.",
+    "keywords": [
+        "package"
+    ],
+    "deps": [
+        "json@1.0",
+        "logging@2.1",
+        "regular-expressions@1.0",
+        "uncommon-dylan@0.2"
+    ],
+    "dev-dependencies": [
+        "testworks@2.0"
+    ],
+    "url": "https://github.com/dylan-lang/pacman"
+}
