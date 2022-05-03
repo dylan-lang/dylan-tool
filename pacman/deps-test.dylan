@@ -1,4 +1,4 @@
-Module: pacman-test-suite
+Module: dylan-tool-test-suite
 
 // Verify that dep names follow the same rules as package names.
 define test test-dep-name-validation ()

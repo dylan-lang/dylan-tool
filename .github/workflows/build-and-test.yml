@@ -61,7 +61,7 @@ jobs:
 
       # The setting of PATH is a little bit tricky below. It is to make sure
       # dylan-compiler is on the path. dylan-compiler is in the job's top-level
-      # directory. 
+      # directory.
 
       - name: make test
         run: |

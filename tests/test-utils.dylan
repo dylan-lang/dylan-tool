@@ -1,4 +1,4 @@
-Module: pacman-test-suite
+Module: dylan-tool-test-suite
 
 // Make a package with a release for each version in `versions`, each release
 // having the given deps. If catalog is provided, the package and releases are
