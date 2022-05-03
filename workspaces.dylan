@@ -56,8 +56,8 @@ define function update () => ()
   let ws = load-workspace(fs/working-directory());
   log-info("Workspace directory is %s.", ws.workspace-directory);
   let cat = pm/catalog();
-  update-deps(ws, cat);
-  update-registry(ws, cat);
+  let (releases, actives) = update-deps(ws, cat);
+  update-registry(ws, cat, releases, actives);
 end function;
 
 // <workspace> holds the parsed workspace configuration, and is the one object
@@ -183,13 +183,15 @@ end function;
 // Resolve active package dependencies and install them.
 define function update-deps
     (ws :: <workspace>, cat :: pm/<catalog>)
-  let (deps, actives) = find-active-package-deps(ws, cat, dev?: #t);
+ => (releases :: <seq>, actives :: <istring-table>)
+  let (releases, actives) = find-active-package-deps(ws, cat, dev?: #t);
   // Install dependencies to ${DYLAN}/pkg.
-  for (release in deps)
+  for (release in releases)
     if (~element(actives, release.pm/package-name, default: #f))
       pm/install(release, deps?: #f, force?: #f, actives: actives);
     end;
   end;
+  values(releases, actives)
 end function;
 
 // Find the transitive dependencies of the active packages in workspace
@@ -204,16 +206,14 @@ define function find-active-package-deps
   let dev-deps = make(<stretchy-vector>);
   for (pkg-name in ws.active-package-names)
     let rel = pm/load-dylan-package-file(active-package-file(ws, pkg-name));
-    if (rel)
-      actives[rel.pm/package-name] := rel;
-      if (dev?)
-        for (dep in rel.pm/release-dev-dependencies)
-          add!(dev-deps, dep);
-        end;
+    // active-package-names wouldn't include the release if it didn't have a
+    // package file.
+    assert(rel);
+    actives[pkg-name] := rel;
+    if (dev?)
+      for (dep in rel.pm/release-dev-dependencies)
+        add!(dev-deps, dep);
       end;
-    else
-      log-warning("Skipping active package %=, not found in catalog.", pkg-name);
-      log-warning("  If this is a new or private project then this is normal.");
     end;
   end;
   let deps = as(pm/<dep-vector>, deps);
@@ -229,13 +229,12 @@ end function;
 // for them (unless they're included in another LID file via the LID: keyword,
 // in which case it is assumed they're for inclusion only).
 define function update-registry
-    (ws :: <workspace>, cat :: pm/<catalog>)
-  let (deps, actives) = find-active-package-deps(ws, cat);
+    (ws :: <workspace>, cat :: pm/<catalog>, releases :: <seq>, actives :: <istring-table>)
   let registry = ws.workspace-registry;
   for (rel in actives)
     update-for-directory(registry, active-package-directory(ws, rel.pm/package-name));
   end;
-  for (rel in deps)
+  for (rel in releases)
     update-for-directory(registry, pm/source-directory(rel));
   end;
 end function;
