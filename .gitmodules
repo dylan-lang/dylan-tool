@@ -1,3 +1,24 @@
 [submodule "ext/sphinx-extensions"]
 	path = ext/sphinx-extensions
 	url = https://github.com/dylan-lang/sphinx-extensions.git
+[submodule "ext/command-line-parser"]
+	path = ext/command-line-parser
+	url = https://github.com/dylan-lang/command-line-parser
+[submodule "ext/json"]
+	path = ext/json
+	url = https://github.com/dylan-lang/json
+[submodule "ext/logging"]
+	path = ext/logging
+	url = https://github.com/dylan-lang/logging
+[submodule "ext/regular-expressions"]
+	path = ext/regular-expressions
+	url = https://github.com/dylan-lang/regular-expressions
+[submodule "ext/uncommon-dylan"]
+	path = ext/uncommon-dylan
+	url = https://github.com/dylan-lang/uncommon-dylan
+[submodule "ext/testworks"]
+	path = ext/testworks
+	url = https://github.com/dylan-lang/testworks
+[submodule "ext/pacman-catalog"]
+	path = ext/pacman-catalog
+	url = https://github.com/dylan-lang/pacman-catalog
