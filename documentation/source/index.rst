@@ -1,17 +1,26 @@
 .. default-role:: samp
 .. highlight:: shell
 
+***************************
+The dylan Command-line Tool
+***************************
+
 The `dylan` tool provides a number of subcommands to simplify the management of Dylan
 workspaces and packages, eliminates the need to manually maintain the "registry" (which
 enables the compiler to locate libraries) by hand, and eliminates the need to use git
 submodules to track dependencies.
 
+.. toctree::
+   :hidden:
+
+   The pacman Package Manager <pacman>
+
 .. contents::
-   :depth: 2
+   :depth: 3
 
 
-Build dylan tool from source
-============================
+Building From Source
+====================
 
 In an upcoming release of Open Dylan, the `dylan` tool will be included in the
 release. For now, follow these steps to build and install.
@@ -69,19 +78,16 @@ You should see a lot of output from the ``dylan update`` command. If you run the
 steps to build the ``logging-test-suite`` library you will see a bunch of compiler
 warnings for the core Dylan library, which may be ignored.
 
-.. note::
+.. index::
+   single: pacman
 
-   **TODO:** Write pacman docs and point to them here so people can get a basic
-   understanding of
+Package Manager
+===============
 
-     - what the versioning scheme is
-     - what syntax is valid for specifying deps
-     - how deps are resolved
-     - what pkg.json is for and what its syntax is
-     - how to add their package to the catalog
-
-
-
+The `dylan` tool relies on :doc:`pacman` (the Dylan package manager, unrelated
+to the Arch Linux tool) to install dependencies. See :doc:`the pacman
+documentation <pacman>` for information on how to define a package, version
+syntax, and how dependency resolution works.
 
 Subcommands
 ===========
