@@ -34,7 +34,7 @@ install: build
 	cp -r _build/lib/lib* $(install_lib)/
 	mkdir -p $(DYLAN)/bin
 	@if [ ! -L "$(link_source)" ]; then \
-	  ln -s $(link_target) $(link_source); \
+	  ln -s $$(realpath $(link_target)) $$(realpath $(link_source)); \
 	fi;
 
 # dylan-tool needs to be buildable with submodules so that it can be built on
