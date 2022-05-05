@@ -1,6 +1,6 @@
 # Dylan Tool
 
-[![Gitter](https://badges.gitter.im/dylan-lang/general.svg)](https://gitter.im/dylan-lang/general?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+[![Gitter](https://badges.gitter.im/dylan-lang/general.svg)](https://gitter.im/dylan-lang/general?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge) [![tests](https://github.com/cgay/dylan-tool/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/cgay/dylan-tool/actions/workflows/build-and-test.yml)
 
 **Note:** Because an executable named `dylan` conflicts with the base Dylan
 library during the build process, this library is named `dylan-tool` and then

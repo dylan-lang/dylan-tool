@@ -1,5 +1,64 @@
-Module: dylan-tool
+Module: dylan-tool-commands
 Synopsis: The `dylan new library` subcommand
+
+
+define class <new-library-subcommand> (<subcommand>)
+  keyword name = "library";
+  keyword help = "Create a new library and its test library.";
+end class;
+
+define constant $new-library-subcommand
+  = make(<new-library-subcommand>,
+         // dylan new library --exe foo <dep> ...
+         options:
+           list(make(<flag-option>,
+                     names: #("executable", "x"),
+                     help: "The library creates an executable binary"),
+                make(<positional-option>,
+                     names: #("name"),
+                     help: "Name of the library"),
+                make(<positional-option>,
+                     names: #("deps"),
+                     required?: #f,
+                     repeated?: #t,
+                     help: "Package dependencies in the form pkg@version."
+                       " 'pkg' with no version gets the current latest"
+                       " version. pkg@1.2 means a specific version. The test"
+                       " library automatically depends on testworks.")));
+
+define method execute-subcommand
+    (parser :: <command-line-parser>, subcmd :: <new-library-subcommand>)
+ => (status :: false-or(<int>))
+  let name = get-option-value(subcmd, "name");
+  let dep-specs = get-option-value(subcmd, "deps") | #[];
+  let exe? = get-option-value(subcmd, "executable");
+  new-library(name, fs/working-directory(), dep-specs, exe?);
+  0
+end method;
+
+// While technically any Dylan name is valid, we prefer to restrict the names
+// to the style that is in common use since this tool is most likely to be used
+// by beginners.
+define constant $library-name-regex = re/compile("^[a-z][a-z0-9-]*$");
+
+// TODO: We currently always create a dylan-package.json file. Detect whether
+// the new library is inside an existing package, at workspace top-level, or
+// what, since it's valid to create a new library inside an existing package.
+define function new-library
+    (name :: <string>, dir :: <directory-locator>, dep-specs :: <seq>, exe? :: <bool>)
+  if (~re/search($library-name-regex, name))
+    error("%= is not a valid Dylan library name."
+            " Names are one or more words separated by hyphens, for example"
+            "'cool-stuff'. Names must match the regular expression %=.",
+          name, re/pattern($library-name-regex));
+  end;
+  let lib-dir = subdirectory-locator(dir, name);
+  if (fs/file-exists?(lib-dir))
+    error("Directory %s already exists.", lib-dir);
+  end;
+  // Parse dep specs before writing any files, in case of errors.
+  make-dylan-library(name, lib-dir, exe?, parse-dep-specs(dep-specs));
+end function;
 
 // Creates source files for a new library (app or shared lib), its
 // corresponding test library app, and a dylan-package.json file.
@@ -91,7 +150,8 @@ define library %s
     %s-impl;
 end library;
 
-// Interface module exports public API.
+// Interface module creates public API, ensuring that an implementation
+//  module exports them.
 define module %s
   create
     greeting;
@@ -160,10 +220,11 @@ run-test-application()
 define constant $pkg-template
   = #:string:'{
     "dependencies": [ %s ],
-    "description": "** put description here **",
+    "dev-dependencies": [ "testworks" ],
+    "description": "YOUR DESCRIPTION HERE",
     "name": %=,
     "version": "0.1.0",
-    "url": "** put repo url here **"
+    "url": "https://github.com/YOUR-ORG-HERE/YOUR-REPO-HERE"
 }
 ';
 
@@ -186,21 +247,20 @@ end function;
 
 // Write files for a library named `name` in directory `dir`.
 define function make-dylan-library
-    (name :: <string>, dir :: <directory-locator>, exe? :: <bool>, deps :: <seq>) => ()
-  local method file (name)
-          merge-locators(as(<file-locator>, name), dir)
-        end;
-  local method test-file (name)
-          merge-locators(as(<file-locator>, name),
-                         subdirectory-locator(dir, "tests"))
-        end;
+    (name :: <string>, dir :: <directory-locator>, exe? :: <bool>, deps :: <seq>)
+  local
+    method file (name)
+      merge-locators(as(<file-locator>, name), dir)
+    end,
+    method test-file (name)
+      merge-locators(as(<file-locator>, name),
+                     subdirectory-locator(dir, "tests"))
+    end,
+    method dep-string (dep)
+      format-to-string("%=", pm/dep-to-string(dep))
+    end;
   let test-name = concat(name, "-test-suite");
-  let deps-string = join(map-as(<vector>,
-                                method (dep)
-                                  format-to-string("%=", pm/dep-to-string(dep))
-                                end,
-                                deps),
-                         ", ");
+  let deps-string = join(map-as(<vector>, dep-string, deps), ", ");
   let templates
     = list(// Main library files...
            make(<template>,
@@ -241,7 +301,7 @@ define function make-dylan-library
            make(<template>,
                 output-file: file(ws/$dylan-package-file-name),
                 format-string: $pkg-template,
-                format-arguments: list(deps-string, name))); 
+                format-arguments: list(deps-string, name)));
   for (template in templates)
     write-template(template)
   end;
@@ -267,35 +327,4 @@ define function parse-dep-specs
            end
          end,
          specs)
-end function;
-
-// While technically any Dylan name is valid, we prefer to restrict the names
-// to the style that is in common use since this tool is most likely to be used
-// by beginners.
-define constant $library-name-regex = re/compile("^[a-z][a-z0-9-]*$");
-
-// TODO: We currently always create a dylan-package.json file. Detect whether
-// the new library is inside an existing package, at workspace top-level, or
-// what, since it's valid to create a new library inside an existing package.
-define function new-library
-    (name :: <string>, dir :: <directory-locator>, dep-specs :: <seq>, exe? :: <bool>)
-  if (~re/search($library-name-regex, name))
-    error("%= is not a valid Dylan library name."
-            " Names are one or more words separated by hyphens, for example"
-            "'cool-stuff'. Names must match the regular expression %=.",
-          name, re/pattern($library-name-regex));
-  end;
-  let lib-dir = subdirectory-locator(dir, name);
-  if (fs/file-exists?(lib-dir))
-    error("Directory %s already exists.", lib-dir);
-  end;
-  // Parse dep specs before writing any files, in case of errors.
-  let deps = parse-dep-specs(dep-specs);
-  if (~any?(method (dep)
-              "testworks" = lowercase(pm/package-name(dep))
-            end,
-            deps))
-    deps := concatenate-as(pm/<dep-vector>, deps, parse-dep-specs(list("testworks")));
-  end;
-  make-dylan-library(name, lib-dir, exe?, deps);
 end function;
