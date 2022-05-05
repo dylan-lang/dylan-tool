@@ -14,72 +14,31 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-    env:
-      # Install packages and `dylan` binary in a known location.
-      DYLAN: ./dylan-root
 
     steps:
-      - uses: dylan-lang/install-dylan-tool@v1
-
-      - name: Create workspace
-        run: ./dylan new workspace dt
-
-      # The Makefile assumes dylan-compiler is in the path.
-      - name: Create symlinks
-        run: |
-          cd dt
-          ln -s ../dylan-compiler
-
       - uses: actions/checkout@v2
         with:
-          path: dt/dylan-tool
+          submodules: recursive
 
-      - uses: actions/checkout@v2
-        with:
-          repository: dylan-lang/workspaces
-          ref: master
-          path: dt/workspaces
+      - uses: dylan-lang/install-opendylan@v2
 
-      - uses: actions/checkout@v2
-        with:
-          repository: dylan-lang/pacman
-          ref: master
-          path: dt/pacman
-
-      - uses: actions/checkout@v2
-        with:
-          repository: dylan-lang/pacman-catalog
-          ref: master
-          path: dt/pacman-catalog
-
-      - name: Update workspace
+      - name: test and install
+        env:
+          DYLAN_CATALOG: ext/pacman-catalog
+          DYLAN: dylan-root
         run: |
-          cd dt
-          DYLAN_CATALOG=./pacman-catalog ../dylan update
-          # debug
-          find registry -type f -exec cat {} \; | sort
-
-      # The setting of PATH is a little bit tricky below. It is to make sure
-      # dylan-compiler is on the path. dylan-compiler is in the job's top-level
-      # directory.
-
-      - name: make test
-        run: |
-          cd dt/dylan-tool
-          DYLAN_CATALOG=./pacman-catalog PATH=..:$PATH make pkg-test
-
-      - name: make install
-        run: |
-          cd dt/dylan-tool
-          # Installs to ${DYLAN}/bin/dylan
-          PATH=..:$PATH make install
+          make test
+          make install
 
       - name: Exercise dylan-tool
+        env:
+          DYLAN_CATALOG: ext/pacman-catalog
+          DYLAN: dylan-root
         run: |
           ${DYLAN}/bin/dylan new workspace test-workspace
           cd test-workspace
           ${DYLAN}/bin/dylan new library abc strings@1.1
-          DYLAN_CATALOG=./pacman-catalog ${DYLAN}/bin/dylan update
+          ${DYLAN}/bin/dylan update
           ${DYLAN}/bin/dylan status
           ${DYLAN}/bin/dylan list
           ../dylan-compiler -build abc-test-suite
