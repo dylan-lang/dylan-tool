@@ -23,7 +23,14 @@ link_target     = $(install_bin)/dylan-tool
 link_source     = $(DYLAN)/bin/dylan
 
 build:
-	dylan-compiler -build dylan-tool
+	file="commands/utils.dylan"; \
+	orig=$$(tempfile); \
+	temp=$$(tempfile); \
+	cp -p $${file} $${orig}; \
+	cat $${file} | sed "s,/.__./.*/.__./,/*__*/ \"$$(git describe --tags)\" /*__*/,g" > $${temp}; \
+	mv $${temp} $${file}; \
+	dylan-compiler -build dylan-tool; \
+	cp -p $${orig} $${file}
 
 # After the next OD release this should install a static exe built with the
 # -unify flag.

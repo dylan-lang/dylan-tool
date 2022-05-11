@@ -2,6 +2,15 @@ Module: dylan-tool-commands
 Synopsis: Utilities for use by dylan-tool commands
 
 
+
+// The Makefile replaces this string with the actual tagged version before
+// building. DON'T MOVE THE /*__*/ MARKERS since they're part of the regex.
+// Using the comment markers enables recovery if someone commits a string
+// other than "HEAD" by accident. git's `ident` attribute doesn't use tag
+// names and `filter` looks more complex than it's worth.
+define constant $dylan-tool-version :: <string> = /*__*/ "HEAD" /*__*/;
+
+
 // Run an executable or shell command. `command` may be a string or a sequence
 // of strings. If a string it is run with `/bin/sh -c`. If a sequence of
 // strings the first element is the executable pathname. Returns the exit
