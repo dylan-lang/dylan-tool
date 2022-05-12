@@ -57,7 +57,7 @@ end function;
 // preventing those duplicates with add-new!(..., dep, test: \=)
 define method \=
     (d1 :: <dep>, d2 :: <dep>) => (_ :: <bool>)
-  istring=(d1.package-name, d2.package-name) & d1.dep-version = d2.dep-version
+  string-equal-ic?(d1.package-name, d2.package-name) & d1.dep-version = d2.dep-version
 end method;
 
 // Parse a dependency spec. Examples:

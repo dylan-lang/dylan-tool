@@ -24,12 +24,12 @@ define method execute-subcommand
   let publish-release
     = find-element(active-packages,
                    method (rel)
-                     istr=(pm/package-name(rel), name)
+                     string-equal-ic?(pm/package-name(rel), name)
                    end);
   let catalog-release
     = find-element(active-packages,
                    method (rel)
-                     istr=(pm/package-name(rel), "pacman-catalog")
+                     string-equal-ic?(pm/package-name(rel), "pacman-catalog")
                    end);
   if (~publish-release)
     format-out("Package %= is not an active package.\n", name);

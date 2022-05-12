@@ -177,7 +177,7 @@ end function;
 
 define function active-package?
     (ws :: <workspace>, pkg-name :: <string>) => (_ :: <bool>)
-  member?(pkg-name, ws.active-package-names, test: istring=?)
+  member?(pkg-name, ws.active-package-names, test: string-equal-ic?)
 end function;
 
 // Resolve active package dependencies and install them.

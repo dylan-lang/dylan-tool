@@ -82,14 +82,14 @@ end function;
 //       search for callers.
 define method \=
     (r1 :: <release>, r2 :: <release>) => (_ :: <bool>)
-  istring=(r1.package-name, r2.package-name) & r1.release-version = r2.release-version
+  string-equal-ic?(r1.package-name, r2.package-name) & r1.release-version = r2.release-version
 end method;
 
 // This method makes it easy to sort a list of releases newest to oldest.
 // See resolve-deps for usage via `max`.
 define method \<
     (r1 :: <release>, r2 :: <release>) => (_ :: <bool>)
-  istring<(r1.package-name, r2.package-name) | r1.release-version < r2.release-version
+  string-less-ic?(r1.package-name, r2.package-name) | r1.release-version < r2.release-version
 end method;
 
 // Start with restrictive package naming. Expand later if needed.
@@ -215,7 +215,7 @@ define function decode-dylan-package-json
                         "deps", // TODO: remove deprecated key
                         "description", "dev-dependencies", "keywords",
                         "license", "license-url", "name", "url", "version"],
-                 test: istring=))
+                 test: string-equal-ic?))
       log-warning("%s: unrecognized key %= (ignored)", file, key);
     end;
   end;
