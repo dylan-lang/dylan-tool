@@ -1,11 +1,10 @@
-.. default-role:: samp
 .. highlight:: shell
 
 ***************************
 The dylan Command-line Tool
 ***************************
 
-The `dylan` tool provides a number of subcommands to simplify the management of Dylan
+The `dylan`` tool provides a number of subcommands to simplify the management of Dylan
 workspaces and packages, eliminates the need to manually maintain the "registry" (which
 enables the compiler to locate libraries) by hand, and eliminates the need to use git
 submodules to track dependencies.
@@ -45,51 +44,52 @@ release
 Requirements
 ============
 
-To find and install packages on the local file system many of the `dylan`
+To find and install packages on the local file system many of the ``dylan``
 subcommands use the :envvar:`DYLAN` environment variable. If :envvar:`DYLAN` is
-not set, `$HOME/dylan` is used instead. (Much of this documentation is written
+not set, ``$HOME/dylan`` is used instead. (Much of this documentation is written
 to assume that :envvar:`DYLAN` is set, but it is not required.)
 
-Make sure `git` is on your :envvar:`PATH` so it can be found by the package
-manager, which currently exec's `git clone` to install packages. (This
+Make sure ``git`` is on your :envvar:`PATH` so it can be found by the package
+manager, which currently exec's ``git clone`` to install packages. (This
 dependency will be removed in a future release.)
 
-The `dylan` tool installs packages, including the `pacman-catalog
+The ``dylan`` tool installs packages, including the `pacman-catalog
 <https://github.com/dylan-lang/pacman-catalog>`_ package which describes where
-to find other packages, under `$DYLAN/pkg/`.
+to find other packages, under ``$DYLAN/pkg/``.
 
 .. warning::
 
-   Don't put files you want to keep into the `$DYLAN/pkg/` directory. The
+   Don't put files you want to keep into the ``$DYLAN/pkg/`` directory. The
    expectation should be that anything in this directory may be deleted at any
    time by the package manager.
+
 
 Building From Source
 ====================
 
-In an upcoming release of Open Dylan, the `dylan` tool will be included in the
+In an upcoming release of Open Dylan, the ``dylan`` tool will be included in the
 release. For now, follow these steps to build and install.
 
 .. note::
 
    Because an executable named "dylan" conflicts with the base Dylan library during the
-   build process, this library is named `dylan-tool` and then the executable is installed
-   as `dylan` by the `Makefile`. The examples in this document use the name `dylan`
-   instead of `dylan-tool`.
+   build process, this library is named ``dylan-tool`` and then the executable is installed
+   as ``dylan`` by the ``Makefile``. The examples in this document use the name ``dylan``
+   instead of ``dylan-tool``.
 
 #.  Read the `Requirements`_ section, above.
 
-#.  Make sure you have `git`, `make`, and `dylan-compiler` installed.
+#.  Make sure you have ``git``, ``make``, and ``dylan-compiler`` installed.
 
-#.  Clone and build the `dylan-tool` project::
+#.  Clone and build the ``dylan-tool`` project::
 
         $ git clone --recursive https://github.com/dylan-lang/dylan-tool.git
         $ cd dylan-tool
         $ make test
         $ make install
 
-#.  Make sure that `$DYLAN/bin` is on your `$PATH`. If you prefer not to set `$DYLAN`,
-    make sure that `$HOME/dylan/bin` is on your `$PATH`.
+#.  Make sure that ``$DYLAN/bin`` is on your ``$PATH``. If you prefer not to set ``$DYLAN``,
+    make sure that ``$HOME/dylan/bin`` is on your ``$PATH``.
 
 You should now be able to run the Hello World example, below.
 
@@ -101,7 +101,7 @@ To make sure everything is working correctly, and to get a quick sense of
 what's available, start by running the ``dylan help`` command.
 
 To fully test your installation, try creating a temp workspace and updating
-it. Here's an example using the `logging` library as an "active package" in
+it. Here's an example using the ``logging`` library as an "active package" in
 your workspace::
 
     $ cd /tmp
@@ -119,10 +119,11 @@ warnings for the core Dylan library, which may be ignored.
 .. index::
    single: pacman
 
+
 Package Manager
 ===============
 
-The `dylan` tool relies on :doc:`pacman`, the Dylan package manager (unrelated
+The ``dylan`` tool relies on :doc:`pacman`, the Dylan package manager (unrelated
 to the Arch Linux tool), to install dependencies. See :doc:`the pacman
 documentation <pacman>` for information on how to define a package, version
 syntax, and how dependency resolution works.
@@ -137,7 +138,7 @@ Subcommands
 dylan help
 ----------
 
-Use `dylan help`, `dylan help <subcommand>`, or `dylan <subcommand> --help` to get help
+Use ``dylan help``, ``dylan help <subcommand>``, or ``dylan <subcommand> --help`` to get help
 on subcommands and options.
 
 .. index::
@@ -147,8 +148,8 @@ on subcommands and options.
 dylan new workspace
 -------------------
 
-The `new workspace` subcommand creates a new workspace directory and
-initializes it with a `workspace.json` file. The workspace name is the only
+The ``new workspace`` subcommand creates a new workspace directory and
+initializes it with a ``workspace.json`` file. The workspace name is the only
 required argument. ::
 
   $ dylan new workspace http
@@ -160,7 +161,7 @@ required argument. ::
 Options:
 ~~~~~~~~
 
-`--directory`
+``--directory``
   Create the workspace under this directory instead of the current working
   directory.
 
@@ -217,29 +218,29 @@ you're satisfied that you're ready to release a new version of your package
 dylan update
 ------------
 
-The `update` subcommand may be run from anywhere inside a workspace directory
+The ``update`` subcommand be be run from anywhere inside a workspace directory
 and performs two actions:
 
 #.  Installs all package dependencies, as specified in their
-    `dylan-package.json` files.
+    ``dylan-package.json`` files.
 
 #.  Updates the registry to have an entry for each library in the workspace
     packages or their dependencies.
 
-    The `registry` directory is created at the same level as the `workspace.json` file
+    The ``registry`` directory is created at the same level as the ``workspace.json`` file
     and all registry files are written to a subdirectory named after the local platform.
 
     .. note::
 
        Registry files are only created if they apply to the architecture of the local
-       machine. For example, on `x86_64-linux` LID files that specify `Platforms: win32`
+       machine. For example, on ``x86_64-linux`` LID files that specify ``Platforms: win32``
        will not cause a registry file to be generated.
 
 Example:
 ~~~~~~~~
 
-Create a workspace named `http`, with one active package, `http`, update it, and
-build the test suite::
+Create a workspace named ``http``, with one active package, ``http``, update
+it, and build the test suite::
 
    $ dylan new workspace http
    $ cd http
@@ -247,9 +248,9 @@ build the test suite::
    $ dylan update
    $ dylan-compiler -build http-server-test-suite
 
-Note that `dylan-compiler` must always be invoked in the workspace directory so
-that it can find the `registry` directory. (This will be easier when the `dylan
-build` command is implemented since it will ensure the compiler is invoked in
+Note that ``dylan-compiler`` must always be invoked in the workspace directory so
+that it can find the ``registry`` directory. (This will be easier when the ``dylan
+build`` command is implemented since it will ensure the compiler is invoked in
 the right environment.)
 
 .. index::
@@ -263,14 +264,14 @@ Generate the boilerplate for a new library, including:
 
 * The library and module definition and initial source files
 * A corresponding test suite library and initial source files
-* A `dylan-package.json` file
+* A ``dylan-package.json`` file
 
 Options:
 ~~~~~~~~
 
-`--exe`
+``--exe``
   Create an executable library. The primary difference is that with this
-  flag a `main` function is generated and called.
+  flag a ``main`` function is generated and called.
 
 Here's an example, which assumes you are already inside a Dylan workspace::
 
@@ -279,9 +280,9 @@ Here's an example, which assumes you are already inside a Dylan workspace::
   $ dylan-compiler -build killer-app-test-suite
   $ _build/bin/killer-app-test-suite
 
-You should edit the generated `dylan-package.json` file to set the repository
+You should edit the generated ``dylan-package.json`` file to set the repository
 URL and description for your package, or if this library is part of an existing
-package you can just delete `dylan-package.json`.
+package you can just delete ``dylan-package.json``.
 
 dylan status
 ------------
@@ -291,7 +292,7 @@ Display the status of the current workspace, including all the active packages.
 Options:
 ~~~~~~~~
 
-`--directory`
+``--directory``
   Only show the workspace directory and skip showing the active package.
   This is intended for use by tooling.
 
@@ -327,7 +328,6 @@ dylan list
 ----------
 
 List installed packages. With the ``--all`` option, list all packages in the catalog.
-
 
 
 Index and Search
