@@ -186,7 +186,9 @@ production; otherwise, *we're testing the wrong software*.
 
     Most Dylan libraries have a dev dependency on `testworks`_. Testworks
     itself depends on `strings`_. Let's say our main library transitively
-    depends on ``strings@1.0`` and `testworks`_ depends on ``strings@1.1``.
+    depends on ``strings@1.0`` and `testworks`_ depends on ``strings@1.1``.  In
+    this case ``strings@1.0`` is used even though it's older than what
+    Testworks requests, because Testworks is only a dev dependency.
 
 Note that dev dependencies are never transitive. That is, if package ``A``
 depends on package ``B`` and package ``B`` has a dev dependency on ``C`` this
