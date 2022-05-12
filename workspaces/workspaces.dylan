@@ -48,12 +48,12 @@ define function new
     end;
     log-info("Workspace created: %s", ws-path);
   end;
-  load-workspace(ws-dir)
+  load-workspace(directory: ws-dir)
 end function;
 
 // Update the workspace based on the workspace.json file or signal an error.
 define function update () => ()
-  let ws = load-workspace(fs/working-directory());
+  let ws = load-workspace();
   log-info("Workspace directory is %s.", ws.workspace-directory);
   let cat = pm/catalog();
   let (releases, actives) = update-deps(ws, cat);
@@ -82,7 +82,7 @@ end class;
 // `<workspace>` from it. `directory` defaults to the current working
 // directory.  Signals `<workspace-error>` if the file isn't found.
 define function load-workspace
-    (directory :: <directory-locator>) => (w :: <workspace>)
+    (#key directory :: <directory-locator> = fs/working-directory()) => (w :: <workspace>)
   let path = find-workspace-file(directory)
     | workspace-error("Workspace file not found for %s", directory);
   fs/with-open-file(stream = path, if-does-not-exist: #"signal")

@@ -25,5 +25,6 @@ define function dylan-tool-command-line
                    subcommands: list($new-library-subcommand,
                                      $new-workspace-subcommand)),
               $update-subcommand,
-              $status-subcommand))
+              $status-subcommand,
+              $publish-subcommand))
 end function;
