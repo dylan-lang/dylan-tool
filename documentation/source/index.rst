@@ -19,6 +19,51 @@ submodules to track dependencies.
    :depth: 3
 
 
+Terminology
+===========
+
+package
+  A blob of files that can be unpacked into a directory and which has a
+  ``dylan-package.json`` file in the top-level directory which describes its
+  attributes. A package currently corresponds to a single Git repository. A
+  package has a set of versioned releases.
+
+workspace
+  A directory containing a ``workspace.json`` file. Most ``dylan`` commands may be
+  run from anywhere within the workspace directory.
+
+active package
+  A package checked out into the top-level of a workspace. Active packages are
+  found by looking for ``<workspace>/*/dylan-package.json`` files. The ``update``
+  subcommand scans active packages when creating the registry.
+
+release
+  A specific version of a package. A release has a `Semantic Version`_ associated
+  with it, such as ``0.5.0``.
+
+
+Requirements
+============
+
+To find and install packages on the local file system many of the `dylan`
+subcommands use the :envvar:`DYLAN` environment variable. If :envvar:`DYLAN` is
+not set, `$HOME/dylan` is used instead. (Much of this documentation is written
+to assume that :envvar:`DYLAN` is set, but it is not required.)
+
+Make sure `git` is on your :envvar:`PATH` so it can be found by the package
+manager, which currently exec's `git clone` to install packages. (This
+dependency will be removed in a future release.)
+
+The `dylan` tool installs packages, including the `pacman-catalog
+<https://github.com/dylan-lang/pacman-catalog>`_ package which describes where
+to find other packages, under `$DYLAN/pkg/`.
+
+.. warning::
+
+   Don't put files you want to keep into the `$DYLAN/pkg/` directory. The
+   expectation should be that anything in this directory may be deleted at any
+   time by the package manager.
+
 Building From Source
 ====================
 
@@ -32,25 +77,9 @@ release. For now, follow these steps to build and install.
    as `dylan` by the `Makefile`. The examples in this document use the name `dylan`
    instead of `dylan-tool`.
 
-1.  Make sure you have `git`, `make`, and `dylan-compiler` installed.
+#.  Read the `Requirements`_ section, above.
 
-#.  Make sure `git` is on your :envvar:`PATH` so it can be found by the package manager,
-    which currently exec's `git clone` to install packages. (This dependency will be
-    removed in a future release.)
-
-#.  Optionally set the :envvar:`DYLAN` environment variable to wherever you do your Dylan
-    hacking. The `dylan` tool installs packages, including the `pacman-catalog
-    <https://github.com/dylan-lang/pacman-catalog>`_ package which describes where to
-    find other packages, under `$DYLAN/pkg/`.
-
-    If `$DYLAN` is not set, `$HOME/dylan` is used instead. If for some reason `$HOME` is
-    not set, `/opt/dylan` is used. (Windows is not yet supported.)
-
-    .. note::
-
-       Don't put files you want to keep into the `$DYLAN/pkg/` directory. The expectation
-       should be that anything in this directory may be deleted at any time by the
-       package manager.
+#.  Make sure you have `git`, `make`, and `dylan-compiler` installed.
 
 #.  Clone and build the `dylan-tool` project::
 
@@ -62,10 +91,18 @@ release. For now, follow these steps to build and install.
 #.  Make sure that `$DYLAN/bin` is on your `$PATH`. If you prefer not to set `$DYLAN`,
     make sure that `$HOME/dylan/bin` is on your `$PATH`.
 
+You should now be able to run the Hello World example, below.
 
-You should now be able to run ``dylan help`` to see a list of subcommands. To
-fully test your installation, try creating a temp workspace and updating
-it. Here's an example using the `logging` library::
+
+Hello World
+===========
+
+To make sure everything is working correctly, and to get a quick sense of
+what's available, start by running the ``dylan help`` command.
+
+To fully test your installation, try creating a temp workspace and updating
+it. Here's an example using the `logging` library as an "active package" in
+your workspace::
 
     $ cd /tmp
     $ dylan new workspace log
@@ -298,3 +335,6 @@ Index and Search
 
 * :ref:`genindex`
 * :ref:`search`
+
+
+.. _semantic version:  https://semver.org/spec/v2.0.0.html
