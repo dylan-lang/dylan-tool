@@ -1,3 +1,3 @@
 Library: dylan-tool
-Files: library.dylan
+Files: exe-library.dylan
        main.dylan

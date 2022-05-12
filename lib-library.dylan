@@ -1,6 +1,6 @@
 Module: dylan-user
 
-define library dylan-tool-commands
+define library dylan-tool-lib
   use collections,
     import: { table-extensions };
   use command-line-parser;
@@ -18,11 +18,11 @@ define library dylan-tool-commands
     import: { uncommon-dylan, uncommon-utils };
 
   export
-    dylan-tool-commands,
+    dylan-tool-lib,
     pacman,
     %pacman,
     workspaces;
-end library dylan-tool-commands;
+end library dylan-tool-lib;
 
 define module pacman
   export
@@ -224,7 +224,7 @@ define module workspaces
     find-library-names;
 end module workspaces;
 
-define module dylan-tool-commands
+define module dylan-tool-lib
   use command-line-parser;
   use file-system,
     prefix: "fs/";
@@ -276,4 +276,4 @@ define module dylan-tool-commands
 
   export
     dylan-tool-command-line;
-end module dylan-tool-commands;
+end module dylan-tool-lib;
