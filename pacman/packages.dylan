@@ -107,6 +107,8 @@ define method to-table
   let t = make(<istring-table>);
   t["version"] := version-to-string(release.release-version);
   t["dependencies"] := map-as(<vector>, dep-to-string, release.release-deps);
+  t["dev-dependencies"]
+    := map-as(<vector>, dep-to-string, release.release-dev-dependencies);
   // TODO: delete this after converting catalog
   t["deps"] := map-as(<vector>, dep-to-string, release.release-deps);
   t["url"] := release.release-url;
@@ -238,14 +240,16 @@ define function decode-dylan-package-json
                      contact: contact | "",
                      category: category | $uncategorized,
                      keywords: keywords);
-  make(<release>,
-       package: package,
-       version: version,
-       deps: deps,
-       dev-deps: dev-deps,
-       url: url,
-       license: license,
-       license-url: license-url)
+  let release = make(<release>,
+                     package: package,
+                     version: version,
+                     deps: deps,
+                     dev-deps: dev-deps,
+                     url: url,
+                     license: license,
+                     license-url: license-url);
+  add-release(package, release);
+  release
 end function;
 
 define generic package-name (o :: <object>) => (_ :: <string>);

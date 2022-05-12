@@ -11,4 +11,5 @@ Files: library.dylan
        utils.dylan
        simple-commands.dylan
        new-library.dylan
+       publish.dylan
        command-line.dylan

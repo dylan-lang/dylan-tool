@@ -68,6 +68,7 @@ define module pacman
     release-url,
     release-to-string,
     release-version,
+    publish-release,
 
     <dep>,
     <dep-vector>,
@@ -245,6 +246,7 @@ define module dylan-tool-commands
     prefix: "fs/";
   use format,
     import: { format, format-to-string };
+  use format-out;
   use json,
     import: { parse-json => json/parse };
   use locators,

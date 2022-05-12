@@ -141,7 +141,7 @@ define constant $status-subcommand
 define method execute-subcommand
     (parser :: <command-line-parser>, subcmd :: <status-subcommand>)
  => (status :: false-or(<int>))
-  let workspace = ws/load-workspace(fs/working-directory());
+  let workspace = ws/load-workspace();
   if (~workspace)
     log-info("Not currently in a workspace.");
     abort-command(1);

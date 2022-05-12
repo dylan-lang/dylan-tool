@@ -136,10 +136,51 @@ Options:
    single: dependencies
    single: workspace.json file
 
+.. index::
+   single: dylan publish subcommand
+   single: subcommand; dylan publish
+
+dylan publish
+-------------
+
+The `publish` command adds a new release of a package to the package
+catalog.
+
+Synopsis: ``dylan publish <package-name>``
+
+.. note:: For now, until a fully automated solution is implemented, it works by
+          modifying the local copy of the catalog so that you can manually run
+          the `pacman-catalog <https://github.com/dylan-lang/pacman-catalog>`_
+          tests and submit a pull request. This eliminates a lot of
+          possibilities for making mistakes while editing the catalog by hand.
+
+This command may (as usual) be run from anywhere inside a workspace. Once
+you're satisfied that you're ready to release a new version of your package
+(tests pass, doc updated, etc.) follow these steps:
+
+#.  Update the ``"version"`` attribute in `dylan-package.json` to be the new
+    release's version, and commit the change.
+
+#.  Make a new release on GitHub with a tag that matches the release version.
+    For example, if the ``"version"`` attribute in `dylan-package.json` is
+    ``"0.5.0"`` the GitHub release should be tagged ``v0.5.0``.
+
+#.  Run ``dylan publish my-package``.  (If `pacman-catalog` isn't already an
+    active package in your workspace the command will abort and give you
+    instructions how to fix it.)
+
+#.  Commit the changes to `pacman-catalog
+    <https://github.com/dylan-lang/pacman-catalog>`_ and submit a pull request.
+    The tests to verify the catalog will be run automatically by the GitHub CI.
+
+#.  Once your PR has been merged, verify that the package is available in the
+    catalog by running ``dylan install my-package@0.5.0``, substituting your
+    new release name and version.
+
 dylan update
 ------------
 
-The `update` subcommand be be run from anywhere inside a workspace directory
+The `update` subcommand may be run from anywhere inside a workspace directory
 and performs two actions:
 
 #.  Installs all package dependencies, as specified in their

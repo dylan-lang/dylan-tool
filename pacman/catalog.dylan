@@ -175,14 +175,14 @@ define generic find-package-release
 
 define method find-package-release
     (cat :: <catalog>, name :: <string>, ver :: <string>)
- => (p :: false-or(<release>))
+ => (rel :: false-or(<release>))
   find-package-release(cat, name, string-to-version(ver))
 end method;
 
 // Find the latest released version of a package.
 define method find-package-release
     (cat :: <catalog>, name :: <string>, ver :: <latest>)
- => (p :: false-or(<release>))
+ => (rel :: false-or(<release>))
   let package = find-package(cat, name);
   let releases = package & package.package-releases;
   if ((releases | #[]).size > 0)        // does 0 releases even make sense?
@@ -192,7 +192,7 @@ end method;
 
 define method find-package-release
     (cat :: <catalog>, name :: <string>, ver :: <version>)
- => (p :: false-or(<release>))
+ => (rel :: false-or(<release>))
   let package = find-package(cat, name);
   package & find-release(package, ver, exact?: #t)
 end method;
@@ -307,28 +307,64 @@ define function load-catalog-package-file
     log-warning("%s: loaded package name is %=, expected %=",
                 file, stored-name, name);
   end;
-  let releases = make(<stretchy-vector>);
   let package = make(<package>,
                      name: name,
                      description: json["description"],
                      contact: json["contact"],
                      keywords: json["keywords"],
-                     category: json["category"],
-                     releases: releases);
+                     category: json["category"]);
   local
     method to-release (t :: <table>) => (r :: <release>)
       let deps = element(t, "dependencies", default: #f)
         | element(t, "deps", default: #()); // deprecated name
-      make(<release>,
-           package: package,
-           version: string-to-version(t["version"]),
-           deps: map-as(<dep-vector>, string-to-dep, deps),
-           url: element(t, "url", default: #f)
-             | element(t, "location", default: ""),
-           license: t["license"],
-           license-url: element(t, "license-url", default: #f))
+      let release
+        = make(<release>,
+               package: package,
+               version: string-to-version(t["version"]),
+               deps: map-as(<dep-vector>, string-to-dep, deps),
+               dev-deps: map-as(<dep-vector>,
+                                string-to-dep, element(t, "dev-dependencies", default: #[])),
+               url: element(t, "url", default: #f)
+                 | element(t, "location", default: ""),
+               license: t["license"],
+               license-url: element(t, "license-url", default: #f));
+      add-release(package, release);
     end;
-  map-into(releases, to-release, json["releases"]);
-  sort!(releases, test: \>);
+  for (dict in json["releases"])
+    add-release(package, to-release(dict))
+  end;
   cat.catalog-package-cache[name] := package
+end function;
+
+// Publish the given release by writing a new catalog file that contains the
+// given release. Signals <catalog-error> if the release is not newer than any
+// existing releases for the package.
+define function publish-release
+    (cat :: <catalog>, release :: <release>) => ()
+  let name = package-name(release);
+  let old-package = block ()
+                      find-package(cat, name)
+                    exception (<package-missing-error>)
+                      #f
+                    end;
+  let new-package = release-package(release);
+  if (old-package)
+    // Include the releases from the existing package when we write the file.
+    // new-package was created by loading dylan-package.json, and doesn't have
+    // any of the existing releases in it. (Maybe that should be fixed though.)
+    for (rel in package-releases(old-package))
+      add-release(new-package, rel);
+    end;
+  end;
+  let latest = find-package-release(cat, name, $latest);
+  if (release <= latest)
+    catalog-error("New release (%s) must have a higher version than the"
+                    " latest release (%s)",
+                  release-to-string(release), release-to-string(latest));
+  end;
+  // Note that we write new-package rather than old-package, meaning that the
+  // package-level attributes from dylan-package.json (e.g., "description")
+  // will overwrite the package-level attributes from the catalog, if they're
+  // different.
+  write-package-file(cat, new-package);
 end function;
