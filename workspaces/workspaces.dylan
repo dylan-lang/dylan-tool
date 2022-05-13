@@ -210,7 +210,7 @@ define function find-active-package-deps
     // package file.
     assert(rel);
     actives[pkg-name] := rel;
-    for (dep in rel.pm/release-deps)
+    for (dep in rel.pm/release-dependencies)
       add-new!(deps, dep)
     end;
     if (dev?)

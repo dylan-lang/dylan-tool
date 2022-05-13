@@ -93,7 +93,7 @@ define function resolve-release-deps
   let reldep = make(<dep>,
                     package-name: release.package-name,
                     version: release.release-version);
-  let deps = as(<dep-vector>, add!(release.release-deps, reldep));
+  let deps = as(<dep-vector>, add!(release.release-dependencies, reldep));
   resolve-deps(cat, deps, dev-deps, actives, cache: cache)
 end function;
 
@@ -160,8 +160,9 @@ define function resolve-deps
           dep-error("circular dependency: %=", pair(pname, seen))
         end;
         // TODO: shouldn't need as(<list>) here
-        let resolved
-          = %resolve-deps(as(<list>, rel.release-deps), pair(pname, seen), depth + 1);
+        let resolved = %resolve-deps(as(<list>, rel.release-dependencies),
+                                     pair(pname, seen),
+                                     depth + 1);
         cache[rel] := resolved;
         trace(depth, resolved, "caching %s => %s", rel, resolved);
       end

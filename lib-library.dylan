@@ -60,7 +60,7 @@ define module pacman
     load-catalog-package,
 
     <release>,
-    release-deps,
+    release-dependencies,
     release-dev-dependencies,
     release-license,
     // TODO:

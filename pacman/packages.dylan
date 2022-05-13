@@ -34,14 +34,12 @@ define class <release> (<object>)
 
   // Dependencies required to build the main libraries. These are transitive to
   // anything depending on this release.
-  // TODO: rename to release-dependencies
-  constant slot release-deps :: <dep-vector> = as(<dep-vector>, #[]),
-    init-keyword: deps:;
+  constant slot release-dependencies :: <dep-vector> = as(<dep-vector>, #[]),
+    init-keyword: dependencies:;
 
   // Development dependencies, for example testworks. These are not transitive.
   constant slot release-dev-dependencies :: <dep-vector> = as(<dep-vector>, #[]),
-    // TODO: rename to dev-dependencies:
-    init-keyword: dev-deps:;
+    init-keyword: dev-dependencies:;
 
   // Where the package can be downloaded from.
   constant slot release-url :: <string>,
@@ -82,14 +80,16 @@ end function;
 //       search for callers.
 define method \=
     (r1 :: <release>, r2 :: <release>) => (_ :: <bool>)
-  string-equal-ic?(r1.package-name, r2.package-name) & r1.release-version = r2.release-version
+  string-equal-ic?(r1.package-name, r2.package-name)
+    & r1.release-version = r2.release-version
 end method;
 
 // This method makes it easy to sort a list of releases newest to oldest.
 // See resolve-deps for usage via `max`.
 define method \<
     (r1 :: <release>, r2 :: <release>) => (_ :: <bool>)
-  string-less-ic?(r1.package-name, r2.package-name) | r1.release-version < r2.release-version
+  string-less-ic?(r1.package-name, r2.package-name)
+    | r1.release-version < r2.release-version
 end method;
 
 // Start with restrictive package naming. Expand later if needed.
@@ -106,11 +106,11 @@ define method to-table
     (release :: <release>) => (t :: <istring-table>)
   let t = make(<istring-table>);
   t["version"] := version-to-string(release.release-version);
-  t["dependencies"] := map-as(<vector>, dep-to-string, release.release-deps);
+  t["dependencies"] := map-as(<vector>, dep-to-string, release.release-dependencies);
   t["dev-dependencies"]
     := map-as(<vector>, dep-to-string, release.release-dev-dependencies);
   // TODO: delete this after converting catalog
-  t["deps"] := map-as(<vector>, dep-to-string, release.release-deps);
+  t["deps"] := map-as(<vector>, dep-to-string, release.release-dependencies);
   t["url"] := release.release-url;
   t["license"] := release.release-license;
   if (release.release-license-url)
@@ -243,8 +243,8 @@ define function decode-dylan-package-json
   let release = make(<release>,
                      package: package,
                      version: version,
-                     deps: deps,
-                     dev-deps: dev-deps,
+                     dependencies: deps,
+                     dev-dependencies: dev-deps,
                      url: url,
                      license: license,
                      license-url: license-url);
@@ -392,7 +392,7 @@ define method find-release
   make(<release>,
        package: p,
        version: v,
-       deps: release.release-deps,
+       dependencies: release.release-dependencies,
        url: release.release-url)
 end method;
 

@@ -3,7 +3,7 @@ Module: dylan-tool-test-suite
 define constant $http-package
   = make-test-package("http",
                       versions: #("1.2.2", "1.2.3"),
-                      deps: #("json@1.2.3"));
+                      dependencies: #("json@1.2.3"));
 
 define constant $json-package
   = make-test-package("json",
