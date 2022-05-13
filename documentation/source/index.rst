@@ -390,6 +390,19 @@ so that it can find the ``registry`` directory. (This will be easier when the
 invoked in the right environment.)
 
 
+.. index::
+   single: dylan version subcommand
+   single: subcommand; dylan version
+
+dylan version
+-------------
+
+Show the Git version of the ``dylan`` command (i.e., the `dylan-tool
+<https://github.com/dylan-lang/dylan-tool>`_ repository).
+
+Synopsis: ``dylan version``
+
+
 Index and Search
 ================
 
