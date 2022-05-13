@@ -57,7 +57,7 @@ end function;
 // preventing those duplicates with add-new!(..., dep, test: \=)
 define method \=
     (d1 :: <dep>, d2 :: <dep>) => (_ :: <bool>)
-  istring=(d1.package-name, d2.package-name) & d1.dep-version = d2.dep-version
+  string-equal-ic?(d1.package-name, d2.package-name) & d1.dep-version = d2.dep-version
 end method;
 
 // Parse a dependency spec. Examples:
@@ -93,7 +93,7 @@ define function resolve-release-deps
   let reldep = make(<dep>,
                     package-name: release.package-name,
                     version: release.release-version);
-  let deps = as(<dep-vector>, add!(release.release-deps, reldep));
+  let deps = as(<dep-vector>, add!(release.release-dependencies, reldep));
   resolve-deps(cat, deps, dev-deps, actives, cache: cache)
 end function;
 
@@ -140,7 +140,7 @@ define function resolve-deps
   let cache = cache | make(<table>);
   local
     // Use `dylan --debug --verbose update` to see this trace output. For tests I'm
-    // afraid one has to change log-trace to log-info.
+    // afraid one has to change log-trace to format-out (and add \n).
     method trace (depth, return-value, fmt, #rest format-args)
       let indent = make(<string>, size: depth * 2, fill: ' ');
       apply(log-trace, concat(indent, fmt), format-args);
@@ -160,8 +160,9 @@ define function resolve-deps
           dep-error("circular dependency: %=", pair(pname, seen))
         end;
         // TODO: shouldn't need as(<list>) here
-        let resolved
-          = %resolve-deps(as(<list>, rel.release-deps), pair(pname, seen), depth + 1);
+        let resolved = %resolve-deps(as(<list>, rel.release-dependencies),
+                                     pair(pname, seen),
+                                     depth + 1);
         cache[rel] := resolved;
         trace(depth, resolved, "caching %s => %s", rel, resolved);
       end

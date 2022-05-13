@@ -44,7 +44,7 @@ define constant $pacman-catalog-release :: <release>
       let release = make(<release>,
                          package: package,
                          version: make(<branch-version>, branch: "master"),
-                         deps: as(<dep-vector>, #[]),
+                         dependencies: as(<dep-vector>, #[]),
                          license: "MIT",
                          url: "https://github.com/dylan-lang/pacman-catalog",
                          license-url: "https://github.com/dylan-lang/pacman-catalog/LICENSE");
@@ -321,9 +321,10 @@ define function load-catalog-package-file
         = make(<release>,
                package: package,
                version: string-to-version(t["version"]),
-               deps: map-as(<dep-vector>, string-to-dep, deps),
-               dev-deps: map-as(<dep-vector>,
-                                string-to-dep, element(t, "dev-dependencies", default: #[])),
+               dependencies: map-as(<dep-vector>, string-to-dep, deps),
+               dev-dependencies:
+                 map-as(<dep-vector>,
+                        string-to-dep, element(t, "dev-dependencies", default: #[])),
                url: element(t, "url", default: #f)
                  | element(t, "location", default: ""),
                license: t["license"],

@@ -2,7 +2,7 @@ Module: dylan-user
 
 define library dylan-tool-test-suite
   use common-dylan;
-  use dylan-tool-commands;
+  use dylan-tool-lib;
   use io;
   use system;
   use testworks;

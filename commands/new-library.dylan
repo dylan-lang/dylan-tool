@@ -1,4 +1,4 @@
-Module: dylan-tool-commands
+Module: dylan-tool-lib
 Synopsis: The `dylan new library` subcommand
 
 

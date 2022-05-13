@@ -4,7 +4,7 @@ Module: dylan-tool-test-suite
 // having the given deps. If catalog is provided, the package and releases are
 // fetched from it if they exist and added to it if they don't.
 define function make-test-package
-    (name, #key versions, deps, dev-deps, catalog) => (p :: <package>)
+    (name, #key versions, dependencies, dev-dependencies, catalog) => (p :: <package>)
   let package = catalog & cached-package(catalog, name);
   if (~package)
     package := make(<package>,
@@ -15,8 +15,8 @@ define function make-test-package
                     keywords: #["key1", "key2"]);
     catalog & cache-package(catalog, package);
   end;
-  let deps = as(<dep-vector>, map(string-to-dep, deps | #()));
-  let dev-deps = as(<dep-vector>, map(string-to-dep, dev-deps | #()));
+  let deps = as(<dep-vector>, map(string-to-dep, dependencies | #()));
+  let dev-deps = as(<dep-vector>, map(string-to-dep, dev-dependencies | #()));
   for (v in versions)
     let version = string-to-version(v);
     let release = find-release(package, version);
@@ -25,8 +25,8 @@ define function make-test-package
                   make(<release>,
                        package: package,
                        version: version,
-                       deps: deps,
-                       dev-deps: dev-deps,
+                       dependencies: deps,
+                       dev-dependencies: dev-deps,
                        url: format-to-string("https://github.com/dylan-lang/%s", name),
                        license: "MIT",
                        license-url: "https://github.com/dylan-lang/package/LICENSE"));
@@ -51,8 +51,8 @@ define function make-test-catalog
     let dep = string-to-dep(name);
     make-test-package(dep.package-name,
                       versions: list(version-to-string(dep.dep-version)),
-                      deps: deps,
-                      dev-deps: dev-deps,
+                      dependencies: deps,
+                      dev-dependencies: dev-deps,
                       catalog: catalog);
   end;
   validate-catalog(catalog, cached?: #t);

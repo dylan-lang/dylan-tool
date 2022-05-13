@@ -1,6 +1,6 @@
 Module: dylan-user
 
-define library dylan-tool-commands
+define library dylan-tool-lib
   use collections,
     import: { table-extensions };
   use command-line-parser;
@@ -18,11 +18,11 @@ define library dylan-tool-commands
     import: { uncommon-dylan, uncommon-utils };
 
   export
-    dylan-tool-commands,
+    dylan-tool-lib,
     pacman,
     %pacman,
     workspaces;
-end library dylan-tool-commands;
+end library dylan-tool-lib;
 
 define module pacman
   export
@@ -60,7 +60,7 @@ define module pacman
     load-catalog-package,
 
     <release>,
-    release-deps,
+    release-dependencies,
     release-dev-dependencies,
     release-license,
     // TODO:
@@ -105,9 +105,7 @@ define module %pacman
   use format,
     import: { format,
               format-to-string };
-  use format-out,
-    import: { format-out,
-              force-out };
+  use format-out;
   use json,
     import: { parse-json => json/parse,
               encode-json => json/encode,
@@ -138,15 +136,7 @@ define module %pacman
               match-group => re/group };
   use streams,
     import: { read-to-end, <stream>, with-output-to-string, write };
-  use strings,
-    import: { decimal-digit?,
-              ends-with?,
-              find-substring,
-              lowercase,
-              starts-with?,
-              string-equal-ic? => istring=,
-              string-less-ic? => istring<,
-              strip };
+  use strings;
   use uncommon-dylan,
     exclude: { format-out, format-to-string };
   use uncommon-utils,
@@ -177,6 +167,7 @@ define module workspaces
     prefix: "fs/";
   use format,
     import: { format, format-to-string };
+  use format-out;
   use json,
     import: { parse-json => json/parse };
   use locators,
@@ -209,15 +200,7 @@ define module workspaces
               read-line,
               read-to-end,
               write };
-  use strings,
-    // Trying out some alternative names for these...
-    import: { char-compare-ic => char-icompare,
-              ends-with?,
-              lowercase,
-              starts-with?,
-              string-equal? => string=?,
-              string-equal-ic? => istring=?,
-              strip };
+  use strings;
   use uncommon-dylan,
     exclude: { format-to-string };
   use uncommon-utils,
@@ -240,7 +223,7 @@ define module workspaces
     find-library-names;
 end module workspaces;
 
-define module dylan-tool-commands
+define module dylan-tool-lib
   use command-line-parser;
   use file-system,
     prefix: "fs/";
@@ -282,14 +265,7 @@ define module dylan-tool-commands
               read-to-end,
               stream-contents,
               write };
-  use strings,
-    import: { lowercase,
-              starts-with?,
-              ends-with?,
-              string-equal? => str=,
-              string-equal-ic? => istr=,
-              strip,
-              whitespace? };
+  use strings;
   use uncommon-dylan,
     exclude: { format-to-string };
   use uncommon-utils,
@@ -299,4 +275,4 @@ define module dylan-tool-commands
 
   export
     dylan-tool-command-line;
-end module dylan-tool-commands;
+end module dylan-tool-lib;

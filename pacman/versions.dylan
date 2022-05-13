@@ -147,7 +147,7 @@ define function string-to-version
       package-error("invalid version spec %=", original-input);
     end;
     make(<semantic-version>, major: maj, minor: min, patch: pat)
-  elseif (istring=(input, "latest"))
+  elseif (string-equal-ic?(input, "latest"))
     $latest
   elseif (empty?(input) | decimal-digit?(input[0]))
     package-error("invalid version string: %=", original-input);

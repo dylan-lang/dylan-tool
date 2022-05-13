@@ -1,4 +1,4 @@
-Module: dylan-tool-commands
+Module: dylan-tool-lib
 Synopsis: Definition of the command-line as a whole
 
 
