@@ -146,7 +146,7 @@ end method;
 
 define class <update-subcommand> (<subcommand>)
   keyword name = "update";
-  keyword help = "Bring the current workspace up-to-date with the workspace.json file.";
+  keyword help = "Update the workspace based on the active packages.";
 end class;
 
 define constant $update-subcommand
