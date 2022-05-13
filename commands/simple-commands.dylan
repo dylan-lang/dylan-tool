@@ -209,3 +209,20 @@ define method execute-subcommand
   end;
   0
 end method;
+
+
+/// dylan version
+
+define class <version-subcommand> (<subcommand>)
+  keyword name = "version";
+  keyword help = "Display the current version of dylan-tool.";
+end class;
+
+define constant $version-subcommand = make(<version-subcommand>);
+
+define method execute-subcommand
+    (parser :: <command-line-parser>, subcmd :: <version-subcommand>)
+ => (status :: false-or(<int>))
+  format-out("%s\n", $dylan-tool-version);
+  0
+end method;

@@ -28,5 +28,6 @@ define function dylan-tool-command-line
                                      $new-workspace-subcommand)),
               $update-subcommand,
               $status-subcommand,
-              $publish-subcommand))
+              $publish-subcommand,
+              $version-subcommand))
 end function;
