@@ -264,7 +264,7 @@ define function ingest-lid-file
     log-trace("LID file %s has no 'Files' property", lid-path);
   end;
   if (skip-lid?(registry, lid))
-    log-info("Skipping %s, preferring previous .lid file.", lid-path);
+    format-out("Skipping %s, preferring previous .lid file.\n", lid-path);
     #f
   else
     add-lid(registry, lid);
@@ -353,7 +353,7 @@ define function write-registry-file (registry :: <registry>, lid :: <lid>)
                       if-exists?: #"replace")
       write(stream, new-content);
     end;
-    log-info("Wrote %s (%s)", registry-file, lid-file);
+    format-out("Wrote %s (%s)\n", registry-file, lid-file);
   end;
 end function;
 

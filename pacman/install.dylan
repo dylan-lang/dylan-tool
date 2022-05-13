@@ -69,7 +69,7 @@ define method %download
   let (exit-code, signal-code /* , process, #rest streams */)
     = os/run(command, output: #"null", error: #"null");
   if (exit-code = 0)
-    log-info("Downloaded %s to %s", release, dest-dir);
+    format-out("Downloaded %s to %s\n", release, dest-dir);
   else
     package-error("git clone command failed with exit code %d. Command: %=",
                   exit-code, command);

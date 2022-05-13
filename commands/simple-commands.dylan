@@ -28,7 +28,7 @@ define method execute-subcommand
     let vstring = get-option-value(subcmd, "version");
     let release = pm/find-package-release(pm/catalog(), package-name, vstring)
       | begin
-          log-info("Package %= not found.", package-name);
+          format-out("Package %= not found.\n", package-name);
           abort-command(1);
         end;
     pm/install(release);
@@ -72,11 +72,11 @@ define function list-catalog
     let package = pm/find-package(cat, name);
     let latest = pm/find-package-release(cat, name, pm/$latest);
     if (all? | latest-installed)
-      log-info("%s (Installed: %s, Latest: %s) - %s",
-               name,
-               latest-installed | "-",
-               pm/release-version(latest),
-               pm/package-description(package));
+      format-out("%s (Installed: %s, Latest: %s) - %s\n",
+                 name,
+                 latest-installed | "-",
+                 pm/release-version(latest),
+                 pm/package-description(package));
     end;
   end;
 end function;
@@ -143,10 +143,10 @@ define method execute-subcommand
  => (status :: false-or(<int>))
   let workspace = ws/load-workspace();
   if (~workspace)
-    log-info("Not currently in a workspace.");
+    format-out("Not currently in a workspace.\n");
     abort-command(1);
   end;
-  log-info("Workspace: %s", ws/workspace-directory(workspace));
+  format-out("Workspace: %s\n", ws/workspace-directory(workspace));
   if (get-option-value(subcmd, "directory"))
     abort-command(0);
   end;
@@ -156,9 +156,9 @@ define method execute-subcommand
   //   upstream (usually but not always origin/master).
   let active = ws/workspace-active-packages(workspace);
   if (empty?(active))
-    log-info("No active packages.");
+    format-out("No active packages.\n");
   else
-    log-info("Active packages:");
+    format-out("Active packages:\n");
     for (package in active)
       let directory = ws/active-package-directory(workspace, pm/package-name(package));
       let command = "git status --untracked-files=no --branch --ahead-behind --short";
@@ -169,7 +169,8 @@ define method execute-subcommand
       let (status, output) = run(command, working-directory: directory);
       let dirty = ~whitespace?(output);
 
-      log-info("  %-25s: %s%s", pm/package-name(package), line, (dirty & " (dirty)") | "");
+      format-out("  %-25s: %s%s\n",
+                 pm/package-name(package), line, (dirty & " (dirty)") | "");
     end;
   end;
   0

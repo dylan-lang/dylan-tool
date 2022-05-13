@@ -140,7 +140,7 @@ define function resolve-deps
   let cache = cache | make(<table>);
   local
     // Use `dylan --debug --verbose update` to see this trace output. For tests I'm
-    // afraid one has to change log-trace to log-info.
+    // afraid one has to change log-trace to format-out (and add \n).
     method trace (depth, return-value, fmt, #rest format-args)
       let indent = make(<string>, size: depth * 2, fill: ' ');
       apply(log-trace, concat(indent, fmt), format-args);

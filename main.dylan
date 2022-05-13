@@ -17,11 +17,11 @@ define function main () => (status :: false-or(<integer>))
   exception (err :: <abort-command-error>)
     let status = exit-status(err);
     if (status ~= 0)
-      log-info("%s", err);
+      format-err("Error: %s\n", err);
     end;
     status
   exception (err :: <error>)
-    log-error("%s", condition-to-string(err));
+    format-err("%s\n", condition-to-string(err));
     if (get-option-value(parser, "debug"))
       signal(err)
     end;

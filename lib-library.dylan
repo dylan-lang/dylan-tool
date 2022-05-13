@@ -105,9 +105,7 @@ define module %pacman
   use format,
     import: { format,
               format-to-string };
-  use format-out,
-    import: { format-out,
-              force-out };
+  use format-out;
   use json,
     import: { parse-json => json/parse,
               encode-json => json/encode,
@@ -169,6 +167,7 @@ define module workspaces
     prefix: "fs/";
   use format,
     import: { format, format-to-string };
+  use format-out;
   use json,
     import: { parse-json => json/parse };
   use locators,
