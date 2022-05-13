@@ -146,7 +146,7 @@ end method;
 
 define class <update-subcommand> (<subcommand>)
   keyword name = "update";
-  keyword help = "Bring the current workspace up-to-date with the workspace.json file.";
+  keyword help = "Update the workspace based on the active packages.";
 end class;
 
 define constant $update-subcommand
@@ -207,5 +207,22 @@ define method execute-subcommand
                  pm/package-name(package), line, (dirty & " (dirty)") | "");
     end;
   end;
+  0
+end method;
+
+
+/// dylan version
+
+define class <version-subcommand> (<subcommand>)
+  keyword name = "version";
+  keyword help = "Display the current version of dylan-tool.";
+end class;
+
+define constant $version-subcommand = make(<version-subcommand>);
+
+define method execute-subcommand
+    (parser :: <command-line-parser>, subcmd :: <version-subcommand>)
+ => (status :: false-or(<int>))
+  format-out("%s\n", $dylan-tool-version);
   0
 end method;
