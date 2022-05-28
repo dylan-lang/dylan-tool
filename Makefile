@@ -22,7 +22,14 @@ install_lib     = $(install_dir)/lib
 link_target     = $(install_bin)/dylan-tool
 link_source     = $(DYLAN)/bin/dylan
 
+.PHONY: build clean install test dist distclean
+
 build:
+	dylan-compiler -build dylan-tool
+
+# Hack to add the version to the binary with git tag info. Don't want this to
+# be the normal build because it causes unnecessary rebuilds.
+build-with-version:
 	file="commands/utils.dylan"; \
 	orig=$$(tempfile); \
 	temp=$$(tempfile); \
@@ -34,7 +41,7 @@ build:
 
 # After the next OD release this should install a static exe built with the
 # -unify flag.
-install: build
+install: build-with-version
 	mkdir -p $(install_bin)
 	mkdir -p $(install_lib)
 	cp _build/bin/dylan-tool $(install_bin)/
@@ -49,6 +56,8 @@ install: build
 test: build
 	dylan-compiler -build dylan-tool-test-suite \
 	  && DYLAN_CATALOG=ext/pacman-catalog _build/bin/dylan-tool-test-suite
+
+dist: distclean install
 
 clean:
 	rm -rf _build

@@ -65,11 +65,12 @@ define function update () => ()
          os/$platform-name, join(sort!(no-lid), ", "));
   end;
 
+  let reg-dir = subdirectory-locator(registry.root-directory, "registry");
   let num-files = registry.num-files-written;
   if (num-files == 0)
-    note("Registry is up-to-date.");
+    note("Registry %s is up-to-date.", reg-dir);
   else
-    note("Updated %d registry files", registry.num-files-written);
+    note("Updated %d files in %s.", registry.num-files-written, reg-dir);
   end;
 end function;
 
