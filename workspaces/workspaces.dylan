@@ -57,7 +57,20 @@ define function update () => ()
   note("Workspace directory is %s.", ws.workspace-directory);
   let cat = pm/catalog();
   let (releases, actives) = update-deps(ws, cat);
-  update-registry(ws, cat, releases, actives);
+  let registry = update-registry(ws, cat, releases, actives);
+
+  let no-lid = registry.libraries-with-no-lid;
+  if (~empty?(no-lid))
+    warn("These libraries had no LID file for platform %s:\n  %s",
+         os/$platform-name, join(sort!(no-lid), ", "));
+  end;
+
+  let num-files = registry.num-files-written;
+  if (num-files == 0)
+    note("Registry is up-to-date.");
+  else
+    note("Updated %d registry files", registry.num-files-written);
+  end;
 end function;
 
 // <workspace> holds the parsed workspace configuration, and is the one object
@@ -233,6 +246,7 @@ end function;
 // in which case it is assumed they're for inclusion only).
 define function update-registry
     (ws :: <workspace>, cat :: pm/<catalog>, releases :: <seq>, actives :: <istring-table>)
+ => (r :: <registry>)
   let registry = ws.workspace-registry;
   for (rel in actives)
     update-for-directory(registry, active-package-directory(ws, rel.pm/package-name));
@@ -240,4 +254,5 @@ define function update-registry
   for (rel in releases)
     update-for-directory(registry, pm/source-directory(rel));
   end;
+  registry
 end function;

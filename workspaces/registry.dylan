@@ -40,6 +40,10 @@ define class <registry> (<object>)
   // over the library=>lid map deciding which files to write and logging
   // warnings once for a given library.
   constant slot updated-libraries :: <istring-table> = make(<istring-table>);
+
+  // Libraries that have no LID file for the requested platform.
+  constant slot libraries-with-no-lid = make(<stretchy-vector>);
+  slot num-files-written = 0;
 end class;
 
 define function has-lid?
@@ -187,8 +191,8 @@ define function update-lids
     select (candidates.size)
       0 =>
         if (~element(updated-libs, library-name, default: #f))
-          warn("Library %= has no LID file for platform %=.",
-               library-name, current-platform);
+          // We'll display these at the end, as a group.
+          add-new!(registry.libraries-with-no-lid, library-name, test: \=);
         end;
       1 =>
         write-registry-file(registry, candidates[0]);
@@ -351,6 +355,7 @@ define function write-registry-file (registry :: <registry>, lid :: <lid>)
                       direction: #"output",
                       if-exists?: #"replace")
       write(stream, new-content);
+      registry.num-files-written := registry.num-files-written + 1;
     end;
   verbose("Wrote %s (%s)", registry-file, lid-file);
   end;
