@@ -16,6 +16,10 @@ define module dylan-tool-test-suite
   use operating-system;
   use pacman;
   use %pacman;
+  use shared;
+  use standard-io;
+  use streams;
   use testworks;
+  use threads;
   use workspaces;
 end module;

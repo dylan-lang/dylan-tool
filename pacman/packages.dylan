@@ -158,7 +158,7 @@ end function;
 // multiple releases.
 define function load-dylan-package-file
     (file :: <file-locator>) => (release :: <release>)
-  log-trace("Reading package file %s", file);
+  debug("Reading package file %s", file);
   with-open-file (stream = file)
     let json = block ()
                  json/parse(stream, table-class: <istring-table>, strict?: #f)
@@ -202,8 +202,8 @@ define function decode-dylan-package-json
               // Even though we're in major version 0 I'm giving this a little
               // time to be updated since it will take me a while to get to all
               // the existing dylan-package.json files.
-              log-warning("%s: the \"deps\" attribute is deprecated;"
-                            " use \"dependencies\" instead.", file);
+              warn("%s: the \"deps\" attribute is deprecated;"
+                     " use \"dependencies\" instead.", file);
               deps
             end
           end
@@ -216,7 +216,7 @@ define function decode-dylan-package-json
                         "description", "dev-dependencies", "keywords",
                         "license", "license-url", "name", "url", "version"],
                  test: string-equal-ic?))
-      log-warning("%s: unrecognized key %= (ignored)", file, key);
+      warn("%s: unrecognized key %= (ignored)", file, key);
     end;
   end;
   // Required elements

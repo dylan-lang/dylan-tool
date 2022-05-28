@@ -139,21 +139,20 @@ define function resolve-deps
  => (releases :: <seq>)
   let cache = cache | make(<table>);
   local
-    // Use `dylan --debug --verbose update` to see this trace output. For tests I'm
-    // afraid one has to change log-trace to format-out (and add \n).
-    method trace (depth, return-value, fmt, #rest format-args)
+    // Use `dylan --debug --verbose update` to see this trace output.
+    method %trace (depth, return-value, fmt, #rest format-args)
       let indent = make(<string>, size: depth * 2, fill: ' ');
-      apply(log-trace, concat(indent, fmt), format-args);
+      apply(trace, concat(indent, fmt), format-args);
       return-value
     end,
     // Resolve the deps for a single release into a set of specific releases
     // required in order to build it. The recursion terminates when a release
     // has no deps or if a cached result exists.
     method resolve-release (rel, seen, depth) => (releases :: <list>)
-      trace(depth, #f, "resolve-release(rel: %=, seen: %=)", rel, seen);
+      %trace(depth, #f, "resolve-release(rel: %=, seen: %=)", rel, seen);
       let memo = element(cache, rel, default: #f); // use memoized result
       if (memo)
-        trace(depth, memo, "<= memoized result %s", memo)
+        %trace(depth, memo, "<= memoized result %s", memo)
       else
         let pname = rel.package-name;
         if (member?(pname, seen, test: \=))
@@ -164,7 +163,7 @@ define function resolve-deps
                                      pair(pname, seen),
                                      depth + 1);
         cache[rel] := resolved;
-        trace(depth, resolved, "caching %s => %s", rel, resolved);
+        %trace(depth, resolved, "caching %s => %s", rel, resolved);
       end
     end method,
     // Iterate over a single release's deps resolving them to lists of specific minimum
@@ -173,7 +172,7 @@ define function resolve-deps
     // active packages, so that it isn't necessary for active packages to exist in the
     // catalog.
     method %resolve-deps (deps, seen, depth) => (releases :: <list>)
-      trace(depth, #f, "%%resolve-deps(deps: %s, seen: %=)", as(<list>, deps), seen);
+      %trace(depth, #f, "%%resolve-deps(deps: %s, seen: %=)", as(<list>, deps), seen);
       let maxima = make(<istring-table>);
       for (dep in deps)
         let pname = dep.package-name;
@@ -194,7 +193,7 @@ define function resolve-deps
         end;
       end;
       let releases = as(<list>, value-sequence(maxima));
-      trace(depth, releases, "<= %s", releases);
+      %trace(depth, releases, "<= %s", releases);
     end method;
   block ()
     let releases = %resolve-deps(deps, #(), 0);
@@ -241,9 +240,9 @@ define function reconcile-prod-dev-deps
       releases := pair(combined, releases);
     else
       // TODO: should have a flag to use the dev dependency if user believes it's safe.
-      log-warning("Using %s instead of higher dev dependency %s to ensure consistent"
-                    " dev and non-dev builds.",
-                  main, combined);
+      warn("Using %s instead of higher dev dependency %s to ensure"
+             " consistent dev and non-dev builds.",
+           main, combined);
       releases := pair(main, releases);
     end
   end;

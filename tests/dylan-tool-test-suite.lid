@@ -1,6 +1,7 @@
 library: dylan-tool-test-suite
 files: library.dylan
        test-utils.dylan
+       ../shared-test.dylan
        ../pacman/catalog-test.dylan
        ../pacman/deps-test.dylan
        ../pacman/install-test.dylan

@@ -1,5 +1,6 @@
 Library: dylan-tool-lib
 Files: lib-library.dylan
+       shared.dylan
        pacman/utils.dylan
        pacman/versions.dylan
        pacman/packages.dylan

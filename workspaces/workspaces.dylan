@@ -38,7 +38,7 @@ define function new
                       " workspace, %s.", ws-path, existing);
   end;
   if (fs/file-exists?(ws-path))
-    format-out("Workspace already exists: %s\n", ws-path);
+    note("Workspace already exists: %s", ws-path);
   else
     fs/ensure-directories-exist(ws-path);
     fs/with-open-file (stream = ws-path,
@@ -46,7 +46,7 @@ define function new
                        if-exists: #"error")
       format(stream, "# Dylan workspace %=\n\n{}\n", name);
     end;
-    format-out("Workspace created: %s\n", ws-path);
+    note("Workspace created: %s", ws-path);
   end;
   load-workspace(directory: ws-dir)
 end function;
@@ -54,7 +54,7 @@ end function;
 // Update the workspace based on the workspace.json file or signal an error.
 define function update () => ()
   let ws = load-workspace();
-  format-out("Workspace directory is %s.\n", ws.workspace-directory);
+  note("Workspace directory is %s.", ws.workspace-directory);
   let cat = pm/catalog();
   let (releases, actives) = update-deps(ws, cat);
   update-registry(ws, cat, releases, actives);
@@ -140,8 +140,8 @@ define function find-active-packages
       elseif (fs/file-exists?(loc2))
         // TODO: remove support for deprecated pkg.json file in the 1.0 version
         // or once they're all converted, whichever comes first.
-        log-warning("Please rename %s to %s; support for 'pkg.json' will be"
-                      " removed soon.", loc2, $dylan-package-file-name);
+        warn("Please rename %s to %s; support for 'pkg.json' will be"
+               " removed soon.", loc2, $dylan-package-file-name);
         let pkg = pm/load-dylan-package-file(loc2);
         add!(packages, pkg);
       end;

@@ -38,8 +38,7 @@ define class <registry> (<object>)
   // point it would require a big rewrite: find all lids for all active
   // packages and dependencies without generating any warnings, then iterate
   // over the library=>lid map deciding which files to write and logging
-  // warnings once for a given library. Another way (but also kind of a hack)
-  // would be if the logging library supported log-warning-every(duration ...).
+  // warnings once for a given library.
   constant slot updated-libraries :: <istring-table> = make(<istring-table>);
 end class;
 
@@ -188,19 +187,21 @@ define function update-lids
     select (candidates.size)
       0 =>
         if (~element(updated-libs, library-name, default: #f))
-          log-warning("Library %= has no LID file for platform %=.",
-                      library-name, current-platform);
+          warn("Library %= has no LID file for platform %=.",
+               library-name, current-platform);
         end;
       1 =>
         write-registry-file(registry, candidates[0]);
       otherwise =>
         if (~element(updated-libs, library-name, default: #f))
-          log-warning("Library %= has multiple .lid files for platform %=.\n"
-                        "  %s\nRegistry will point to the first one, arbitrarily.",
-                      library-name, current-platform,
-                      join(candidates, "\n  ", key: method (lid)
-                                                      as(<string>, lid.lid-locator)
-                                                    end));
+          // This is a real error and should always be logged regardless of
+          // the *verbose?* value.
+          warn("Library %= has multiple .lid files for platform %=.\n"
+                 "  %s\nRegistry will point to the first one, arbitrarily.",
+               library-name, current-platform,
+               join(candidates, "\n  ", key: method (lid)
+                                               as(<string>, lid.lid-locator)
+                                             end));
         end;
         write-registry-file(registry, candidates[0]);
     end select;
@@ -261,10 +262,10 @@ define function ingest-lid-file
   let lid = parse-lid-file(registry, lid-path);
   let library-name = lid-value(lid, $library-key, error?: #t);
   if (empty?(lid-files(lid)))
-    log-trace("LID file %s has no 'Files' property", lid-path);
+    warn("LID file %s has no 'Files' property.", lid-path);
   end;
   if (skip-lid?(registry, lid))
-    format-out("Skipping %s, preferring previous .lid file.\n", lid-path);
+    note("Skipping %s, preferring previous .lid file.", lid-path);
     #f
   else
     add-lid(registry, lid);
@@ -319,8 +320,6 @@ define function ingest-spec-file
         let hdp-dir = subdirectory-locator(locator-directory(idl-path), dir-name);
         let hdp-path = merge-locators(as(<file-locator>, hdp-file), hdp-dir);
         let simple-hdp-path = simplify-locator(hdp-path);
-        log-trace("  %s: hdp-path = %s", lib-name, hdp-path);
-        log-trace("  %s: simple-hdp-path = %s", lib-name, simple-hdp-path);
         let lid = make(<lid>,
                        locator: hdp-path,
                        data: begin
@@ -353,7 +352,7 @@ define function write-registry-file (registry :: <registry>, lid :: <lid>)
                       if-exists?: #"replace")
       write(stream, new-content);
     end;
-    format-out("Wrote %s (%s)\n", registry-file, lid-file);
+  verbose("Wrote %s (%s)", registry-file, lid-file);
   end;
 end function;
 
@@ -406,7 +405,8 @@ define function parse-lid-file
               data[prev-key] := add!(data[prev-key], value);
             end;
           else
-            log-trace("Skipped unexpected continuation line %s:%d", path, line-number);
+            warn("Skipped unexpected continuation line %s:%d",
+                 path, line-number);
           end;
         else
           // Keyword line
@@ -418,7 +418,8 @@ define function parse-lid-file
             if (key = $lid-key)
               // LID files may be encountered twice: once when the directory
               // traversal finds them directly and once here.
-              let sub-path = merge-locators(as(<file-locator>, value), locator-directory(path));
+              let sub-path = merge-locators(as(<file-locator>, value),
+                                            locator-directory(path));
               let sub-lid = lid-for-path(registry, sub-path);
               sub-lid := sub-lid | ingest-lid-file(registry, sub-path);
               lid.lid-data[$lid-key] := vector(sub-lid);
@@ -429,7 +430,8 @@ define function parse-lid-file
               prev-key := key;
             end;
           else
-            log-trace("Skipped invalid syntax line %s:%d: %=", path, line-number, line);
+            warn("Skipped invalid syntax line %s:%d: %=",
+                 path, line-number, line);
           end;
         end;
       end;
