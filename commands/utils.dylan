@@ -2,7 +2,6 @@ Module: dylan-tool-lib
 Synopsis: Utilities for use by dylan-tool commands
 
 
-
 // The Makefile replaces this string with the actual tagged version before
 // building. DON'T MOVE THE /*__*/ MARKERS since they're part of the regex.
 // Using the comment markers enables recovery if someone commits a string

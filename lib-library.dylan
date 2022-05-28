@@ -9,7 +9,6 @@ define library dylan-tool-lib
   use io,
     import: { format, format-out, print, standard-io, streams };
   use json;
-  use logging;
   use regular-expressions;
   use strings;
   use system,
@@ -21,8 +20,23 @@ define library dylan-tool-lib
     dylan-tool-lib,
     pacman,
     %pacman,
+    shared,
     workspaces;
 end library dylan-tool-lib;
+
+// Definitions used by all the other modules.
+define module shared
+  use uncommon-dylan;
+  use format-out;
+  export
+    *debug?*,
+    *verbose?*,
+    debug,
+    note,
+    verbose,
+    trace,
+    warn;
+end module;
 
 define module pacman
   export
@@ -119,7 +133,6 @@ define module %pacman
               locator-name,
               merge-locators,
               subdirectory-locator };
-  use logging;
   use operating-system,
     import: { environment-variable => os/getenv,
               run-application => os/run };
@@ -134,6 +147,7 @@ define module %pacman
               regex-search => re/search,
               regex-search-strings => re/search-strings,
               match-group => re/group };
+  use shared;
   use streams,
     import: { read-to-end, <stream>, with-output-to-string, write };
   use strings;
@@ -182,7 +196,6 @@ define module workspaces
               merge-locators,
               simplify-locator,
               subdirectory-locator };
-  use logging;
   use operating-system,
     prefix: "os/";
   use pacman,
@@ -192,6 +205,7 @@ define module workspaces
   use regular-expressions,
     import: { regex-parser },      // #:regex:"..."
     rename: { regex-search-strings => re/search-strings };
+  use shared;
   use standard-io,
     import: { *standard-output* => *stdout*,
               *standard-error* => *stderr* };
@@ -243,7 +257,6 @@ define module dylan-tool-lib
               merge-locators,
               relative-locator,
               subdirectory-locator };
-  use logging;
   use operating-system,
     prefix: "os/",
     rename: { run-application => os/run };
@@ -255,6 +268,7 @@ define module dylan-tool-lib
               regex-pattern => re/pattern,
               regex-search => re/search,
               regex-search-strings => re/search-strings };
+  use shared;
   use standard-io,
     import: { *standard-output* => *stdout*,
               *standard-error* => *stderr* };

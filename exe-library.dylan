@@ -18,4 +18,5 @@ define module dylan-tool
   use format-out;
   use logging;
   use operating-system, prefix: "os/";
+  use shared;
 end;

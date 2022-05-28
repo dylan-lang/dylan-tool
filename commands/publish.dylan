@@ -32,11 +32,11 @@ define method execute-subcommand
                      string-equal-ic?(pm/package-name(rel), "pacman-catalog")
                    end);
   if (~publish-release)
-    format-out("Package %= is not an active package.\n", name);
+    note("Package %= is not an active package.", name);
     1
   elseif (~catalog-release)
     let ws-dir = ws/workspace-directory(ws/load-workspace());
-    format-out(#:string:'
+    note(#:string:'
 "pacman-catalog" is not an active package in this workspace.  For now, the way
 packages are published is by making a pull request to the "pacman-catalog"
 repository. This command will make the necessary changes for you, but you must

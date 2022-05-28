@@ -84,7 +84,7 @@ define function catalog
     let directory
       = if (override)
           if (~*override-logged?*)
-            log-warning("Using override catalog from $%s: %s", $catalog-env-var, override);
+            warn("Using override catalog from $%s: %s", $catalog-env-var, override);
             *override-logged?* := #t;
           end;
           subdirectory-locator(as(<directory-locator>, override), $catalog-format)
@@ -126,7 +126,6 @@ define function load-all-catalog-packages
         #"file" =>
           // TODO: in release after 2020.1 use file-locator here.
           let file = merge-locators(as(<file-locator>, name), dir);
-          log-debug("loading %s", file);
           add!(packages, load-catalog-package-file(cat, name, file));
       end;
     end method;
@@ -290,7 +289,7 @@ end function;
 
 define function load-catalog-package-file
     (cat :: <catalog>, name :: <string>, file :: <file-locator>) => (package :: <package>)
-  log-debug("loading %s", file);
+  verbose("Loading %s", file);
   let json
     = block ()                  // if-does-not-exist: #f doesn't work
         with-open-file (stream = file, direction: #"input")
@@ -304,8 +303,8 @@ define function load-catalog-package-file
       end;
   let stored-name = json["name"];
   if (stored-name ~= name)
-    log-warning("%s: loaded package name is %=, expected %=",
-                file, stored-name, name);
+    warn("%s: loaded package name is %=, expected %=",
+         file, stored-name, name);
   end;
   let package = make(<package>,
                      name: name,

@@ -3,16 +3,11 @@ Synopsis: dylan-tool main function
 
 
 define function main () => (status :: false-or(<integer>))
-  // Configure logging. We use the logging module for output so we can control verbosity
-  // that way.
-  log-formatter(*log*) := make(<log-formatter>, pattern: "%s  %m");
-
   let parser = dylan-tool-command-line();
   block ()
     parse-command-line(parser, application-arguments());
-    if (get-option-value(parser, "debug") & get-option-value(parser, "verbose"))
-      log-level(*log*) := $trace-level;
-    end;
+    *debug?* := get-option-value(parser, "debug");
+    *verbose?* := get-option-value(parser, "verbose");
     execute-command(parser);
   exception (err :: <abort-command-error>)
     let status = exit-status(err);

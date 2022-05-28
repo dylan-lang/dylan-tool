@@ -28,7 +28,7 @@ define method execute-subcommand
     let vstring = get-option-value(subcmd, "version");
     let release = pm/find-package-release(pm/catalog(), package-name, vstring)
       | begin
-          format-out("Package %= not found.\n", package-name);
+          note("Package %= not found.", package-name);
           abort-command(1);
         end;
     pm/install(release);
@@ -94,8 +94,8 @@ define function list-catalog
   let cat = pm/catalog();
   let packages = pm/load-all-catalog-packages(cat);
   // %8s is to handle versions like 2020.1.0
-  format-out("  %8s %8s  %-20s  %s\n",
-             "Inst.", "Latest", "Package", "Description");
+  note("  %8s %8s  %-20s  %s",
+       "Inst.", "Latest", "Package", "Description");
   for (package in sort(packages, test: package-<))
     let name = pm/package-name(package);
     let versions = pm/installed-versions(name, head?: #f);
@@ -103,14 +103,14 @@ define function list-catalog
     let package = pm/find-package(cat, name);
     let latest = pm/find-package-release(cat, name, pm/$latest);
     if (all? | latest-installed)
-      format-out("%c %8s %8s  %-20s  %s\n",
-                 iff(latest-installed
-                       & (latest-installed < pm/release-version(latest)),
-                     '!', ' '),
-                 latest-installed | "-",
-                 pm/release-version(latest),
-                 name,
-                 brief-description(pm/package-description(package)));
+      note("%c %8s %8s  %-20s  %s",
+           iff(latest-installed
+                 & (latest-installed < pm/release-version(latest)),
+               '!', ' '),
+           latest-installed | "-",
+           pm/release-version(latest),
+           name,
+           brief-description(pm/package-description(package)));
     end;
   end;
 end function;
@@ -177,10 +177,10 @@ define method execute-subcommand
  => (status :: false-or(<int>))
   let workspace = ws/load-workspace();
   if (~workspace)
-    format-out("Not currently in a workspace.\n");
+    note("Not currently in a workspace.");
     abort-command(1);
   end;
-  format-out("Workspace: %s\n", ws/workspace-directory(workspace));
+  note("Workspace: %s", ws/workspace-directory(workspace));
   if (get-option-value(subcmd, "directory"))
     abort-command(0);
   end;
@@ -190,9 +190,9 @@ define method execute-subcommand
   //   upstream (usually but not always origin/master).
   let active = ws/workspace-active-packages(workspace);
   if (empty?(active))
-    format-out("No active packages.\n");
+    note("No active packages.");
   else
-    format-out("Active packages:\n");
+    note("Active packages:");
     for (package in active)
       let directory = ws/active-package-directory(workspace, pm/package-name(package));
       let command = "git status --untracked-files=no --branch --ahead-behind --short";
@@ -203,8 +203,8 @@ define method execute-subcommand
       let (status, output) = run(command, working-directory: directory);
       let dirty = ~whitespace?(output);
 
-      format-out("  %-25s: %s%s\n",
-                 pm/package-name(package), line, (dirty & " (dirty)") | "");
+      note("  %-25s: %s%s",
+           pm/package-name(package), line, (dirty & " (dirty)") | "");
     end;
   end;
   0
@@ -223,6 +223,6 @@ define constant $version-subcommand = make(<version-subcommand>);
 define method execute-subcommand
     (parser :: <command-line-parser>, subcmd :: <version-subcommand>)
  => (status :: false-or(<int>))
-  format-out("%s\n", $dylan-tool-version);
+  note("%s", $dylan-tool-version);
   0
 end method;
