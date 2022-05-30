@@ -13,7 +13,7 @@
 import os
 import sys
 sys.path.insert(0, os.path.abspath('../../ext/sphinx-extensions/sphinxcontrib'))
-import sphinxcontrib.dylan.themes as dylan_themes
+import dylan.themes as dylan_themes
 
 
 # -- Project information -----------------------------------------------------
@@ -28,7 +28,7 @@ copyright = '2021, Dylan Hackers'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'sphinxcontrib.dylan.domain'
+    'dylan.domain'
 ]
 
 # Necessary to make things like '.. current-module:: foo' work.
