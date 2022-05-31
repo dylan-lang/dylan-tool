@@ -11,8 +11,6 @@ This documentation describes the package model and how versioned dependencies
 are resolved. Users generally manage workspaces and packages via `the dylan
 command`_.
 
-.. TODO: the above should link to the docs, not to top-level repo.
-
 .. contents::
    :depth: 2
 
@@ -23,7 +21,7 @@ Packages
 A package is blob of data with an associated version which can be downloaded
 from the network and unpacked into a directory of files. All packages must have
 a ``dylan-package.json`` file in their top-level directory to specify
-dependencies and other metadata.
+dependencies and other package metadata.
 
 .. note:: In this beta version of pacman packages must be git repositories,
    downloadable with the ``git clone`` command. In the future pacman will
@@ -31,24 +29,29 @@ dependencies and other metadata.
    it isn't tied to a specific VCS.
 
 
+.. _package-versions:
+
 Package Versions
 ----------------
 
-When specifying package dependencies one needs to refer to a specific version
-of code to depend on. The full dependency spec usually looks something like
-"abc@1.2.3", where "abc" is the name of the package and "1.2.3" is a `Semantic
-Version`_ specifier with major version 1, minor version 2, and patch
-version 3. (The patch version may be omitted, in which case it is assumed to be
-zero.)
+New versions of a package are released from time to time and each release has a
+`Semantic Version`_ associated with it. When specifying a package dependency we
+identify a particular release we want to depend on with the syntax
+``"<package>@<version>"``.
+
+For example, ``"abc@1.2.3"`` identifies the release of package ``abc`` having
+`Semantic Version`_ ``1.2.3`` (major version 1, minor version 2, and patch
+version 3).
 
 .. note:: Pacman doesn't support pre-release and build identifiers yet. For
    example, in "abc@1.2.3-alpha1+build1". Support will be added in the future.
 
 How the package name and version are used to locate the package depends on the
 "package transport". Git is currently the only transport, and for any given
-semantic version 1.2.3 there must be a corresponding Git tag ``v1.2.3`` in the
-package's Git repository. Ensure that you use such a tag when publishing a
-numbered release of your package.
+semantic version ``1.2.3`` there must be a corresponding Git tag ``v1.2.3`` in
+the package's Git repository. Ensure that you creat such a tag when publishing
+a numbered release of your package. (This can be done easily via the GitHub
+UI, or by using the Git command.)
 
 It is also possible to use other Git refs when specifying a dependency:
 
@@ -70,47 +73,91 @@ reproducible. ``abc@latest`` and ``abc@<ref>`` are prohibited in the catalog
 and are primarily intended for use during development.
 
 
+.. _dylan-package.json:
+
 The Package File - dylan-package.json
 -------------------------------------
 
 Packages are described by a ``dylan-package.json`` file in the package's
 top-level directory. This file contains the name, description, dependencies,
 and other metadata for the package. Let's look at the ``dylan-package.json``
-file for ``pacman`` itself::
+file for ``dylan-tool`` itself::
 
     {
-        "name": "pacman",
+        "name": "dylan-tool",
+        "version": "0.6.0",
+        "category": "language-tools",
+        "contact": "dylan-lang@googlegroups.com",
+        "description": "Manage Dylan workspaces, packages, and registries",
+        "keywords": ["workspace", "package"],
         "dependencies": [
+            "command-line-parser@3.1.1",
             "json@1.0",
-            "logging@2.0",
+            "logging@2.1",
             "regular-expressions@1.0",
             "uncommon-dylan@0.2"
         ],
         "dev-dependencies": [
             "testworks@2.0"
         ],
-        "url": "https://github.com/dylan-lang/pacman"
+        "url": "https://github.com/dylan-lang/dylan-tool"
     }
 
-Here's a quick run-down of the attributes:
+Required Package Attributes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 name
   The package name. This name may differ from the containing directory and/or
   from the package repository URL, although it's usually less confusing if
   they're the same.
 
-dependencies
-  A list of package dependencies.
+description
+  A brief description of the package intended to be displayed to users who are
+  searching for the packages they need. In some contexts (for example the
+  :ref:`dylan-list` command) this may be truncated to only display the first
+  sentence, or even less, so special care should be used when writing this part
+  of the description.
 
 url
   URL of the Git repository for the package.
+
+version
+  A string designating the `Semantic Version`_ of the package.
+
+Optional Package Attributes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+category
+  *Reserved for future use.*
+
+contact
+  A string giving users a way to contact you about the package. Usually an
+  email address or an issue tracker URL.
+
+dependencies
+  A list of package dependencies. Each dependency is a string identifying a
+  specific release of another package. These dependencies are transitive; any
+  package that depends on your package necessarily has your dependencies as
+  well as the ones they list explicitly in *their* package file. See the
+  example above and see `Dependency Resolution`_ for how conflicts are handled.
 
 dev-dependencies
   A list of package dependencies that are only needed for development purposes,
   such as testing. These dependencies are not propagated to other packages that
   depend on this package. Put another way, these dependencies are not
-  transitive.
+  transitive.  See `Dependency Resolution`_.
 
+keywords
+  A list of strings with additional keywords that might be useful to help users
+  find the package if they don't already occur in the "description" attribute.
+
+license
+  A string indicating the license under which the package's software is
+  released.
+
+license-url
+  A URL with the location of the license text. (This attribute is planned to be
+  merged with "license", which will become a map with various subattributes.)
 
 Dependency Resolution
 =====================
@@ -204,7 +251,7 @@ Index and Search
 
 .. _minimal version selection: https://research.swtch.com/vgo-mvs
 .. _principles:        https://research.swtch.com/vgo-principles
-.. _the dylan command: https://github.com/dylan-lang/dylan-tool.git
+.. _the dylan command: https://opendylan.org/documentation/dylan-tool/
 .. _Semantic version:  https://semver.org/spec/v2.0.0.html
 .. _Semantic versions: https://semver.org/spec/v2.0.0.html
 .. _SemVer 2.0:        https://semver.org/spec/v2.0.0.html

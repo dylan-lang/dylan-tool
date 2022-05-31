@@ -4,10 +4,11 @@
 The dylan Command-line Tool
 ***************************
 
-The ``dylan`` tool provides a number of subcommands to simplify the management
-of Dylan workspaces and packages, eliminates the need to manually maintain the
-"registry" (which enables the compiler to locate libraries) by hand, and
-eliminates the need to use git submodules to track dependencies.
+The ``dylan`` command-line tool provides a number of subcommands to simplify
+the management of Dylan workspaces and package dependencies, eliminates the
+need to manually maintain the "registry" (which enables the compiler to locate
+libraries) by hand, and eliminates the need to use git submodules to track
+dependencies.
 
 .. toctree::
    :hidden:
@@ -82,7 +83,8 @@ release. For now, follow these steps to build and install.
 
         $ git clone --recursive https://github.com/dylan-lang/dylan-tool.git
         $ cd dylan-tool
-        $ make test
+        $ make
+        $ make test      # optional
         $ make install
 
 #.  Make sure that ``$DYLAN/bin`` is on your ``$PATH``. If you prefer not to
@@ -98,8 +100,8 @@ To make sure everything is working correctly, and to get a quick sense of
 what's available, start by running the ``dylan help`` command.
 
 To fully test your installation, try creating a temp workspace and updating
-it. Here's an example using the ``logging`` library as an "active package" in
-your workspace::
+it. Here's an example that makes a workspace with one active package,
+"logging"::
 
     $ cd /tmp
     $ dylan new workspace log
@@ -109,9 +111,10 @@ your workspace::
     $ dylan-compiler -build logging-test-suite   # optional
     $ _build/bin/logging-test-suite              # optional
 
-You should see a lot of output from the ``dylan update`` command. If you run
-the last two steps to build the ``logging-test-suite`` library you will see a
-bunch of compiler warnings for the core Dylan library, which may be ignored.
+You should see some output from the ``dylan update`` command including the
+location of the registry directory and any dependencies it downloads. If you
+run the last two steps to build the ``logging-test-suite`` library you will see
+a bunch of compiler warnings for the core Dylan library, which may be ignored.
 
 .. index::
    single: pacman
@@ -134,11 +137,15 @@ first subcommand name. Example: ``dylan --debug new library --exe my-lib``
 ``--debug``
   Disables error handling so that when an error occurs the debugger will be
   entered, or if not running under a debugger a stack trace will be printed.
+  When used with the ``--verbose`` flag this also enabled tracing of dependency
+  resolution.
 
 ``--verbose``
-  Enables debug logging to standard error. Each line is preceded by a single
-  letter indicating the type of message: **I**: info, **D**: debug, **W**:
-  warning, **E**: error, **T**: trace
+  Enables more verbose output, such as displaying which packages are
+  downloaded, which registry files are written, etc.
+
+  When used with the ``--debug`` flag this also enabled tracing of dependency
+  resolution.
 
 
 Subcommands
@@ -173,19 +180,36 @@ Install a package into the package cache, ``${DYLAN}/pkg``.
 
 Synopsis: ``dylan install <package> [<package> ...]``
 
-.. note:: This command may be removed. It was mainly useful during early
-   development.
+This command is primarily useful if you want to browse the source code in a
+package locally without having to worry about where to clone it from. The
+packages are installed into ``${DYLAN}/pkg/<package-name>/<version>/src/``.
 
 
 .. index::
    single: dylan list subcommand
    single: subcommand; dylan list
 
+.. _dylan-list:
+
 dylan list
 ----------
 
-List installed packages. With the ``--all`` option, list all packages in the
-catalog.
+Display a list of installed packages along with the latest installed version
+number and the latest version available in the catalog, plus a short
+description. With the ``--all`` option, list all packages in the catalog
+whether installed or not.
+
+An asterisk is displayed next to packages for which the latest installed 
+
+Example::
+
+   $ dylan list
+        Inst.   Latest  Package               Description
+        0.1.0    0.1.0  base64                Base64 encoding
+      * 3.1.0    3.2.0  command-line-parser   Parse command line flags and subcommands
+        0.1.0    0.1.0  concurrency           Concurrency utilities
+        0.6.0    0.6.0  dylan-tool            Manage Dylan workspaces, packages, and registries
+        ...
 
 
 .. index::
@@ -216,8 +240,11 @@ Options:
 ~~~~~~~~
 
 ``--exe``
-  Create an executable library. The primary difference is that with this
-  flag a ``main`` function is generated and called.
+  Create an executable library (with a ``main`` function and a top-level call
+  to that function) in addition to a shared library. Generally the ``main``
+  function does little more than parse command-line arguments and then calls
+  code in the shared library. The shared library is used by the executable
+  library and by the test suite.
 
 Here's an example of creating an executable named "killer-app" which depends on
 http version 1.0 and the latest version of logging. It assumes you are in the
@@ -228,9 +255,8 @@ top-level directory of a Dylan workspace. ::
   $ dylan-compiler -build killer-app-test-suite
   $ _build/bin/killer-app-test-suite
 
-You should edit the generated ``dylan-package.json`` file to set the repository
-URL and description for your package, or if this library is part of an existing
-package you can just delete ``dylan-package.json``.
+Edit the generated ``dylan-package.json`` file to set the repository URL,
+description, and other attributes for your package.
 
 
 .. index::
@@ -251,12 +277,12 @@ Options:
   Create the workspace under this directory instead of in the current working
   directory.
 
-The ``new workspace`` command creates a new workspace directory and initializes
-it with a ``workspace.json`` file. The workspace name is the only required
-argument. Example::
+The ``new workspace`` subcommand creates a new workspace directory and
+initializes it with a ``workspace.json`` file. The workspace name is the only
+required argument. Example::
 
-  $ dylan new workspace http
-  $ cd http
+  $ dylan new workspace my-app
+  $ cd my-app
   $ ls -l
   total 8
   -rw-r--r-- 1 you you   28 Dec 29 18:03 workspace.json
@@ -286,7 +312,7 @@ you're satisfied that you're ready to release a new version of your package
 (tests pass, doc updated, etc.) follow these steps:
 
 #.  Update the ``"version"`` attribute in ``dylan-package.json`` to be the new
-    release's version, and commit the change.
+    release's version, commit the change, and push it to your main branch.
 
 #.  Make a new release on GitHub with a tag that matches the release version.
     For example, if the ``"version"`` attribute in ``dylan-package.json`` is
@@ -302,6 +328,10 @@ you're satisfied that you're ready to release a new version of your package
 #.  Once your PR has been merged, verify that the package is available in the
     catalog by running ``dylan install my-package@0.5.0``, substituting your
     new release name and version.
+
+#.  It's generally good practice to update the version immediately after
+    publishing a release so that it reflects the *next* release's version
+    number. See :ref:`package-versions` for more on this.
 
 
 .. index::
@@ -355,7 +385,8 @@ The ``update`` command may be run from anywhere inside a workspace directory
 and performs two actions:
 
 #.  Installs all active package dependencies, as specified in their
-    ``dylan-package.json`` files.
+    `dylan-package.json` files. Any time these dependencies are changed you
+    should run ``dylan update`` again.
 
 #.  Updates the registry to have an entry for each library in the workspace's
     active packages or their dependencies.
@@ -375,14 +406,14 @@ and performs two actions:
 Example:
 ~~~~~~~~
 
-Create a workspace named ``http``, with one active package, ``http``, update
-it, and build the test suite::
+Create a workspace named ``dt``, with one active package, ``dylan-tool``,
+update it, and build the test suite::
 
-   $ dylan new workspace http
-   $ cd http
-   $ git clone --recursive https://github.com/dylan-lang/http
+   $ dylan new workspace dt
+   $ cd dt
+   $ git clone --recursive https://github.com/dylan-lang/dylan-tool
    $ dylan update
-   $ dylan-compiler -build http-server-test-suite
+   $ dylan-compiler -build dylan-tool-test-suite
 
 Note that ``dylan-compiler`` must always be invoked in the workspace directory
 so that it can find the ``registry`` directory. (This will be easier when the
@@ -397,8 +428,9 @@ invoked in the right environment.)
 dylan version
 -------------
 
-Show the Git version of the ``dylan`` command (i.e., the `dylan-tool
-<https://github.com/dylan-lang/dylan-tool>`_ repository).
+Show the version of the ``dylan`` command you are using. This is the Git
+version from which `dylan-tool <https://github.com/dylan-lang/dylan-tool>`_
+was compiled.
 
 Synopsis: ``dylan version``
 
