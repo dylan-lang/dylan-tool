@@ -193,7 +193,9 @@ define method execute-subcommand
     note("No active packages.");
   else
     note("Active packages:");
-    for (package in active)
+    for (package in sort(active, test: method (a, b)
+                                         pm/package-name(a) < pm/package-name(b)
+                                       end))
       let directory = ws/active-package-directory(workspace, pm/package-name(package));
       let command = "git status --untracked-files=no --branch --ahead-behind --short";
       let (status, output) = run(command, working-directory: directory);
