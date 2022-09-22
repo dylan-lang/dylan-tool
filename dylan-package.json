@@ -9,7 +9,7 @@
         "command-line-parser@3.1.1",
         "json@1.0",
         "logging@2.1",
-        "regular-expressions@1.0",
+        "regular-expressions@0.2",
         "uncommon-dylan@0.2"
     ],
     "dev-dependencies": [
