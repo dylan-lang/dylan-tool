@@ -374,7 +374,7 @@ define function file-content (path :: <locator>) => (text :: false-or(<string>))
   end
 end function;
 
-define constant $keyword-line-regex = #:regex:"^([a-zA-Z0-9-]+):[ \t]+(.+)$";
+define constant $keyword-line-regex = #:regex:"^([a-zA-Z][a-zA-Z0-9-]*):[ \t]+(.+)$";
 
 // Parse the contents of `path` into a new `<lid>` and return it. Every LID
 // keyword is turned into a symbol and used as the table key, and the data
