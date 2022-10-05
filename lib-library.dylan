@@ -115,6 +115,7 @@ define module %pacman
               <file-does-not-exist-error>,
               <file-system-file-locator>,
               <pathname>,
+              stream-locator,
               with-open-file };
   use format,
     import: { format,
