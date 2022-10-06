@@ -223,6 +223,7 @@ define module workspaces
 
   export
     $dylan-package-file-name,
+    $workspace-file-name,
     load-workspace,
     <workspace>,
       active-package-directory,
@@ -230,6 +231,7 @@ define module workspaces
       active-package?,
       workspace-active-packages,
       workspace-directory,
+      find-dylan-package-file,
       find-workspace-file,
       workspace-default-library-name,
     new,
@@ -257,6 +259,7 @@ define module dylan-tool-lib
               locator-path,
               merge-locators,
               relative-locator,
+              simplify-locator,
               subdirectory-locator };
   use operating-system,
     prefix: "os/",

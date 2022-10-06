@@ -1,5 +1,5 @@
 Module: dylan-tool-lib
-Synopsis: The `dylan new library` subcommand
+Synopsis: Create the initial boilerplate for new Dylan libraries
 
 
 define class <new-library-subcommand> (<subcommand>)
@@ -9,11 +9,16 @@ end class;
 
 define constant $new-library-subcommand
   = make(<new-library-subcommand>,
-         // dylan new library --exe foo <dep> ...
+         // dylan new library -x foo <dep> ...
          options:
            list(make(<flag-option>,
                      names: #("executable", "x"),
-                     help: "The library creates an executable binary"),
+                     help: "The library creates an executable binary",
+                     default: #f),
+                make(<flag-option>,
+                     names: #("force-package", "p"),
+                     help: "If true, create dylan-package.json even if already in a package",
+                     default: #f),
                 make(<positional-option>,
                      names: #("name"),
                      help: "Name of the library"),
@@ -24,7 +29,7 @@ define constant $new-library-subcommand
                      help: "Package dependencies in the form pkg@version."
                        " 'pkg' with no version gets the current latest"
                        " version. pkg@1.2 means a specific version. The test"
-                       " library automatically depends on testworks.")));
+                       " suite executable automatically depends on testworks.")));
 
 define method execute-subcommand
     (parser :: <command-line-parser>, subcmd :: <new-library-subcommand>)
@@ -32,7 +37,8 @@ define method execute-subcommand
   let name = get-option-value(subcmd, "name");
   let dep-specs = get-option-value(subcmd, "deps") | #[];
   let exe? = get-option-value(subcmd, "executable");
-  new-library(name, fs/working-directory(), dep-specs, exe?);
+  let force-package? = get-option-value(subcmd, "force-package");
+  new-library(name, fs/working-directory(), dep-specs, exe?, force-package?);
   0
 end method;
 
@@ -41,15 +47,13 @@ end method;
 // by beginners.
 define constant $library-name-regex = re/compile("^[a-z][a-z0-9-]*$");
 
-// TODO: We currently always create a dylan-package.json file. Detect whether
-// the new library is inside an existing package, at workspace top-level, or
-// what, since it's valid to create a new library inside an existing package.
 define function new-library
-    (name :: <string>, dir :: <directory-locator>, dep-specs :: <seq>, exe? :: <bool>)
+    (name :: <string>, dir :: <directory-locator>, dep-specs :: <seq>, exe? :: <bool>,
+     force-package? :: <bool>)
   if (~re/search($library-name-regex, name))
     error("%= is not a valid Dylan library name."
             " Names are one or more words separated by hyphens, for example"
-            "'cool-stuff'. Names must match the regular expression %=.",
+            " 'cool-stuff'. Names must match the regular expression %=.",
           name, re/pattern($library-name-regex));
   end;
   let lib-dir = subdirectory-locator(dir, name);
@@ -57,7 +61,7 @@ define function new-library
     error("Directory %s already exists.", lib-dir);
   end;
   // Parse dep specs before writing any files, in case of errors.
-  make-dylan-library(name, lib-dir, exe?, parse-dep-specs(dep-specs));
+  make-dylan-library(name, lib-dir, exe?, parse-dep-specs(dep-specs), force-package?);
 end function;
 
 // Creates source files for a new library (app or shared lib), its
@@ -247,7 +251,8 @@ end function;
 
 // Write files for a library named `name` in directory `dir`.
 define function make-dylan-library
-    (name :: <string>, dir :: <directory-locator>, exe? :: <bool>, deps :: <seq>)
+    (name :: <string>, dir :: <directory-locator>, exe? :: <bool>, deps :: <seq>,
+     force-package? :: <bool>)
   local
     method file (name)
       merge-locators(as(<file-locator>, name), dir)
@@ -297,11 +302,39 @@ define function make-dylan-library
                 format-string: iff(exe?,
                                    $exe-test-main-template,
                                    $lib-test-main-template),
-                format-arguments: list(name, name)),
-           make(<template>,
-                output-file: file(ws/$dylan-package-file-name),
-                format-string: $pkg-template,
-                format-arguments: list(deps-string, name)));
+                format-arguments: list(name, name)));
+  let old-pkg-file = simplify-locator(ws/find-dylan-package-file(dir));
+  let new-pkg-file = simplify-locator(file(ws/$dylan-package-file-name));
+  if (old-pkg-file & ~force-package?)
+    warn("Package file %s exists. Skipping creation.", old-pkg-file);
+  else
+    if (old-pkg-file)
+      warn("This package is being created inside an existing package.");
+    end;
+    note("Don't forget to edit %s if you plan to publish this library as a package.",
+         new-pkg-file);
+    templates
+      := add(templates,
+             make(<template>,
+                  output-file: new-pkg-file,
+                  format-string: $pkg-template,
+                  format-arguments: list(deps-string, name)));
+  end;
+  let workspace-file = ws/find-workspace-file(dir);
+  if (workspace-file)
+    note("Current workspace: %s", workspace-file);
+  else
+    // Workspace file is created in the CURRENT directory, not the library directory.
+    let ws-file = merge-locators(as(<file-locator>, ws/$workspace-file-name),
+                                 fs/working-directory());
+    note("Creating new workspace %s.", ws-file);
+    templates
+      := add(templates,
+             make(<template>,
+                  output-file: ws-file,
+                  format-string: #:string:'{ "default-library": %= }',
+                  format-arguments: list(name)));
+  end;
   for (template in templates)
     write-template(template)
   end;
