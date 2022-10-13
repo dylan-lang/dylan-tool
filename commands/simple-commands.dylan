@@ -118,7 +118,7 @@ end function;
 
 /// dylan new workspace
 
-define class <new-workspace-subcommand> (<subcommand>)
+define class <new-workspace-subcommand> (<new-subcommand>)
   keyword name = "workspace";
   keyword help = "Create a new workspace.";
 end class;

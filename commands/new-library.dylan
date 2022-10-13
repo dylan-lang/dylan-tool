@@ -1,43 +1,71 @@
 Module: dylan-tool-lib
-Synopsis: Create the initial boilerplate for new Dylan libraries
+Synopsis: Create the initial boilerplate for new Dylan libraries and applications
 
 
-define class <new-library-subcommand> (<subcommand>)
-  keyword name = "library";
-  keyword help = "Create a new library and its test library.";
+define class <new-application-subcommand> (<new-subcommand>)
+  keyword name = "application";
+  keyword help = "Create a new application and its test library.";
 end class;
 
-define constant $new-library-subcommand
-  = make(<new-library-subcommand>,
-         // dylan new library -x foo <dep> ...
+define class <new-library-subcommand> (<new-subcommand>)
+  keyword name = "library";
+  keyword help = "Create a new shared library and its test library.";
+end class;
+
+define constant $deps-option
+  = make(<positional-option>,
+         names: #("deps"),
+         required?: #f,
+         repeated?: #t,
+         help: "Package dependencies in the form pkg@version."
+           " 'pkg' with no version gets the current latest"
+           " version. pkg@1.2 means a specific version. The test"
+           " suite executable automatically depends on testworks.");
+
+// dylan new application foo http json ...
+define constant $new-application-subcommand
+  = make(<new-application-subcommand>,
          options:
            list(make(<flag-option>,
-                     names: #("executable", "x"),
-                     help: "The library creates an executable binary",
+                     names: #("force-package", "p"),
+                     help: "If true, create dylan-package.json even if already in a package",
                      default: #f),
-                make(<flag-option>,
+                make(<positional-option>,
+                     names: #("name"),
+                     help: "Name of the application"),
+                $deps-option));
+
+// dylan new library foo http json ...
+define constant $new-library-subcommand
+  = make(<new-library-subcommand>,
+         options:
+           list(make(<flag-option>,
                      names: #("force-package", "p"),
                      help: "If true, create dylan-package.json even if already in a package",
                      default: #f),
                 make(<positional-option>,
                      names: #("name"),
                      help: "Name of the library"),
-                make(<positional-option>,
-                     names: #("deps"),
-                     required?: #f,
-                     repeated?: #t,
-                     help: "Package dependencies in the form pkg@version."
-                       " 'pkg' with no version gets the current latest"
-                       " version. pkg@1.2 means a specific version. The test"
-                       " suite executable automatically depends on testworks.")));
+                $deps-option));
+
+define method execute-subcommand
+    (parser :: <command-line-parser>, subcmd :: <new-application-subcommand>)
+ => (status :: false-or(<int>))
+  let name = get-option-value(subcmd, "name");
+  let dep-specs = get-option-value(subcmd, "deps") | #[];
+  let force-package? = get-option-value(subcmd, "force-package");
+  let exe? = #t;
+  new-library(name, fs/working-directory(), dep-specs, exe?, force-package?);
+  0
+end method;
 
 define method execute-subcommand
     (parser :: <command-line-parser>, subcmd :: <new-library-subcommand>)
  => (status :: false-or(<int>))
   let name = get-option-value(subcmd, "name");
   let dep-specs = get-option-value(subcmd, "deps") | #[];
-  let exe? = get-option-value(subcmd, "executable");
   let force-package? = get-option-value(subcmd, "force-package");
+  let exe? = #f;
   new-library(name, fs/working-directory(), dep-specs, exe?, force-package?);
   0
 end method;
