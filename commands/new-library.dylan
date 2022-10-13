@@ -303,7 +303,8 @@ define function make-dylan-library
                                    $exe-test-main-template,
                                    $lib-test-main-template),
                 format-arguments: list(name, name)));
-  let old-pkg-file = simplify-locator(ws/find-dylan-package-file(dir));
+  let pkg-file = ws/find-dylan-package-file(dir);
+  let old-pkg-file = pkg-file & simplify-locator(pkg-file);
   let new-pkg-file = simplify-locator(file(ws/$dylan-package-file-name));
   if (old-pkg-file & ~force-package?)
     warn("Package file %s exists. Skipping creation.", old-pkg-file);
