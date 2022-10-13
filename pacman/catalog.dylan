@@ -108,11 +108,14 @@ define function catalog
 end function;
 
 define function find-package
-    (cat :: <catalog>, name :: <string>) => (pkg :: <package>)
+    (cat :: <catalog>, name :: <string>) => (pkg :: false-or(<package>))
   let name = lowercase(name);
   let cache = catalog-package-cache(cat);
   cached-package(cat, name)
-    | cache-package(cat, load-catalog-package(cat, name))
+    | begin
+        let package = load-catalog-package(cat, name);
+        package & cache-package(cat, package)
+      end
 end function;
 
 define function load-all-catalog-packages
@@ -282,29 +285,38 @@ define method json/do-print
 end method;
 
 define function load-catalog-package
-    (cat :: <catalog>, name :: <string>) => (package :: <package>)
+    (cat :: <catalog>, name :: <string>) => (package :: false-or(<package>))
   let file = package-locator(cat.catalog-directory, name);
-  load-catalog-package-file(cat, name, file);
+  load-catalog-package-file(cat, name, file)
 end function;
 
-define function load-catalog-package-file
-    (cat :: <catalog>, name :: <string>, file :: <file-locator>) => (package :: <package>)
+define generic load-catalog-package-file
+    (cat :: <catalog>, name :: <string>, file-or-stream :: <object>)
+ => (package :: false-or(<package>));
+
+define method load-catalog-package-file
+    (cat :: <catalog>, name :: <string>, file :: <file-locator>)
+ => (package :: false-or(<package>))
   verbose("Loading %s", file);
-  let json
-    = block ()                  // if-does-not-exist: #f doesn't work
-        with-open-file (stream = file, direction: #"input")
-          json/parse(stream)
-        end
-      exception (<file-does-not-exist-error>)
-        signal(make(<package-missing-error>,
-                    package-name: name,
-                    format-string: "package %= not in catalog",
-                    format-arguments: list(name)))
-      end;
+  // We need the block here because if-does-not-exist: #f doesn't work.
+  // https://github.com/dylan-lang/opendylan/issues/1358
+  block ()
+    with-open-file (stream = file, direction: #"input")
+      load-catalog-package-file(cat, name, stream)
+    end
+  exception (<file-does-not-exist-error>)
+    #f
+  end
+end method;
+
+define method load-catalog-package-file
+    (cat :: <catalog>, name :: <string>, stream :: <stream>)
+ => (package :: false-or(<package>))
+  let json = json/parse(stream);
   let stored-name = json["name"];
   if (stored-name ~= name)
     warn("%s: loaded package name is %=, expected %=",
-         file, stored-name, name);
+         stream-locator(stream), stored-name, name);
   end;
   let package = make(<package>,
                      name: name,
@@ -334,7 +346,7 @@ define function load-catalog-package-file
     add-release(package, to-release(dict))
   end;
   cat.catalog-package-cache[name] := package
-end function;
+end method;
 
 // Publish the given release by writing a new catalog file that contains the
 // given release. Signals <catalog-error> if the release is not newer than any
@@ -342,11 +354,7 @@ end function;
 define function publish-release
     (cat :: <catalog>, release :: <release>) => ()
   let name = package-name(release);
-  let old-package = block ()
-                      find-package(cat, name)
-                    exception (<package-missing-error>)
-                      #f
-                    end;
+  let old-package = find-package(cat, name);
   let new-package = release-package(release);
   if (old-package)
     // Include the releases from the existing package when we write the file.
@@ -357,7 +365,7 @@ define function publish-release
     end;
   end;
   let latest = find-package-release(cat, name, $latest);
-  if (release <= latest)
+  if (release & latest & release <= latest)
     catalog-error("New release (%s) must have a higher version than the"
                     " latest release (%s)",
                   release-to-string(release), release-to-string(latest));

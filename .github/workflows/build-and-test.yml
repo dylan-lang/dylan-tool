@@ -40,7 +40,7 @@ jobs:
           export DYLAN_CATALOG=$(realpath ${DYLAN_CATALOG})
           ${dylan_exe} new workspace test-workspace
           cd test-workspace
-          ${dylan_exe} new library abc strings@1.1
+          ${dylan_exe} new library --force-package abc strings@1.1
           ${dylan_exe} update
           ${dylan_exe} status
           ${dylan_exe} list
