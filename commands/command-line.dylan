@@ -2,7 +2,7 @@ Module: dylan-tool-lib
 Synopsis: Definition of the command-line as a whole
 
 
-// Parent of "new library" and "new workspace".
+// Parent of "new library", "new workspace", et al.
 define class <new-subcommand> (<subcommand>)
   keyword name = "new";
   keyword help = "";
