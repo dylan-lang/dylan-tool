@@ -26,8 +26,12 @@ end library dylan-tool-lib;
 
 // Definitions used by all the other modules.
 define module shared
-  use uncommon-dylan;
   use format-out;
+  use operating-system,
+    prefix: "os/";
+  use streams;
+  use strings;
+  use uncommon-dylan;
   export
     *debug?*,
     *verbose?*,
@@ -35,7 +39,8 @@ define module shared
     note,
     verbose,
     trace,
-    warn;
+    warn,
+    locate-dylan-compiler;
 end module;
 
 define module pacman
@@ -237,6 +242,7 @@ define module workspaces
     new,
     update,
     <workspace-error>,
+    find-active-package-library-names,
     find-library-names;
 end module workspaces;
 

@@ -40,3 +40,22 @@ end;
 define inline function warn (fmt, #rest args) => ()
   apply(note, concat("WARNING: ", fmt), args);
 end;
+
+
+// Find the full path to dylan-compiler or signal an error.
+define function locate-dylan-compiler () => (dc :: <string>)
+  let output = with-output-to-string (stream)
+                 local method outputter (output, #key end: epos)
+                         write(stream, copy-sequence(output, end: epos));
+                       end;
+                 os/run-application("which dylan-compiler",
+                                    under-shell?: #t,
+                                    outputter: outputter);
+               end;
+  let lines = split-lines(output);
+  if (lines[0].size > 0)
+    lines[0]
+  else
+    error("dylan-compiler not found. Is it on your PATH?");
+  end
+end function;

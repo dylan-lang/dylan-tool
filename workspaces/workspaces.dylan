@@ -280,3 +280,17 @@ define function update-registry
   end;
   registry
 end function;
+
+// Find the names of all libraries defined in the active packages within the
+// workspace `ws`.
+define function find-active-package-library-names
+    (ws :: <workspace>) => (names :: <seq>)
+  let names = #[];
+  for (package in find-active-packages(ws.workspace-directory))
+    let dir = active-package-directory(ws, pm/package-name(package));
+    let more-names = find-library-names(dir);
+    verbose("Found libraries %= in %s", more-names, dir);
+    names := concat(names, more-names);
+  end;
+  names
+end function;

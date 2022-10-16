@@ -264,6 +264,60 @@ Synopsis:
 
 
 .. index::
+   single: dylan build subcommand
+   single: subcommand; dylan build
+
+dylan build
+-----------
+
+Build the configured default library or the specified libraries.
+
+Synopsis:
+  ``dylan build [options] [--all | lib1 lib2 ...]``
+
+The ``dylan build`` command is essentially a wrapper around ``dylan-compiler``
+that has a few advantages:
+
+#. Invoke it from any directory inside your workspace and it will run the build
+   in the top-level workspace directory so that the ``_build`` and ``registry``
+   directories are used.
+
+#. Configure a set of libraries to build by default, in dylan-package.json.
+
+#. Use the ``--all`` flag to build all libraries in the workspace. For example,
+   normally this builds both the main library and the test suite.
+
+#. Specify multiple libraries on one command line, unlike with
+   ``dylan-compiler``.
+
+``dylan build`` exits after the first library that generates serious compiler
+warnings, i.e., if ``dylan-compiler`` exits with an error status. (Requires an
+Open Dylan release later than 2020.1.)
+
+.. note:: This subcommand is purely a convenience; it is perfectly valid to run
+          ``dylan-compiler`` directly instead, after changing to the workspace
+          top-level directory.
+
+Options:
+~~~~~~~~
+
+``--all``
+  Build all libraries found in the active packages of the current workspace.
+  This option is ignored if specific libraries are requested on the command
+  line also.
+
+``--clean``
+  Do not use cached build products; rebuild from scratch.
+
+``--link``
+  Link the executable or shared library. Defaults to true. Use ``--no-link``
+  for faster builds when iterating through compiler warnings.
+
+``--unify``
+  Combine all used libraries into a single executable.
+
+
+.. index::
    single: dylan install subcommand
    single: subcommand; dylan install
 

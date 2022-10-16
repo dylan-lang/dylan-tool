@@ -23,7 +23,8 @@ define function dylan-tool-command-line
                    name: "debug",
                    help: "Enter the debugger (or print a backtrace) on error.")),
        subcommands:
-         list($install-subcommand,
+         list($build-subcommand,
+              $install-subcommand,
               $list-subcommand,
               make(<new-subcommand>,
                    subcommands: list($new-application-subcommand,
