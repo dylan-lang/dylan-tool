@@ -130,8 +130,8 @@ dependencies::
     $ dylan new library --executable hello-world
 
 If you're new to Dylan, take a look at the generated files in the "hello-world"
-subdirectory. In particular, "hello-world/dylan-package.json" describes a Dylan
-package, which you could eventually publish for others to use.
+subdirectory. In particular, ``hello-world/dylan-package.json`` describes a
+Dylan package, which you could eventually publish for others to use.
 
 It is possible to build hello-world now because it has no dependencies, but for
 most libraries with complex dependencies we first have to create a "registry"
@@ -179,7 +179,7 @@ Also build and run the test suite::
 Now let's add a new dependency to our library. Let's say we want to ``use
 base64`` in our "library.dylan" file. The compiler finds libraries via the
 registry, but there is no "base64" registry file. To fix this, edit
-"hello-world/dylan-package.json" to add the dependency. Change this::
+``hello-world/dylan-package.json`` to add the dependency. Change this::
 
     "dependencies": [  ],
 
@@ -282,7 +282,7 @@ that has a few advantages:
    in the top-level workspace directory so that the ``_build`` and ``registry``
    directories are used.
 
-#. Configure a set of libraries to build by default, in dylan-package.json.
+#. Configure a set of libraries to build by default, in ``dylan-package.json``.
 
 #. Use the ``--all`` flag to build all libraries in the workspace. For example,
    normally this builds both the main library and the test suite.
@@ -314,7 +314,9 @@ Options:
   for faster builds when iterating through compiler warnings.
 
 ``--unify``
-  Combine all used libraries into a single executable.
+  Combine all used libraries into a single executable. Note that
+  ``dylan-compiler`` puts the generated executable in ``_build/sbin`` instead
+  of ``_build/bin`` when this flag is used.
 
 
 .. index::
@@ -362,25 +364,56 @@ Example::
 
 
 .. index::
+   single: dylan new application subcommand
+   single: subcommand; dylan new application
+
+dylan new application
+---------------------
+
+Generate the boilerplate for a new executable application.
+
+Synopsis: ``dylan new application [options] <app-name> [<dependency> ...]``
+
+This command is the same as `dylan new library`_ except that it also generates
+a ``main`` function and code to call that function.
+
+Here's an example of creating an executable named "killer-app" which depends on
+http version 1.0 and the latest version of logging. ::
+
+  $ dylan new application killer-app http@1.0 logging
+  $ dylan update            # generate registry files
+  $ dylan build --all
+  $ _build/bin/killer-app
+  $ _build/bin/killer-app-test-suite
+
+See `dylan new library`_ (below) for more details.
+
+
+.. index::
    single: dylan new library subcommand
    single: subcommand; dylan new library
 
 dylan new library
 -----------------
 
-Generate the boilerplate for a new library.
+Generate the boilerplate for a new shared library.
 
 Synopsis: ``dylan new library [options] <library-name> [<dependency> ...]``
 
+This command is the same as `dylan new application`_ except that it doesn't
+generate a ``main`` function.
+
 Specifying dependencies is optional. They should be in the same form as
-specified in the ``dylan-package.json`` file.
+specified in the ``dylan-package.json`` file. For example, "strings\@1.0".
 
 This command generates the following code:
 
-* A main library and module definition and initial source files
-* A corresponding test suite library and initial source files
+* A main library and module definition and initial source files.
+* A corresponding test suite library and initial source files.
 * A ``dylan-package.json`` file (unless this new library is being added to an
   existing package).
+* If not already inside a Dylan workspace, a ``workspace.json`` file is created
+  **in the current directory**.
 
 Unlike the ``make-dylan-app`` binary included with Open Dylan, this command
 does not generate a "registry" directory. Instead, it is expected that you will
@@ -389,20 +422,16 @@ run ``dylan update`` to generate the registry.
 Options:
 ~~~~~~~~
 
-``--executable`` or ``-x``
-  Create an executable library (with a ``main`` function and a top-level call
-  to that function) in addition to a shared library. Generally the ``main``
-  function does little more than parse command-line arguments and then calls
-  code in the shared library. The shared library is used by the executable
-  library and by the test suite.
+``--force-package``, ``-p``
+  Create ``dylan-package.json`` even if already inside a package. This is
+  intended for testing and continuous integration use.
 
-Here's an example of creating an executable named "killer-app" which depends on
-http version 1.0 and the latest version of logging. It assumes you are in the
-top-level directory of a Dylan workspace. ::
+Here's an example of creating a library named "http" which depends on "strings"
+version 1.0 and the latest version of "logging". ::
 
-  $ dylan new library -x killer-app http@1.0 logging
-  $ dylan update     # generate registry files, assumes in a workspace
-  $ dylan-compiler -build killer-app-test-suite
+  $ dylan new library http strings@1.0 logging
+  $ dylan update          # generate registry files
+  $ dylan build --all
   $ _build/bin/killer-app-test-suite
 
 Edit the generated ``dylan-package.json`` file to set the repository URL,
@@ -438,7 +467,8 @@ required argument. Example::
   -rw-r--r-- 1 you you   28 Dec 29 18:03 workspace.json
 
 Clone repositories in the top-level workspace directory to create active
-packages, then run `dylan update`_.
+packages (or create them with `dylan new library`_ and `dylan new
+application`_), then run `dylan update`_.
 
 
 .. index::
@@ -535,7 +565,7 @@ The ``update`` command may be run from anywhere inside a workspace directory
 and performs two actions:
 
 #.  Installs all active package dependencies, as specified in their
-    `dylan-package.json` files. Any time these dependencies are changed you
+    ``dylan-package.json`` files. Any time these dependencies are changed you
     should run ``dylan update`` again.
 
 #.  Updates the registry to have an entry for each library in the workspace's
