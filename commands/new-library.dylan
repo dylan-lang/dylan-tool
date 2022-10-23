@@ -98,79 +98,61 @@ end function;
 // Define #:string: syntax.
 define function string-parser (s) s end;
 
-// LID file for both exe and lib.
-define constant $lid-template
+define constant $lib-lid-template
   = #:string:"Library: %s
 Files: library.dylan
        %s.dylan
+Target-Type: dll
+";
+
+define constant $exe-lid-template
+  = #:string:"Library: %s-app
+Files: %s-app-library.dylan
+       %s-app.dylan
+Target-Type: executable
+";
+
+define constant $test-lid-template
+  = #:string:"Library: %s-test-suite
+Files: library.dylan
+       %s-test-suite.dylan
+Target-Type: executable
 ";
 
 // library.dylan file for an executable library.
-define constant $exe-library-template
+define constant $exe-library-definition-template
   = #:string:"Module: dylan-user
+Synopsis: Module and library definition for executable application
 
-define library %s
+define library %s-app
   use common-dylan;
+  use %s;
   use io, import: { format-out };
-
-  // Export module for use by test suite.
-  export
-    %s;
 end library;
 
-define module %s
+define module %s-app
   use common-dylan;
   use format-out;
-
-  // Exports for use by test suite.
-  export
-    $greeting;
+  use %s;
 end module;
 ";
 
-// Main program for an executable application.
+// Main program for the executable.
 define constant $exe-main-template
-  = #:string:'Module: %s
-
-define constant $greeting = "Hello world!";
+  = #:string:'Module: %s-app
 
 define function main
     (name :: <string>, arguments :: <vector>)
-  format-out("%%s\n", $greeting);
+  format-out("%%s\n", greeting());
+  exit-application(0);
 end function;
 
-main(application-name(), application-arguments())
+// Calling our main function (which could have any name) should be the last
+// thing we do.
+main(application-name(), application-arguments());
 ';
 
-// library.dylan for a test library for an application.
-define constant $exe-test-library-template
-  = #:string:"Module: dylan-user
-
-define library %s-test-suite
-  use common-dylan;
-  use testworks;
-  use %s;
-end library;
-
-define module %s-test-suite
-  use common-dylan;
-  use testworks;
-  use %s;
-end module;
-";
-
-define constant $exe-test-main-template
-  = #:string:'Module: %s-test-suite
-
-define test test-greeting ()
-  assert-equal("Hello world!", $greeting);
-end test;
-
-// Run `_build/bin/%s-test-suite --help` to see options.
-run-test-application()
-';
-
-define constant $lib-library-template
+define constant $lib-library-definition-template
   = #:string:'Module: dylan-user
 
 define library %s
@@ -186,7 +168,7 @@ end library;
 //  module exports them.
 define module %s
   create
-    greeting;
+    greeting;                   // Example. Delete me.
 end module;
 
 // Implementation module implements definitions for names created by the
@@ -198,11 +180,11 @@ define module %s-impl
 
   // Additional exports for use by test suite.
   export
-    $greeting;
+    $greeting;                  // Example code. Delete me.
 end module;
 ';
 
-define constant $lib-main-template
+define constant $lib-main-code-template
   = #:string:'Module: %s-impl
 
 // Internal
@@ -214,7 +196,7 @@ define function greeting () => (s :: <string>)
 end function;
 ';
 
-define constant $lib-test-library-template
+define constant $test-library-definition-template
   = #:string:'Module: dylan-user
 
 define library %s-test-suite
@@ -231,7 +213,7 @@ define module %s-test-suite
 end module;
 ';
 
-define constant $lib-test-main-template
+define constant $test-main-code-template
   = #:string:'Module: %s-test-suite
 
 define test test-$greeting ()
@@ -249,7 +231,7 @@ run-test-application()
 // TODO: We don't have enough info to fill in "location" here. Since this will
 // be an active package, location shouldn't be needed until the package is
 // published in the catalog, at which time the user should be gently informed.
-define constant $pkg-template
+define constant $dylan-package-file-template
   = #:string:'{
     "dependencies": [ %s ],
     "dev-dependencies": [ "testworks" ],
@@ -295,42 +277,48 @@ define function make-dylan-library
   let test-name = concat(name, "-test-suite");
   let deps-string = join(map-as(<vector>, dep-string, deps), ", ");
   let templates
-    = list(// Main library files...
+    = list(// Base library files...
            make(<template>,
                 output-file: file(concat(name, ".lid")),
-                format-string: $lid-template,
+                format-string: $lib-lid-template,
                 format-arguments: list(name, name)),
            make(<template>,
                 output-file: file("library.dylan"),
-                format-string: iff(exe?,
-                                   $exe-library-template,
-                                   $lib-library-template),
-                format-arguments: iff(exe?,
-                                      list(name, name, name),
-                                      list(name, name, name, name, name, name))),
+                format-string: $lib-library-definition-template,
+                format-arguments: list(name, name, name, name, name, name)),
            make(<template>,
                 output-file: file(concat(name, ".dylan")),
-                format-string: iff(exe?, $exe-main-template, $lib-main-template),
+                format-string: $lib-main-code-template,
                 format-arguments: list(name)),
            // Test library files...
            make(<template>,
                 output-file: test-file(concat(test-name, ".lid")),
-                format-string: $lid-template,
-                format-arguments: list(test-name, test-name)),
+                format-string: $test-lid-template,
+                format-arguments: list(name, name)),
            make(<template>,
                 output-file: test-file("library.dylan"),
-                format-string: iff(exe?,
-                                   $exe-test-library-template,
-                                   $lib-test-library-template),
-                format-arguments: iff(exe?,
-                                      list(name, name, name, name),
-                                      list(name, name, name, name, name))),
+                format-string: $test-library-definition-template,
+                format-arguments: list(name, name, name, name, name)),
            make(<template>,
                 output-file: test-file(concat(test-name, ".dylan")),
-                format-string: iff(exe?,
-                                   $exe-test-main-template,
-                                   $lib-test-main-template),
+                format-string: $test-main-code-template,
                 format-arguments: list(name, name)));
+  if (exe?)
+    // Executable app files...
+    let more = list(make(<template>,
+                         output-file: file(concat(name, "-app.lid")),
+                         format-string: $exe-lid-template,
+                         format-arguments: list(name, name, name)),
+                    make(<template>,
+                         output-file: file(concat(name, "-app-library.dylan")),
+                         format-string: $exe-library-definition-template,
+                         format-arguments: list(name, name, name, name, name, name)),
+                    make(<template>,
+                         output-file: file(concat(name, "-app.dylan")),
+                         format-string: $exe-main-template,
+                         format-arguments: list(name)));
+    templates := concat(templates, more);
+  end;
   let pkg-file = ws/find-dylan-package-file(dir);
   let old-pkg-file = pkg-file & simplify-locator(pkg-file);
   let new-pkg-file = simplify-locator(file(ws/$dylan-package-file-name));
@@ -346,7 +334,7 @@ define function make-dylan-library
       := add(templates,
              make(<template>,
                   output-file: new-pkg-file,
-                  format-string: $pkg-template,
+                  format-string: $dylan-package-file-template,
                   format-arguments: list(deps-string, name)));
   end;
   let workspace-file = ws/find-workspace-file(dir);
