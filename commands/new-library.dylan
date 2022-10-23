@@ -332,8 +332,6 @@ define function make-dylan-library
     if (old-pkg-file)
       warn("This package is being created inside an existing package.");
     end;
-    note("Edit %s if you plan to publish this library as a package.",
-         new-pkg-file);
     templates
       := add(templates,
              make(<template>,
