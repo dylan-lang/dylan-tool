@@ -246,6 +246,7 @@ define class <template> (<object>)
   constant slot format-string :: <string>, required-init-keyword: format-string:;
   constant slot format-arguments :: <seq> = #(), init-keyword: format-arguments:;
   constant slot output-file :: <file-locator>, required-init-keyword: output-file:;
+  constant slot library-name :: false-or(<string>) = #f, init-keyword: library-name:;
 end class;
 
 define function write-template
@@ -279,6 +280,7 @@ define function make-dylan-library
   let templates
     = list(// Base library files...
            make(<template>,
+                library-name: name,
                 output-file: file(concat(name, ".lid")),
                 format-string: $lib-lid-template,
                 format-arguments: list(name, name)),
@@ -292,6 +294,7 @@ define function make-dylan-library
                 format-arguments: list(name)),
            // Test library files...
            make(<template>,
+                library-name: test-name,
                 output-file: test-file(concat(test-name, ".lid")),
                 format-string: $test-lid-template,
                 format-arguments: list(name, name)),
@@ -306,6 +309,7 @@ define function make-dylan-library
   if (exe?)
     // Executable app files...
     let more = list(make(<template>,
+                         library-name: concat(name, "-app"),
                          output-file: file(concat(name, "-app.lid")),
                          format-string: $exe-lid-template,
                          format-arguments: list(name, name, name)),
@@ -328,7 +332,7 @@ define function make-dylan-library
     if (old-pkg-file)
       warn("This package is being created inside an existing package.");
     end;
-    note("Don't forget to edit %s if you plan to publish this library as a package.",
+    note("Edit %s if you plan to publish this library as a package.",
          new-pkg-file);
     templates
       := add(templates,
@@ -353,7 +357,11 @@ define function make-dylan-library
                   format-arguments: list(name)));
   end;
   for (template in templates)
-    write-template(template)
+    write-template(template);
+    let name = template.library-name;
+    if (name)
+      note("Created library %s", name)
+    end;
   end;
 end function;
 
