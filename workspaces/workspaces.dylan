@@ -72,7 +72,7 @@ define function update () => ()
   let registry = update-registry(ws, cat, releases, actives);
 
   let no-lid = registry.libraries-with-no-lid;
-  if (~empty?(no-lid))
+  if (~empty?(no-lid) & *verbose?*)
     warn("These libraries had no LID file for platform %s:\n  %s",
          os/$platform-name, join(sort!(no-lid), ", "));
   end;
