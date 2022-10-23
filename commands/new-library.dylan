@@ -332,6 +332,9 @@ define function make-dylan-library
     if (old-pkg-file)
       warn("This package is being created inside an existing package.");
     end;
+    verbose("Edit %s if you need to change dependencies or if you plan"
+              " to publish this library as a package.",
+            new-pkg-file);
     templates
       := add(templates,
              make(<template>,
@@ -346,19 +349,17 @@ define function make-dylan-library
     // Workspace file is created in the CURRENT directory, not the library directory.
     let ws-file = merge-locators(as(<file-locator>, ws/$workspace-file-name),
                                  fs/working-directory());
-    note("Creating new workspace %s.", ws-file);
-    templates
-      := add(templates,
-             make(<template>,
-                  output-file: ws-file,
-                  format-string: #:string:'{ "default-library": %= }',
-                  format-arguments: list(name)));
+    write-template(make(<template>,
+                        output-file: ws-file,
+                        format-string: #:string:'{ "default-library": %= }',
+                        format-arguments: list(name)));
+    note("Created new workspace %s.", ws-file);
   end;
   for (template in templates)
     write-template(template);
     let name = template.library-name;
     if (name)
-      note("Created library %s", name)
+      note("Created library %s.", name)
     end;
   end;
   ws/update();
