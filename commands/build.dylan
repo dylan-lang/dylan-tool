@@ -72,11 +72,7 @@ define method execute-subcommand
     let exit-status
       = os/run(command,
                under-shell?: #f,
-               working-directory: ws/workspace-directory(workspace),
-               outputter: method (buf, #key end: epos)
-                            format-out("%s", copy-sequence(buf, end: epos));
-                            force-out();
-                          end);
+               working-directory: ws/workspace-directory(workspace));
     if (exit-status ~== 0)
       error("Build of %= failed with exit status %=.", name, exit-status);
     end;
