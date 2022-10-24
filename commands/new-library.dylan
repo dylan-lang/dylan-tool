@@ -260,7 +260,10 @@ define function write-template
   end;
 end function;
 
-// Write files for a library named `name` in directory `dir`.
+// Write files for libraries named `name`, `name`-test-suite and (if `exe?` is
+// true) `name`-app in directory `dir`. `deps` is a sequence of `<dep>`
+// objects. If `dir` is not part of a workspace already then a workspace file
+// is created in `dir`/../workspace.json.
 define function make-dylan-library
     (name :: <string>, dir :: <directory-locator>, exe? :: <bool>, deps :: <seq>,
      force-package? :: <bool>)
@@ -346,9 +349,12 @@ define function make-dylan-library
   if (workspace-file)
     note("Current workspace: %s", workspace-file);
   else
-    // Workspace file is created in the CURRENT directory, not the library directory.
+    // Workspace file is created in the PARENT directory, not the library
+    // directory. The expectation is that each library will have its own
+    // subdirectory as a child of the workspace dir. If that doesn't fit, then
+    // create a workspace before calling this function.
     let ws-file = merge-locators(as(<file-locator>, ws/$workspace-file-name),
-                                 fs/working-directory());
+                                 locator-directory(dir));
     write-template(make(<template>,
                         output-file: ws-file,
                         format-string: #:string:'{ "default-library": %= }',
