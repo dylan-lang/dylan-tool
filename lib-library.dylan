@@ -10,6 +10,7 @@ define library dylan-tool-lib
     import: { format, format-out, print, standard-io, streams };
   use json;
   use regular-expressions;
+  use file-source-records;
   use strings;
   use system,
     import: { date, file-system, locators, operating-system };
@@ -21,7 +22,8 @@ define library dylan-tool-lib
     pacman,
     %pacman,
     shared,
-    workspaces;
+    workspaces,
+    %workspaces;
 end library dylan-tool-lib;
 
 // Definitions used by all the other modules.
@@ -181,6 +183,27 @@ define module %pacman
 end module %pacman;
 
 define module workspaces
+  create
+    $dylan-package-file-name,
+    $workspace-file-name,
+    load-workspace,
+    <workspace>,
+      active-package-directory,
+      active-package-file,
+      active-package?,
+      workspace-active-packages,
+      workspace-directory,
+      find-dylan-package-file,
+      find-workspace-file,
+      workspace-default-library-name,
+    new,
+    update,
+    <workspace-error>,
+    find-active-package-library-names,
+    find-library-names;
+end module workspaces;
+
+define module %workspaces
   use dylan-extensions,
     import: { address-of };
   use file-system,
@@ -202,16 +225,15 @@ define module workspaces
               merge-locators,
               simplify-locator,
               subdirectory-locator };
-  use operating-system,
-    prefix: "os/";
-  use pacman,
-    prefix: "pm/";
+  use operating-system, prefix: "os/";
+  use pacman, prefix: "pm/";
   use print,
     import: { print-object };
   use regular-expressions,
     import: { regex-parser },      // #:regex:"..."
     rename: { regex-search-strings => re/search-strings };
   use shared;
+  use file-source-records, prefix: "sr/";
   use standard-io,
     import: { *standard-output* => *stdout*,
               *standard-error* => *stderr* };
@@ -225,26 +247,17 @@ define module workspaces
     exclude: { format-to-string };
   use uncommon-utils,
     import: { err, iff, inc!, slice };
+  use workspaces;
 
+  // Exports for the test suite.
   export
-    $dylan-package-file-name,
-    $workspace-file-name,
-    load-workspace,
-    <workspace>,
-      active-package-directory,
-      active-package-file,
-      active-package?,
-      workspace-active-packages,
-      workspace-directory,
-      find-dylan-package-file,
-      find-workspace-file,
-      workspace-default-library-name,
-    new,
-    update,
-    <workspace-error>,
-    find-active-package-library-names,
-    find-library-names;
-end module workspaces;
+    $lid-key,
+    lid-data,
+    lid-value,
+    lid-values,
+    parse-lid-file,
+    <registry>;
+end module %workspaces;
 
 define module dylan-tool-lib
   use command-line-parser;

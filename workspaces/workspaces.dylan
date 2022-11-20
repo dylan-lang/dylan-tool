@@ -1,4 +1,4 @@
-module: workspaces
+module: %workspaces
 synopsis: Manage developer workspaces
 
 // A workspace is just a directory with this layout:

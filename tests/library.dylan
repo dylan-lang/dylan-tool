@@ -22,4 +22,5 @@ define module dylan-tool-test-suite
   use testworks;
   use threads;
   use workspaces;
+  use %workspaces;
 end module;

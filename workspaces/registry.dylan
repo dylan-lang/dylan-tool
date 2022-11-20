@@ -1,4 +1,4 @@
-Module: workspaces
+Module: %workspaces
 Synopsis: Scan for LID files and generate a registry
 
 
@@ -374,73 +374,37 @@ define function file-content (path :: <locator>) => (text :: false-or(<string>))
   end
 end function;
 
-define constant $keyword-line-regex = #:regex:"^([a-zA-Z][a-zA-Z0-9-]*):[ \t]+(.+)$";
-
 // Parse the contents of `path` into a new `<lid>` and return it. Every LID
 // keyword is turned into a symbol and used as the table key, and the data
-// associated with that keyword is stored as a vector of strings, even if it is
-// known to accept only a single value. There is one exception: the keyword
-// "LID:" is recursively parsed into another `<lid>` and included directly. For
-// example,
+// associated with that keyword is stored as a sequence of strings, even if the
+// keyword is known to allow only a single value. There is one exception: the
+// "LID:" keyword is recursively parsed into a sequence of `<lid>` objects. For
+// example:
 //
-//   #"library" => #["http"]
-//   #"files"   => #["foo.dylan", "bar.dylan"]
-//   #"LID"     => {<lid>}
-//
-// `registry` is not modified; it is only needed in order to access other,
-// related LID files.
+//   #"library" => #("http")
+//   #"files"   => #("foo.dylan", "bar.dylan")
+//   #"LID"     => #({<lid>}, {<lid>})
 define function parse-lid-file
     (registry :: <registry>, path :: <file-locator>)
  => (lid :: <lid>)
-  let data = make(<table>);
-  let lid = make(<lid>, locator: path, data: data);
-  let line-number = 0;
-  let prev-key = #f;
-  fs/with-open-file(stream = path)
-    let line = #f;
-    while (line := read-line(stream, on-end-of-stream: #f))
-      inc!(line-number);
-      if (strip(line) ~= ""     // tolerate blank lines
-            & ~starts-with?(strip(line), "//"))
-        if (starts-with?(line, " ") | starts-with?(line, "\t"))
-          // Continuation line
-          if (prev-key)
-            let value = strip(line);
-            if (~empty?(value))
-              data[prev-key] := add!(data[prev-key], value);
-            end;
-          else
-            warn("Skipped unexpected continuation line %s:%d",
-                 path, line-number);
-          end;
-        else
-          // Keyword line
-          let (whole, keyword, value) = re/search-strings($keyword-line-regex, line);
-          if (whole)
-            value := strip(value);
-            // TODO: can as(<symbol>) err?  I should just use strings and ignore case.
-            let key = as(<symbol>, keyword);
-            if (key = $lid-key)
-              // LID files may be encountered twice: once when the directory
-              // traversal finds them directly and once here.
-              let sub-path = merge-locators(as(<file-locator>, value),
-                                            locator-directory(path));
-              let sub-lid = lid-for-path(registry, sub-path);
-              sub-lid := sub-lid | ingest-lid-file(registry, sub-path);
-              lid.lid-data[$lid-key] := vector(sub-lid);
+  let headers = sr/read-file-header(path);
+  let lid = make(<lid>, locator: path, data: headers);
+  let lid-header = element(headers, $lid-key, default: #f);
+  if (lid-header)
+    let sub-lids = #();
+    local method filename-to-lid (filename)
+            let file = as(<file-locator>, filename);
+            let sub-path = merge-locators(file, locator-directory(path));
+            let sub-lid = lid-for-path(registry, sub-path)
+              | ingest-lid-file(registry, sub-path);
+            if (sub-lid)
+              sub-lids := add-new!(sub-lids, sub-lid);
               add-new!(sub-lid.lid-included-in, lid);
-              prev-key := #f;
-            else
-              data[key] := vector(value);
-              prev-key := key;
             end;
-          else
-            warn("Skipped invalid syntax line %s:%d: %=",
-                 path, line-number, line);
+            sub-lid
           end;
-        end;
-      end;
-    end while;
+    // ingest-lid-file can return #f, hence remove()
+    headers[$lid-key] := remove(map(filename-to-lid, lid-header), #f);
   end;
   lid
 end function;
@@ -449,7 +413,7 @@ define function find-library-names
     (dir :: <directory-locator>) => (names :: <seq>)
   let registry = make(<registry>, root-directory: dir);
   // It's possible for a LID included via the LID: keyword to not have a library.
-  choose(identity,
-         map(rcurry(lid-value, $library-key),
-             find-lids(registry, dir)))
+  remove(map(rcurry(lid-value, $library-key),
+             find-lids(registry, dir)),
+         #f)
 end function;

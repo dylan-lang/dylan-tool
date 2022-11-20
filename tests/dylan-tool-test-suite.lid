@@ -7,5 +7,6 @@ files: library.dylan
        ../pacman/install-test.dylan
        ../pacman/packages-test.dylan
        ../pacman/versions-test.dylan
+       ../workspaces/registry-test.dylan
        ../workspaces/workspaces-test.dylan
        main.dylan
