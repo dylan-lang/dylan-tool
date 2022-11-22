@@ -200,7 +200,8 @@ define module workspaces
     update,
     <workspace-error>,
     find-active-package-library-names,
-    find-library-names;
+    find-library-names,
+    source-file-map;
 end module workspaces;
 
 define module %workspaces

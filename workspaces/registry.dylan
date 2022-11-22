@@ -61,10 +61,12 @@ end function;
 define function add-lid
     (registry :: <registry>, lid :: <lid>) => ()
   let library-name = lid-value(lid, $library-key);
-  let v = element(registry.lids-by-library, library-name, default: #f);
-  v := v | make(<stretchy-vector>);
-  add-new!(v, lid);
-  registry.lids-by-library[library-name] := v;
+  if (library-name)
+    let v = element(registry.lids-by-library, library-name, default: #f);
+    v := v | make(<stretchy-vector>);
+    add-new!(v, lid);
+    registry.lids-by-library[library-name] := v;
+  end;
   registry.lids-by-pathname[as(<string>, lid.lid-locator)] := lid;
 end function;
 
@@ -132,16 +134,29 @@ define function has-key-value?
   member?(value, lid-values(lid, key) | #[], test: string-equal-ic?)
 end function;
 
-// Return the contents of the 'Files' LID keyword, including any files in
-// another LID included via the "LID:" keyword.
-define function lid-files (lid :: <lid>) => (files :: <seq>)
-  // TODO(cgay): Technically this should go to arbitrary depth.
-  // Don't want to worry about cycles right now....
-  concat(lid-values(lid, $files-key) | #[],
-         begin
-           let sub = lid-value(lid, $lid-key);
-           (sub & lid-values(sub, $files-key)) | #[]
-         end)
+// Return the transitive (via files included with the "LID" header) contents of
+// the "Files" LID header. Files are resolved to absolute pathname strings.
+define function dylan-source-files (lid :: <lid>) => (files :: <seq>)
+  let files = #();
+  local method dylan-source-files (lid)
+          map(method (filename)
+                if (~ends-with?(lowercase(filename), ".dylan"))
+                  filename := concat(filename, ".dylan");
+                end;
+                as(<string>,
+                   merge-locators(as(<file-locator>, filename),
+                                  lid.lid-locator.locator-directory))
+              end,
+              lid-values(lid, $files-key) | #());
+        end;
+  local method do-lid (lid)
+          files := concat(files, dylan-source-files(lid));
+          for (child in lid-values(lid, $lid-key) | #())
+            do-lid(child)
+          end;
+        end;
+  do-lid(lid);
+  files
 end function;
 
 // Find all the LID files in `pkg-dir` that are marked as being for the current
@@ -218,9 +233,6 @@ end function;
 // internal maps.  .hdp files are (I believe) obsolecent so the .lid file is
 // preferred. For .spec files the corresponding .hdp file may not exist yet so
 // the table returned for it just has a #"library" key, which is enough.
-//
-// TODO(cgay): this assumes case sensitive filenames and will need to be fixed
-// for Windows at some point.
 define function find-lids
     (registry :: <registry>, pkg-dir :: <directory-locator>) => (lids :: <seq>)
   let lids = #();
@@ -230,7 +242,12 @@ define function find-lids
         #"file" =>
           let lid-path = merge-locators(as(<file-locator>, name), dir);
           if (~has-lid?(registry, lid-path))
-            select (name by rcurry(ends-with?, test: char-compare-ic))
+            let comparator = if (os/$os-name == #"win32")
+                               char-compare-ic
+                             else
+                               char-compare
+                             end;
+            select (name by rcurry(ends-with?, test: comparator))
               ".lid", ".hdp" =>
                 let lid = ingest-lid-file(registry, lid-path);
                 if (lid)
@@ -264,9 +281,8 @@ define function ingest-lid-file
     (registry :: <registry>, lid-path :: <file-locator>)
  => (lid :: false-or(<lid>))
   let lid = parse-lid-file(registry, lid-path);
-  let library-name = lid-value(lid, $library-key, error?: #t);
-  if (empty?(lid-files(lid)))
-    warn("LID file %s has no 'Files' property.", lid-path);
+  if (empty?(dylan-source-files(lid)))
+    warn("LID file %s has no (transitive) 'Files' property.", lid-path);
   end;
   if (skip-lid?(registry, lid))
     note("Skipping %s, preferring previous .lid file.", lid-path);
@@ -416,4 +432,30 @@ define function find-library-names
   remove(map(rcurry(lid-value, $library-key),
              find-lids(registry, dir)),
          #f)
+end function;
+
+// Build a map from source file names (absolute pathname strings) to the names
+// of libraries they belong to (a sequence of strings). For now we only look at
+// .dylan files (i.e., the Files: header) since this is designed for use by the
+// lsp-dylan library and that's what it cares about.
+define function source-file-map
+    (dir :: <directory-locator>) => (map :: <string-table>)
+  let registry = make(<registry>, root-directory: dir);
+  let file-map
+    // This wouldn't be necessary if we had an <equal-table> implementation.
+    // Then I'd just use locators as the keys, which is cross-platform.
+    = make(if (os/$os-name == #"win32") <istring-table> else <string-table> end);
+  for (lid in find-lids(registry, dir))
+    let library = lid-value(lid, $library-key);
+    if (library)
+      for (pathname in dylan-source-files(lid))
+        let libraries
+          = add-new!(element(file-map, pathname, default: #()),
+                     library,
+                     test: string-equal-ic?);
+        file-map[pathname] := libraries;
+      end for;
+    end if;
+  end for;
+  file-map
 end function;
