@@ -22,6 +22,9 @@ install_lib     = $(install_dir)/lib
 link_target     = $(install_bin)/dylan-tool
 link_source     = $(DYLAN)/bin/dylan
 
+# Make sure the local registry is preferred.
+OPEN_DYLAN_USER_REGISTRIES = .:$${OPEN_DYLAN_USER_REGISTRIES}
+
 .PHONY: build clean install test dist distclean
 
 build:
@@ -31,8 +34,8 @@ build:
 # be the normal build because it causes unnecessary rebuilds.
 build-with-version:
 	file="commands/utils.dylan"; \
-	orig=$$(tempfile); \
-	temp=$$(tempfile); \
+	orig=$$(mktemp); \
+	temp=$$(mktemp); \
 	cp -p $${file} $${orig}; \
 	cat $${file} | sed "s,/.__./.*/.__./,/*__*/ \"$$(git describe --tags)\" /*__*/,g" > $${temp}; \
 	mv $${temp} $${file}; \
