@@ -12,8 +12,8 @@ define function dylan-tool-command-line
     () => (p :: <command-line-parser>)
   make(<command-line-parser>,
        help:
-         format-to-string("Maintain Dylan dev workspaces and installed packages.\n"
-                            "(Version: %s)\n",
+         format-to-string("Dylan dev swiss army knife - %s\n"
+                            "https://docs.opendylan.org/packages/dylan-tool/documentation/source/",
                           $dylan-tool-version),
        options:
          list(make(<flag-option>,
