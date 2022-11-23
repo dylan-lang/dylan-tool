@@ -1,8 +1,8 @@
 .. highlight:: shell
 
-***************************
-The dylan Command-line Tool
-***************************
+*******************************
+The ``dylan`` Command-line Tool
+*******************************
 
 The ``dylan`` command-line tool provides a number of subcommands to simplify
 the management of Dylan workspaces and package dependencies, eliminates the
@@ -34,8 +34,8 @@ workspace
 
 active package
   A package checked out into the top-level of a workspace. Active packages are
-  found by looking for ``<workspace>/*/dylan-package.json`` files. The ``update``
-  subcommand scans active packages when creating the registry.
+  found by looking for ``<workspace>/*/dylan-package.json`` files. The `dylan
+  update` subcommand scans active packages when creating the registry.
 
 release
   A specific version of a package. A release has a `Semantic Version`_ associated
@@ -100,8 +100,8 @@ Hello World
 This section shows how to
 
 * create a workspace
-* create a hello-world library and its test suite
-* generate a registry for the compiler
+* create a hello-world application and its test suite
+* generate a registry for the compiler to locate libraries
 * build hello-world and its test suite
 * add a new dependency to your package file
 
@@ -121,17 +121,18 @@ Make a "hello" workspace and change to the new directory::
     Workspace created: ~/dylan/workspaces/hello/workspace.json
     $ cd hello
 
-The workspace directory (in this case "hello") contains files that aren't
-under source control, such as the ``_build`` and ``registry`` directories.
+The workspace directory (in this case "hello") will contain files that aren't
+under source control, such as the ``_build`` and ``registry`` directories,
+as well as packages that are under active development.
 
-Now generate a new executable library called "hello-world", with no
+Now generate a new application library called "hello-world", with no
 dependencies::
 
-    $ dylan new library --executable hello-world
+    $ dylan new application hello-world
 
 If you're new to Dylan, take a look at the generated files in the "hello-world"
-subdirectory. In particular, "hello-world/dylan-package.json" describes a Dylan
-package, which you could eventually publish for others to use.
+subdirectory. In particular, ``hello-world/dylan-package.json`` describes a
+Dylan package, which you could eventually publish for others to use.
 
 It is possible to build hello-world now because it has no dependencies, but for
 most libraries with complex dependencies we first have to create a "registry"
@@ -142,44 +143,41 @@ directory, run::
     Workspace directory is ~/dylan/workspaces/hello/.
     Updated 17 files in ~/dylan/workspaces/hello/registry/.
 
-.. note:: On Unix you may see a warning about the "testworks-gui" library,
-          which can be ignored.
+.. note:: On Unix platforms you may see a warning about the "testworks-gui"
+          library, which can be ignored.
 
 Take a look at one or two registry files and you'll see that they simply
 contain the pathname of the ``.lid`` file for a library.
 
 Now let's build! ::
 
-    $ dylan-compiler -build hello-world
+    $ dylan build --all
+    ...compiler output...
+
     $ _build/bin/hello-world
     Hello world!
 
 On the initial build there are compiler warnings for the "dylan" library. These
 are due to a known (harmless) bug and can be ignored. Subsequent builds will
-not show them.
+not show them, and will go much faster since they will use cached build
+products.
 
-Note that the compiler should always be invoked in the top-level workspace
-directory, in this case "hello", so that it can find the "registry" directory
-and will find previous build products in the "_build" directory. (Soon there
-will be a ``dylan build`` subcommand that will do this for you.)
+Since we used the ``--all`` flag above, both "hello-world" and
+"hello-world-test-suite" were built. Run the test suite::
 
-Also build and run the test suite::
-
-    $ dylan-compiler -build hello-world-test-suite
     $ _build/bin/hello-world-test-suite
-    Hello world!
     Running suite hello-world-test-suite:
-    Running test test-greeting: PASSED in 0.000118s and 7KiB
-    Completed suite hello-world-test-suite: PASSED in 0.000118s
+    Running test test-greeting: PASSED in 0.000065s and 7KiB
+    Completed suite hello-world-test-suite: PASSED in 0.000065s
 
     Ran 1 check: PASSED
     Ran 1 test: PASSED
-    PASSED in 0.000118 seconds
+    PASSED in 0.000065 seconds
 
 Now let's add a new dependency to our library. Let's say we want to ``use
-base64`` in our "library.dylan" file. The compiler finds libraries via the
+base64`` in our ``library.dylan`` file. The compiler finds libraries via the
 registry, but there is no "base64" registry file. To fix this, edit
-"hello-world/dylan-package.json" to add the dependency. Change this::
+``hello-world/dylan-package.json`` to add the dependency. Change this::
 
     "dependencies": [  ],
 
@@ -192,7 +190,7 @@ and then run ``dylan update`` again::
     $ dylan update
     Workspace directory is ~/dylan/workspaces/hello/.
     Downloaded pacman-catalog@master to ~/dylan/pkg/pacman-catalog/master/src/
-    Updated 1 files in ~/dylan/workspaces/hello/registry/.
+    Updated 1 file in ~/dylan/workspaces/hello/registry/.
 
 Note that we didn't specify a version for "base64", so the current version is
 downloaded. Usually it's a good idea to specify a particular version, like
@@ -204,11 +202,11 @@ left as an exercise.
 Now that you've got a working project, try some other ``dylan`` subcommands,
 the most useful ones are:
 
-* ``dylan status`` tells you the status of the active packages. It will find
-  the "hello-world" package but will complain that it's not a git
-  repository. Run ``git init`` in it if you like.
+* `dylan status`_ tells you the status of the active packages. It will find the
+  "hello-world" package but will complain that it's not a git repository. Run
+  ``git init`` in it if you like.
 
-* ``dylan list --all`` lists all the packages in the catalog.
+* `dylan list`_ with ``--all`` lists all the packages in the catalog.
 
 
 .. index::
@@ -226,7 +224,7 @@ Global Options
 ==============
 
 Note that global command line options must be specified between "dylan" and the
-first subcommand name. Example: ``dylan --debug new library --executable my-lib``
+first subcommand name. Example: ``dylan --debug build --all``
 
 ``--debug``
   Disables error handling so that when an error occurs the debugger will be
@@ -261,6 +259,62 @@ Synopsis:
   ``dylan help <subcommand> [<sub-subcommand> ...]``
 
   ``dylan <subcommand> [<sub-subcommand> ...] --help``
+
+
+.. index::
+   single: dylan build subcommand
+   single: subcommand; dylan build
+
+dylan build
+-----------
+
+Build the configured default library or the specified libraries.
+
+Synopsis:
+  ``dylan build [options] [--all | lib1 lib2 ...]``
+
+The ``dylan build`` command is essentially a wrapper around ``dylan-compiler``
+that has a few advantages:
+
+#. Invoke it from any directory inside your workspace and it will run the build
+   in the top-level workspace directory so that the ``_build`` and ``registry``
+   directories are used.
+
+#. Configure a set of libraries to build by default, in ``dylan-package.json``.
+
+#. Use the ``--all`` flag to build all libraries in the workspace. For example,
+   normally this builds both the main library and the test suite.
+
+#. Specify multiple libraries on one command line, unlike with
+   ``dylan-compiler``.
+
+``dylan build`` exits after the first library that generates serious compiler
+warnings, i.e., if ``dylan-compiler`` exits with an error status. (Requires an
+Open Dylan release later than 2020.1.)
+
+.. note:: This subcommand is purely a convenience; it is perfectly valid to run
+          ``dylan-compiler`` directly instead, after changing to the workspace
+          top-level directory.
+
+Options:
+~~~~~~~~
+
+``--all``
+  Build all libraries found in the active packages of the current workspace.
+  This option is ignored if specific libraries are requested on the command
+  line also.
+
+``--clean``
+  Do not use cached build products; rebuild from scratch.
+
+``--link``
+  Link the executable or shared library. Defaults to true. Use ``--no-link``
+  for faster builds when iterating through compiler warnings.
+
+``--unify``
+  Combine all used libraries into a single executable. Note that
+  ``dylan-compiler`` puts the generated executable in ``_build/sbin`` instead
+  of ``_build/bin`` when this flag is used.
 
 
 .. index::
@@ -308,25 +362,56 @@ Example::
 
 
 .. index::
+   single: dylan new application subcommand
+   single: subcommand; dylan new application
+
+dylan new application
+---------------------
+
+Generate the boilerplate for a new executable application.
+
+Synopsis: ``dylan new application [options] <app-name> [<dependency> ...]``
+
+This command is the same as `dylan new library`_ except that it also generates
+a ``main`` function and code to call that function.
+
+Here's an example of creating an executable named "killer-app" which depends on
+http version 1.0 and the latest version of logging. ::
+
+  $ dylan new application killer-app http@1.0 logging
+  $ dylan update            # generate registry files
+  $ dylan build --all
+  $ _build/bin/killer-app
+  $ _build/bin/killer-app-test-suite
+
+See `dylan new library`_ (below) for more details.
+
+
+.. index::
    single: dylan new library subcommand
    single: subcommand; dylan new library
 
 dylan new library
 -----------------
 
-Generate the boilerplate for a new library.
+Generate the boilerplate for a new shared library.
 
 Synopsis: ``dylan new library [options] <library-name> [<dependency> ...]``
 
+This command is the same as `dylan new application`_ except that it doesn't
+generate a ``main`` function.
+
 Specifying dependencies is optional. They should be in the same form as
-specified in the ``dylan-package.json`` file.
+specified in the ``dylan-package.json`` file. For example, "strings\@1.0".
 
 This command generates the following code:
 
-* A main library and module definition and initial source files
-* A corresponding test suite library and initial source files
+* A main library and module definition and initial source files.
+* A corresponding test suite library and initial source files.
 * A ``dylan-package.json`` file (unless this new library is being added to an
   existing package).
+* If not already inside a Dylan workspace, a ``workspace.json`` file is created
+  **in the current directory**.
 
 Unlike the ``make-dylan-app`` binary included with Open Dylan, this command
 does not generate a "registry" directory. Instead, it is expected that you will
@@ -335,20 +420,16 @@ run ``dylan update`` to generate the registry.
 Options:
 ~~~~~~~~
 
-``--executable`` or ``-x``
-  Create an executable library (with a ``main`` function and a top-level call
-  to that function) in addition to a shared library. Generally the ``main``
-  function does little more than parse command-line arguments and then calls
-  code in the shared library. The shared library is used by the executable
-  library and by the test suite.
+``--force-package``, ``-p``
+  Create ``dylan-package.json`` even if already inside a package. This is
+  intended for testing and continuous integration use.
 
-Here's an example of creating an executable named "killer-app" which depends on
-http version 1.0 and the latest version of logging. It assumes you are in the
-top-level directory of a Dylan workspace. ::
+Here's an example of creating a library named "http" which depends on "strings"
+version 1.0 and the latest version of "logging". ::
 
-  $ dylan new library -x killer-app http@1.0 logging
-  $ dylan update     # generate registry files, assumes in a workspace
-  $ dylan-compiler -build killer-app-test-suite
+  $ dylan new library http strings@1.0 logging
+  $ dylan update          # generate registry files
+  $ dylan build --all
   $ _build/bin/killer-app-test-suite
 
 Edit the generated ``dylan-package.json`` file to set the repository URL,
@@ -384,7 +465,8 @@ required argument. Example::
   -rw-r--r-- 1 you you   28 Dec 29 18:03 workspace.json
 
 Clone repositories in the top-level workspace directory to create active
-packages, then run `dylan update`_.
+packages (or create them with `dylan new library`_ and `dylan new
+application`_), then run `dylan update`_.
 
 
 .. index::
@@ -394,7 +476,8 @@ packages, then run `dylan update`_.
 dylan publish
 -------------
 
-The ``publish`` command adds a new release of a package to the package catalog.
+The ``publish`` subcommand adds a new release of a package to the package
+catalog.
 
 Synopsis: ``dylan publish <package-name>``
 
@@ -481,7 +564,7 @@ The ``update`` command may be run from anywhere inside a workspace directory
 and performs two actions:
 
 #.  Installs all active package dependencies, as specified in their
-    `dylan-package.json` files. Any time these dependencies are changed you
+    ``dylan-package.json`` files. Any time these dependencies are changed you
     should run ``dylan update`` again.
 
 #.  Updates the registry to have an entry for each library in the workspace's
@@ -509,12 +592,7 @@ update it, and build the test suite::
    $ cd dt
    $ git clone --recursive https://github.com/dylan-lang/dylan-tool
    $ dylan update
-   $ dylan-compiler -build dylan-tool-test-suite
-
-Note that ``dylan-compiler`` must always be invoked in the workspace directory
-so that it can find the ``registry`` directory. (This will be easier when the
-``dylan build`` command is implemented since it will ensure the compiler is
-invoked in the right environment.)
+   $ dylan build dylan-tool-test-suite
 
 
 .. index::

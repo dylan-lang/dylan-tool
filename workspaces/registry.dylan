@@ -1,4 +1,4 @@
-Module: workspaces
+Module: %workspaces
 Synopsis: Scan for LID files and generate a registry
 
 
@@ -61,10 +61,12 @@ end function;
 define function add-lid
     (registry :: <registry>, lid :: <lid>) => ()
   let library-name = lid-value(lid, $library-key);
-  let v = element(registry.lids-by-library, library-name, default: #f);
-  v := v | make(<stretchy-vector>);
-  add-new!(v, lid);
-  registry.lids-by-library[library-name] := v;
+  if (library-name)
+    let v = element(registry.lids-by-library, library-name, default: #f);
+    v := v | make(<stretchy-vector>);
+    add-new!(v, lid);
+    registry.lids-by-library[library-name] := v;
+  end;
   registry.lids-by-pathname[as(<string>, lid.lid-locator)] := lid;
 end function;
 
@@ -132,16 +134,29 @@ define function has-key-value?
   member?(value, lid-values(lid, key) | #[], test: string-equal-ic?)
 end function;
 
-// Return the contents of the 'Files' LID keyword, including any files in
-// another LID included via the "LID:" keyword.
-define function lid-files (lid :: <lid>) => (files :: <seq>)
-  // TODO(cgay): Technically this should go to arbitrary depth.
-  // Don't want to worry about cycles right now....
-  concat(lid-values(lid, $files-key) | #[],
-         begin
-           let sub = lid-value(lid, $lid-key);
-           (sub & lid-values(sub, $files-key)) | #[]
-         end)
+// Return the transitive (via files included with the "LID" header) contents of
+// the "Files" LID header. Files are resolved to absolute pathname strings.
+define function dylan-source-files (lid :: <lid>) => (files :: <seq>)
+  let files = #();
+  local method dylan-source-files (lid)
+          map(method (filename)
+                if (~ends-with?(lowercase(filename), ".dylan"))
+                  filename := concat(filename, ".dylan");
+                end;
+                as(<string>,
+                   merge-locators(as(<file-locator>, filename),
+                                  lid.lid-locator.locator-directory))
+              end,
+              lid-values(lid, $files-key) | #());
+        end;
+  local method do-lid (lid)
+          files := concat(files, dylan-source-files(lid));
+          for (child in lid-values(lid, $lid-key) | #())
+            do-lid(child)
+          end;
+        end;
+  do-lid(lid);
+  files
 end function;
 
 // Find all the LID files in `pkg-dir` that are marked as being for the current
@@ -218,9 +233,6 @@ end function;
 // internal maps.  .hdp files are (I believe) obsolecent so the .lid file is
 // preferred. For .spec files the corresponding .hdp file may not exist yet so
 // the table returned for it just has a #"library" key, which is enough.
-//
-// TODO(cgay): this assumes case sensitive filenames and will need to be fixed
-// for Windows at some point.
 define function find-lids
     (registry :: <registry>, pkg-dir :: <directory-locator>) => (lids :: <seq>)
   let lids = #();
@@ -230,7 +242,12 @@ define function find-lids
         #"file" =>
           let lid-path = merge-locators(as(<file-locator>, name), dir);
           if (~has-lid?(registry, lid-path))
-            select (name by rcurry(ends-with?, test: char-compare-ic))
+            let comparator = if (os/$os-name == #"win32")
+                               char-compare-ic
+                             else
+                               char-compare
+                             end;
+            select (name by rcurry(ends-with?, test: comparator))
               ".lid", ".hdp" =>
                 let lid = ingest-lid-file(registry, lid-path);
                 if (lid)
@@ -264,9 +281,8 @@ define function ingest-lid-file
     (registry :: <registry>, lid-path :: <file-locator>)
  => (lid :: false-or(<lid>))
   let lid = parse-lid-file(registry, lid-path);
-  let library-name = lid-value(lid, $library-key, error?: #t);
-  if (empty?(lid-files(lid)))
-    warn("LID file %s has no 'Files' property.", lid-path);
+  if (empty?(dylan-source-files(lid)))
+    warn("LID file %s has no (transitive) 'Files' property.", lid-path);
   end;
   if (skip-lid?(registry, lid))
     note("Skipping %s, preferring previous .lid file.", lid-path);
@@ -374,73 +390,37 @@ define function file-content (path :: <locator>) => (text :: false-or(<string>))
   end
 end function;
 
-define constant $keyword-line-regex = #:regex:"^([a-zA-Z][a-zA-Z0-9-]*):[ \t]+(.+)$";
-
 // Parse the contents of `path` into a new `<lid>` and return it. Every LID
 // keyword is turned into a symbol and used as the table key, and the data
-// associated with that keyword is stored as a vector of strings, even if it is
-// known to accept only a single value. There is one exception: the keyword
-// "LID:" is recursively parsed into another `<lid>` and included directly. For
-// example,
+// associated with that keyword is stored as a sequence of strings, even if the
+// keyword is known to allow only a single value. There is one exception: the
+// "LID:" keyword is recursively parsed into a sequence of `<lid>` objects. For
+// example:
 //
-//   #"library" => #["http"]
-//   #"files"   => #["foo.dylan", "bar.dylan"]
-//   #"LID"     => {<lid>}
-//
-// `registry` is not modified; it is only needed in order to access other,
-// related LID files.
+//   #"library" => #("http")
+//   #"files"   => #("foo.dylan", "bar.dylan")
+//   #"LID"     => #({<lid>}, {<lid>})
 define function parse-lid-file
     (registry :: <registry>, path :: <file-locator>)
  => (lid :: <lid>)
-  let data = make(<table>);
-  let lid = make(<lid>, locator: path, data: data);
-  let line-number = 0;
-  let prev-key = #f;
-  fs/with-open-file(stream = path)
-    let line = #f;
-    while (line := read-line(stream, on-end-of-stream: #f))
-      inc!(line-number);
-      if (strip(line) ~= ""     // tolerate blank lines
-            & ~starts-with?(strip(line), "//"))
-        if (starts-with?(line, " ") | starts-with?(line, "\t"))
-          // Continuation line
-          if (prev-key)
-            let value = strip(line);
-            if (~empty?(value))
-              data[prev-key] := add!(data[prev-key], value);
-            end;
-          else
-            warn("Skipped unexpected continuation line %s:%d",
-                 path, line-number);
-          end;
-        else
-          // Keyword line
-          let (whole, keyword, value) = re/search-strings($keyword-line-regex, line);
-          if (whole)
-            value := strip(value);
-            // TODO: can as(<symbol>) err?  I should just use strings and ignore case.
-            let key = as(<symbol>, keyword);
-            if (key = $lid-key)
-              // LID files may be encountered twice: once when the directory
-              // traversal finds them directly and once here.
-              let sub-path = merge-locators(as(<file-locator>, value),
-                                            locator-directory(path));
-              let sub-lid = lid-for-path(registry, sub-path);
-              sub-lid := sub-lid | ingest-lid-file(registry, sub-path);
-              lid.lid-data[$lid-key] := vector(sub-lid);
+  let headers = sr/read-file-header(path);
+  let lid = make(<lid>, locator: path, data: headers);
+  let lid-header = element(headers, $lid-key, default: #f);
+  if (lid-header)
+    let sub-lids = #();
+    local method filename-to-lid (filename)
+            let file = as(<file-locator>, filename);
+            let sub-path = merge-locators(file, locator-directory(path));
+            let sub-lid = lid-for-path(registry, sub-path)
+              | ingest-lid-file(registry, sub-path);
+            if (sub-lid)
+              sub-lids := add-new!(sub-lids, sub-lid);
               add-new!(sub-lid.lid-included-in, lid);
-              prev-key := #f;
-            else
-              data[key] := vector(value);
-              prev-key := key;
             end;
-          else
-            warn("Skipped invalid syntax line %s:%d: %=",
-                 path, line-number, line);
+            sub-lid
           end;
-        end;
-      end;
-    end while;
+    // ingest-lid-file can return #f, hence remove()
+    headers[$lid-key] := remove(map(filename-to-lid, lid-header), #f);
   end;
   lid
 end function;
@@ -449,7 +429,33 @@ define function find-library-names
     (dir :: <directory-locator>) => (names :: <seq>)
   let registry = make(<registry>, root-directory: dir);
   // It's possible for a LID included via the LID: keyword to not have a library.
-  choose(identity,
-         map(rcurry(lid-value, $library-key),
-             find-lids(registry, dir)))
+  remove(map(rcurry(lid-value, $library-key),
+             find-lids(registry, dir)),
+         #f)
+end function;
+
+// Build a map from source file names (absolute pathname strings) to the names
+// of libraries they belong to (a sequence of strings). For now we only look at
+// .dylan files (i.e., the Files: header) since this is designed for use by the
+// lsp-dylan library and that's what it cares about.
+define function source-file-map
+    (dir :: <directory-locator>) => (map :: <string-table>)
+  let registry = make(<registry>, root-directory: dir);
+  let file-map
+    // This wouldn't be necessary if we had an <equal-table> implementation.
+    // Then I'd just use locators as the keys, which is cross-platform.
+    = make(if (os/$os-name == #"win32") <istring-table> else <string-table> end);
+  for (lid in find-lids(registry, dir))
+    let library = lid-value(lid, $library-key);
+    if (library)
+      for (pathname in dylan-source-files(lid))
+        let libraries
+          = add-new!(element(file-map, pathname, default: #()),
+                     library,
+                     test: string-equal-ic?);
+        file-map[pathname] := libraries;
+      end for;
+    end if;
+  end for;
+  file-map
 end function;

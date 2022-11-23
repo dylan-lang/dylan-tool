@@ -1,4 +1,4 @@
-module: workspaces
+module: %workspaces
 synopsis: Manage developer workspaces
 
 // A workspace is just a directory with this layout:
@@ -72,7 +72,7 @@ define function update () => ()
   let registry = update-registry(ws, cat, releases, actives);
 
   let no-lid = registry.libraries-with-no-lid;
-  if (~empty?(no-lid))
+  if (~empty?(no-lid) & *verbose?*)
     warn("These libraries had no LID file for platform %s:\n  %s",
          os/$platform-name, join(sort!(no-lid), ", "));
   end;
@@ -279,4 +279,18 @@ define function update-registry
     update-for-directory(registry, pm/source-directory(rel));
   end;
   registry
+end function;
+
+// Find the names of all libraries defined in the active packages within the
+// workspace `ws`.
+define function find-active-package-library-names
+    (ws :: <workspace>) => (names :: <seq>)
+  let names = #[];
+  for (package in find-active-packages(ws.workspace-directory))
+    let dir = active-package-directory(ws, pm/package-name(package));
+    let more-names = find-library-names(dir);
+    verbose("Found libraries %= in %s", more-names, dir);
+    names := concat(names, more-names);
+  end;
+  names
 end function;

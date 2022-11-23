@@ -1,43 +1,71 @@
 Module: dylan-tool-lib
-Synopsis: Create the initial boilerplate for new Dylan libraries
+Synopsis: Create the initial boilerplate for new Dylan libraries and applications
 
 
-define class <new-library-subcommand> (<subcommand>)
-  keyword name = "library";
-  keyword help = "Create a new library and its test library.";
+define class <new-application-subcommand> (<new-subcommand>)
+  keyword name = "application";
+  keyword help = "Create a new application and its test library.";
 end class;
 
-define constant $new-library-subcommand
-  = make(<new-library-subcommand>,
-         // dylan new library -x foo <dep> ...
+define class <new-library-subcommand> (<new-subcommand>)
+  keyword name = "library";
+  keyword help = "Create a new shared library and its test library.";
+end class;
+
+define constant $deps-option
+  = make(<positional-option>,
+         names: #("deps"),
+         required?: #f,
+         repeated?: #t,
+         help: "Package dependencies in the form pkg@version."
+           " 'pkg' with no version gets the current latest"
+           " version. pkg@1.2 means a specific version. The test"
+           " suite executable automatically depends on testworks.");
+
+// dylan new application foo http json ...
+define constant $new-application-subcommand
+  = make(<new-application-subcommand>,
          options:
            list(make(<flag-option>,
-                     names: #("executable", "x"),
-                     help: "The library creates an executable binary",
+                     names: #("force-package", "p"),
+                     help: "If true, create dylan-package.json even if already in a package",
                      default: #f),
-                make(<flag-option>,
+                make(<positional-option>,
+                     names: #("name"),
+                     help: "Name of the application"),
+                $deps-option));
+
+// dylan new library foo http json ...
+define constant $new-library-subcommand
+  = make(<new-library-subcommand>,
+         options:
+           list(make(<flag-option>,
                      names: #("force-package", "p"),
                      help: "If true, create dylan-package.json even if already in a package",
                      default: #f),
                 make(<positional-option>,
                      names: #("name"),
                      help: "Name of the library"),
-                make(<positional-option>,
-                     names: #("deps"),
-                     required?: #f,
-                     repeated?: #t,
-                     help: "Package dependencies in the form pkg@version."
-                       " 'pkg' with no version gets the current latest"
-                       " version. pkg@1.2 means a specific version. The test"
-                       " suite executable automatically depends on testworks.")));
+                $deps-option));
+
+define method execute-subcommand
+    (parser :: <command-line-parser>, subcmd :: <new-application-subcommand>)
+ => (status :: false-or(<int>))
+  let name = get-option-value(subcmd, "name");
+  let dep-specs = get-option-value(subcmd, "deps") | #[];
+  let force-package? = get-option-value(subcmd, "force-package");
+  let exe? = #t;
+  new-library(name, fs/working-directory(), dep-specs, exe?, force-package?);
+  0
+end method;
 
 define method execute-subcommand
     (parser :: <command-line-parser>, subcmd :: <new-library-subcommand>)
  => (status :: false-or(<int>))
   let name = get-option-value(subcmd, "name");
   let dep-specs = get-option-value(subcmd, "deps") | #[];
-  let exe? = get-option-value(subcmd, "executable");
   let force-package? = get-option-value(subcmd, "force-package");
+  let exe? = #f;
   new-library(name, fs/working-directory(), dep-specs, exe?, force-package?);
   0
 end method;
@@ -70,79 +98,61 @@ end function;
 // Define #:string: syntax.
 define function string-parser (s) s end;
 
-// LID file for both exe and lib.
-define constant $lid-template
+define constant $lib-lid-template
   = #:string:"Library: %s
 Files: library.dylan
        %s.dylan
+Target-Type: dll
+";
+
+define constant $exe-lid-template
+  = #:string:"Library: %s-app
+Files: %s-app-library.dylan
+       %s-app.dylan
+Target-Type: executable
+";
+
+define constant $test-lid-template
+  = #:string:"Library: %s-test-suite
+Files: library.dylan
+       %s-test-suite.dylan
+Target-Type: executable
 ";
 
 // library.dylan file for an executable library.
-define constant $exe-library-template
+define constant $exe-library-definition-template
   = #:string:"Module: dylan-user
+Synopsis: Module and library definition for executable application
 
-define library %s
+define library %s-app
   use common-dylan;
+  use %s;
   use io, import: { format-out };
-
-  // Export module for use by test suite.
-  export
-    %s;
 end library;
 
-define module %s
+define module %s-app
   use common-dylan;
   use format-out;
-
-  // Exports for use by test suite.
-  export
-    $greeting;
+  use %s;
 end module;
 ";
 
-// Main program for an executable application.
+// Main program for the executable.
 define constant $exe-main-template
-  = #:string:'Module: %s
-
-define constant $greeting = "Hello world!";
+  = #:string:'Module: %s-app
 
 define function main
     (name :: <string>, arguments :: <vector>)
-  format-out("%%s\n", $greeting);
+  format-out("%%s\n", greeting());
+  exit-application(0);
 end function;
 
-main(application-name(), application-arguments())
+// Calling our main function (which could have any name) should be the last
+// thing we do.
+main(application-name(), application-arguments());
 ';
 
-// library.dylan for a test library for an application.
-define constant $exe-test-library-template
-  = #:string:"Module: dylan-user
-
-define library %s-test-suite
-  use common-dylan;
-  use testworks;
-  use %s;
-end library;
-
-define module %s-test-suite
-  use common-dylan;
-  use testworks;
-  use %s;
-end module;
-";
-
-define constant $exe-test-main-template
-  = #:string:'Module: %s-test-suite
-
-define test test-greeting ()
-  assert-equal("Hello world!", $greeting);
-end test;
-
-// Run `_build/bin/%s-test-suite --help` to see options.
-run-test-application()
-';
-
-define constant $lib-library-template
+define constant $lib-library-definition-template
   = #:string:'Module: dylan-user
 
 define library %s
@@ -158,7 +168,7 @@ end library;
 //  module exports them.
 define module %s
   create
-    greeting;
+    greeting;                   // Example. Delete me.
 end module;
 
 // Implementation module implements definitions for names created by the
@@ -170,11 +180,11 @@ define module %s-impl
 
   // Additional exports for use by test suite.
   export
-    $greeting;
+    $greeting;                  // Example code. Delete me.
 end module;
 ';
 
-define constant $lib-main-template
+define constant $lib-main-code-template
   = #:string:'Module: %s-impl
 
 // Internal
@@ -186,7 +196,7 @@ define function greeting () => (s :: <string>)
 end function;
 ';
 
-define constant $lib-test-library-template
+define constant $test-library-definition-template
   = #:string:'Module: dylan-user
 
 define library %s-test-suite
@@ -203,7 +213,7 @@ define module %s-test-suite
 end module;
 ';
 
-define constant $lib-test-main-template
+define constant $test-main-code-template
   = #:string:'Module: %s-test-suite
 
 define test test-$greeting ()
@@ -221,7 +231,7 @@ run-test-application()
 // TODO: We don't have enough info to fill in "location" here. Since this will
 // be an active package, location shouldn't be needed until the package is
 // published in the catalog, at which time the user should be gently informed.
-define constant $pkg-template
+define constant $dylan-package-file-template
   = #:string:'{
     "dependencies": [ %s ],
     "dev-dependencies": [ "testworks" ],
@@ -236,6 +246,7 @@ define class <template> (<object>)
   constant slot format-string :: <string>, required-init-keyword: format-string:;
   constant slot format-arguments :: <seq> = #(), init-keyword: format-arguments:;
   constant slot output-file :: <file-locator>, required-init-keyword: output-file:;
+  constant slot library-name :: false-or(<string>) = #f, init-keyword: library-name:;
 end class;
 
 define function write-template
@@ -249,7 +260,10 @@ define function write-template
   end;
 end function;
 
-// Write files for a library named `name` in directory `dir`.
+// Write files for libraries named `name`, `name`-test-suite and (if `exe?` is
+// true) `name`-app in directory `dir`. `deps` is a sequence of `<dep>`
+// objects. If `dir` is not part of a workspace already then a workspace file
+// is created in `dir`/../workspace.json.
 define function make-dylan-library
     (name :: <string>, dir :: <directory-locator>, exe? :: <bool>, deps :: <seq>,
      force-package? :: <bool>)
@@ -267,43 +281,53 @@ define function make-dylan-library
   let test-name = concat(name, "-test-suite");
   let deps-string = join(map-as(<vector>, dep-string, deps), ", ");
   let templates
-    = list(// Main library files...
+    = list(// Base library files...
            make(<template>,
+                library-name: name,
                 output-file: file(concat(name, ".lid")),
-                format-string: $lid-template,
+                format-string: $lib-lid-template,
                 format-arguments: list(name, name)),
            make(<template>,
                 output-file: file("library.dylan"),
-                format-string: iff(exe?,
-                                   $exe-library-template,
-                                   $lib-library-template),
-                format-arguments: iff(exe?,
-                                      list(name, name, name),
-                                      list(name, name, name, name, name, name))),
+                format-string: $lib-library-definition-template,
+                format-arguments: list(name, name, name, name, name, name)),
            make(<template>,
                 output-file: file(concat(name, ".dylan")),
-                format-string: iff(exe?, $exe-main-template, $lib-main-template),
+                format-string: $lib-main-code-template,
                 format-arguments: list(name)),
            // Test library files...
            make(<template>,
+                library-name: test-name,
                 output-file: test-file(concat(test-name, ".lid")),
-                format-string: $lid-template,
-                format-arguments: list(test-name, test-name)),
+                format-string: $test-lid-template,
+                format-arguments: list(name, name)),
            make(<template>,
                 output-file: test-file("library.dylan"),
-                format-string: iff(exe?,
-                                   $exe-test-library-template,
-                                   $lib-test-library-template),
-                format-arguments: iff(exe?,
-                                      list(name, name, name, name),
-                                      list(name, name, name, name, name))),
+                format-string: $test-library-definition-template,
+                format-arguments: list(name, name, name, name, name)),
            make(<template>,
                 output-file: test-file(concat(test-name, ".dylan")),
-                format-string: iff(exe?,
-                                   $exe-test-main-template,
-                                   $lib-test-main-template),
+                format-string: $test-main-code-template,
                 format-arguments: list(name, name)));
-  let old-pkg-file = simplify-locator(ws/find-dylan-package-file(dir));
+  if (exe?)
+    // Executable app files...
+    let more = list(make(<template>,
+                         library-name: concat(name, "-app"),
+                         output-file: file(concat(name, "-app.lid")),
+                         format-string: $exe-lid-template,
+                         format-arguments: list(name, name, name)),
+                    make(<template>,
+                         output-file: file(concat(name, "-app-library.dylan")),
+                         format-string: $exe-library-definition-template,
+                         format-arguments: list(name, name, name, name, name, name)),
+                    make(<template>,
+                         output-file: file(concat(name, "-app.dylan")),
+                         format-string: $exe-main-template,
+                         format-arguments: list(name)));
+    templates := concat(templates, more);
+  end;
+  let pkg-file = ws/find-dylan-package-file(dir);
+  let old-pkg-file = pkg-file & simplify-locator(pkg-file);
   let new-pkg-file = simplify-locator(file(ws/$dylan-package-file-name));
   if (old-pkg-file & ~force-package?)
     warn("Package file %s exists. Skipping creation.", old-pkg-file);
@@ -311,33 +335,40 @@ define function make-dylan-library
     if (old-pkg-file)
       warn("This package is being created inside an existing package.");
     end;
-    note("Don't forget to edit %s if you plan to publish this library as a package.",
-         new-pkg-file);
+    verbose("Edit %s if you need to change dependencies or if you plan"
+              " to publish this library as a package.",
+            new-pkg-file);
     templates
       := add(templates,
              make(<template>,
                   output-file: new-pkg-file,
-                  format-string: $pkg-template,
+                  format-string: $dylan-package-file-template,
                   format-arguments: list(deps-string, name)));
   end;
   let workspace-file = ws/find-workspace-file(dir);
   if (workspace-file)
     note("Current workspace: %s", workspace-file);
   else
-    // Workspace file is created in the CURRENT directory, not the library directory.
+    // Workspace file is created in the PARENT directory, not the library
+    // directory. The expectation is that each library will have its own
+    // subdirectory as a child of the workspace dir. If that doesn't fit, then
+    // create a workspace before calling this function.
     let ws-file = merge-locators(as(<file-locator>, ws/$workspace-file-name),
-                                 fs/working-directory());
-    note("Creating new workspace %s.", ws-file);
-    templates
-      := add(templates,
-             make(<template>,
-                  output-file: ws-file,
-                  format-string: #:string:'{ "default-library": %= }',
-                  format-arguments: list(name)));
+                                 locator-directory(dir));
+    write-template(make(<template>,
+                        output-file: ws-file,
+                        format-string: #:string:'{ "default-library": %= }',
+                        format-arguments: list(name)));
+    note("Created new workspace %s.", ws-file);
   end;
   for (template in templates)
-    write-template(template)
+    write-template(template);
+    let name = template.library-name;
+    if (name)
+      note("Created library %s.", name)
+    end;
   end;
+  ws/update();
 end function;
 
 // Parse dependency specs like lib, lib@latest, or lib@1.2. Deps are always
