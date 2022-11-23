@@ -493,9 +493,23 @@ you're satisfied that you're ready to release a new version of your package
 #.  Update the ``"version"`` attribute in ``dylan-package.json`` to be the new
     release's version, commit the change, and push it to your main branch.
 
+#.  Update any dependencies in ``dylan-package.json`` as needed. Normally this
+    will happen naturally during development as you discover you need newer
+    package versions, but this is a good time to review deps and update get bug
+    fixes.  **Remember to ``dylan update`` and re-run your tests if you change
+    deps!**
+
 #.  Make a new release on GitHub with a tag that matches the release version.
     For example, if the ``"version"`` attribute in ``dylan-package.json`` is
     ``"0.5.0"`` the GitHub release should be tagged ``v0.5.0``.
+
+#.  Clone https://github.com/dylan-lang/pacman-catalog in the same Dylan
+    workspace, so that it is an active package and make a new git branch in it.
+    In the next step the ``dylan publish`` command will make changes there for
+    you.
+
+    If you already had pacman-catalog as an active packgae, **make sure to pull
+    the latest changes.**
 
 #.  Run ``dylan publish my-package``.  (If `pacman-catalog`_ isn't already an
     active package in your workspace the command will abort and give you
