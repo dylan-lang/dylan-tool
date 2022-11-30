@@ -67,8 +67,9 @@ which describes where to find other packages, under ``$DYLAN/pkg/``.
 Building From Source
 ====================
 
-In an upcoming release of Open Dylan, the ``dylan`` tool will be included in the
-release. For now, follow these steps to build and install.
+If you have **Open Dylan 2022.1 or later**, ``dylan`` is already installed as
+part of that release. But if you're looking to run the latest version, follow
+these steps to build and install.
 
 .. note:: Because an executable named "dylan" conflicts with the base Dylan
    library during the build process, this library is named ``dylan-tool`` and
