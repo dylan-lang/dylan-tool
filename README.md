@@ -23,18 +23,18 @@ catalog. The catalog entry specifies the location of the package and what its
 dependencies are, among other attributes.
 
 A "package" is a bundle of files that can be downloaded as a unit, such as a
-Git repository. A package must have a `pkg.json` file in its top-level
-directory to define the package attributes, such as name, location, and
-dependencies.
+Git repository. A package must have a `dylan-package.json` file in its
+top-level directory to define the package attributes, such as name, location,
+and dependencies.
 
 A "workspace" is a directory containing a `workspace.json` file and any number
 of packages (a.k.a. repositories) checked out into that file's directory.
 
 "Workspace packages" (a.k.a. "active packages") are the packages you're
 actively developing. They're checked out in the workspace directory and are
-identified by the existence of `pkg.json` in their top-level directory. There
-is often only a single workspace package, with a main library and its test
-library.
+identified by the existence of `dylan-package.json` in their top-level
+directory. There is often only a single workspace package, with a main library
+and its test library.
 
 The "package cache" is the directory where package dependencies are installed
 and is defined as `${DYLAN}/pkg/`. The `dylan update` command reinstalls needed
@@ -90,9 +90,9 @@ dependencies here if they are deleted.
         $ dylan update
 
     The `update` subcommand finds "active" packages in the workspace, and their
-    dependencies (or deps), by looking for `pkg.json` files in directories just
-    below the workspace directory. In this case the only one is
-    `pacman/pkg.json`.
+    dependencies (or deps), by looking for `dylan-package.json` files in
+    directories just below the workspace directory. In this case the only one
+    is `pacman/dylan-package.json`.
 
 1.  You should now see a `registry` directory in your workspace. Look at the
     generated files:
@@ -116,7 +116,7 @@ dependencies here if they are deleted.
 
 If you want to create a new package, rather than doing development on one that
 already exists, simply create a new directory for it in the workspace root and
-add a `pkg.json` for it. Then run `dylan update` again.
+add a `dylan-package.json` for it. Then run `dylan update` again.
 
 For example, to create a new workspace and package called "protobufs" that uses
 the `logging` and `regular-expressions` packages:
@@ -125,9 +125,9 @@ the `logging` and `regular-expressions` packages:
 1.  `cd protobufs`
 1.  `dylan new library protobufs`
 1.  `cd protobufs`
-1.  Edit the `pkg.json` to fill in the required settings and add any necessary
-    dependencies. When the file is created by `dylan new library` it should
-    look something like this:
+1.  Edit the `dylan-package.json` to fill in the required settings and add any
+    necessary dependencies. When the file is created by `dylan new library` it
+    should look something like this:
 
         {
             "dependencies": [],
@@ -162,7 +162,7 @@ will be able to find everything.
 
 After initial checkout you may create a new branch or perform whatever git
 operations are necessary. If you decide to add a new dependency, just add it to
-the "dependencies" in `pkg.json` and run `dylan update` again.
+the "dependencies" in `dylan-package.json` and run `dylan update` again.
 
 
 ## The Registry
