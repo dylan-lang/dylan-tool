@@ -7,7 +7,7 @@ The ``dylan`` Command-line Tool
 The ``dylan`` command-line tool provides a number of subcommands to simplify
 the management of Dylan workspaces and package dependencies, eliminates the
 need to manually maintain the "registry" (which enables the compiler to locate
-libraries) by hand, and eliminates the need to use git submodules to track
+libraries) by hand, and eliminates the need to use Git submodules to track
 dependencies.
 
 .. toctree::
@@ -29,7 +29,7 @@ package
   package has a set of versioned releases.
 
 workspace
-  A directory containing a ``workspace.json`` file. Most ``dylan`` commands may be
+  A directory containing a "workspace.json" file. Most ``dylan`` commands may be
   run from anywhere within the workspace directory.
 
 active package
@@ -95,7 +95,7 @@ You should now be able to run ``dylan help`` and go through the Hello World
 example below.
 
 
-Hello World
+Quick Start
 ===========
 
 This section shows how to
@@ -123,8 +123,8 @@ Make a "hello" workspace and change to the new directory::
     $ cd hello
 
 The workspace directory (in this case "hello") will contain files that aren't
-under source control, such as the ``_build`` and ``registry`` directories,
-as well as packages that are under active development.
+under source control, such as the "_build" and "registry" directories, as well
+as packages that are under active development.
 
 Now generate a new application library called "hello-world", with no
 dependencies::
@@ -132,23 +132,20 @@ dependencies::
     $ dylan new application hello-world
 
 If you're new to Dylan, take a look at the generated files in the "hello-world"
-subdirectory. In particular, ``hello-world/dylan-package.json`` describes a
-Dylan package, which you could eventually publish for others to use.
+subdirectory. In particular, "hello-world/dylan-package.json" describes a Dylan
+package, which you could eventually publish for others to use.
 
 It is possible to build hello-world now because it has no dependencies, but for
 most libraries with complex dependencies we first have to create a "registry"
-that tells the compiler where used libraries are. While still in the "hello"
-directory, run::
+that tells the compiler where used libraries are, so let's do that for
+hello-world. While still in the "hello" directory, run::
 
     $ dylan update
     Workspace directory is ~/dylan/workspaces/hello/.
     Updated 17 files in ~/dylan/workspaces/hello/registry/.
 
-.. note:: On Unix platforms you may see a warning about the "testworks-gui"
-          library, which can be ignored.
-
 Take a look at one or two registry files and you'll see that they simply
-contain the pathname of the ``.lid`` file for a library.
+contain the pathname of the ".lid" file for a library.
 
 Now let's build! ::
 
@@ -158,13 +155,13 @@ Now let's build! ::
     $ _build/bin/hello-world
     Hello world!
 
-On the initial build there are compiler warnings for the "dylan" library. These
-are due to a known (harmless) bug and can be ignored. Subsequent builds will
-not show them, and will go much faster since they will use cached build
+On the initial build there are compiler warnings for the ``dylan`` library.
+These are due to a known (harmless) bug and can be ignored. Subsequent builds
+will not show them, and will go much faster since they will use cached build
 products.
 
-Since we used the ``--all`` flag above, both "hello-world" and
-"hello-world-test-suite" were built. Run the test suite::
+Since we used the ``--all`` flag above, both ``hello-world`` and
+``hello-world-test-suite`` were built. Run the test suite::
 
     $ _build/bin/hello-world-test-suite
     Running suite hello-world-test-suite:
@@ -178,7 +175,7 @@ Since we used the ``--all`` flag above, both "hello-world" and
 Now let's add a new dependency to our library. Let's say we want to ``use
 base64`` in our ``library.dylan`` file. The compiler finds libraries via the
 registry, but there is no "base64" registry file. To fix this, edit
-``hello-world/dylan-package.json`` to add the dependency. Change this::
+"hello-world/dylan-package.json" to add the dependency. Change this::
 
     "dependencies": [  ],
 
@@ -186,7 +183,7 @@ to this::
 
     "dependencies": [ "base64" ],
 
-and then run ``dylan update`` again::
+and then run `dylan update`_ again::
 
     $ dylan update
     Workspace directory is ~/dylan/workspaces/hello/.
@@ -195,7 +192,8 @@ and then run ``dylan update`` again::
 
 Note that we didn't specify a version for "base64", so the current version is
 downloaded. Usually it's a good idea to specify a particular version, like
-"base64\@0.1".
+"base64\@0.1". Take a look at "registry/<your-platform>/base64" to see where it
+was installed.
 
 We also haven't actually changed the hello-world code to use base64. That is
 left as an exercise.
@@ -204,14 +202,116 @@ Now that you've got a working project, try some other ``dylan`` subcommands,
 the most useful ones are:
 
 * `dylan status`_ tells you the status of the active packages. It will find the
-  "hello-world" package but will complain that it's not a git repository. Run
+  ``hello-world`` package but will complain that it's not a Git repository. Run
   ``git init`` in it if you like.
 
-* `dylan list`_ with ``--all`` lists all the packages in the catalog.
+* `dylan list`_ with ``--all`` lists all the packages in the catalog. (Note
+  that many libraries are still included with Open Dylan. They'll be moved to
+  packages eventually.)
 
 
 .. index::
-   single: pacman
+   single: workspace
+   single: workspaces
+
+Workspaces
+==========
+
+A workspace is a directory in which you work on a Dylan package, or multiple
+interrelated packages. It is defined by a "workspace.json" file. Most
+``dylan`` subcommands need to be run inside a workspace so that they can
+
+* find the "registry" directory,
+* invoke ``dylan-compiler`` in the workspace root directory, so that compiler
+  output goes in the same "_build" subdirectory,
+* find the "active packages" in the workspace, and
+* find settings in the "workspace.json" file.
+
+The "workspace.json" file must contain at least an empty dictionary, ``{}``.
+
+.. code-block:: json
+
+   {
+       "default-library": "cool-app-test-suite"
+   }
+
+The ``"default-library"`` attribute is currently the only valid attribute and
+is used by the `dylan build`_ command and the `Dylan LSP server
+<https://github.com/dylan-lang/lsp-dylan>`_ to decide which library to build
+when no other library is specified. A good choice would be your main test suite
+library. It may also be left unspecified.
+
+The Registry
+============
+
+Open Dylan uses "registries" to locate library sources. Setting up a
+development workspace historically involved a lot of manual Git cloning,
+creating registry files for each used library, and adding Git submodules.
+
+The `dylan update`_ command takes care of that for you. It scans each active
+package and its dependencies for ".lid" files and writes a registry file for
+each one (but see below for platform-specific libraries), and it downloads and
+installs package dependencies for you.
+
+..note:: If you use the same workspace directory on multiple platforms (e.g., a
+         network mounted directory or shared by a virtual machine) you will
+         need to run `dylan update`_ on **each** platform so that the correct
+         platform-specific registry entries are created.  The ``dylan`` tool
+         makes no attempt to figure out which packages are "generic" and which
+         are platform-specific, so it always writes registry files specifically
+         for the current platform.
+
+Platform-specific Libraries
+---------------------------
+
+Open Dylan supports multi-platform libraries via the registry and per-platform
+`LID files
+<https://opendylan.org/documentation/library-reference/lid.html>`_. Among other
+things, LID files tell the compiler which files to compile, and in which
+order. To write platform-specific code, put it in a separate Dylan source file
+and only include it in that platform's LID file.
+
+To complicate matters, one LID file may include another LID file via the
+``LID`` header.
+
+In order for `dylan update`_ to generate the registry it must figure out which
+LID files match the current platform. For example, when on Linux it shouldn't
+generate a registry file for a Windows-only library.
+
+To accomplish this the ``Platforms`` LID header was introduced. In your LID
+file you may specify the platforms on which the library runs::
+
+  Platforms: x86_64-linux
+             riscv64-linux
+
+If the current platform matches one of the platforms listed in the LID file, a
+registry file is generated for the library. (If there is no ``Platforms``
+header, the library is assumed to run on all platforms.)
+
+If a LID **is included** in another LID file and **does not** explicitly match
+the current platform via the ``Platforms`` keyword, then no registry entry is
+written for that LID file. The assumption being that the included LID file only
+contains shared data and isn't a complete LID file on its own.
+
+This effectively means that if you *include* a LID file in one
+platform-specific LID file then you must either create one LID file per
+platform for that library, or you must use the ``Platforms`` header in the
+**included** LID file to specify all platforms that *don't* have a
+platform-specific LID file.
+
+For example, the base ``dylan`` library itself (not to be confused with the
+``dylan`` tool) has a `dylan-win32.lid
+<https://github.com/dylan-lang/opendylan/blob/master/sources/dylan/dylan-win32.lid>`_
+file so that it can specify some Windows resource files. "dylan-win32.lid"
+includes "dylan.lid" and has ``Platforms: x86-win32``. Since there's nothing
+platform-specific for any other platform, creating 8 other platform-specific
+LID files would be cumbersome. Instead, "dylan.lid" just needs to say which
+platforms it explicitly applies to by adding this::
+
+  Platforms: aarch-64-linux
+             arm-linux
+             x86_64-freebsd
+             ...etc, but not x86-win32...
 
 Package Manager
 ===============
@@ -411,7 +511,7 @@ This command generates the following code:
 * A corresponding test suite library and initial source files.
 * A ``dylan-package.json`` file (unless this new library is being added to an
   existing package).
-* If not already inside a Dylan workspace, a ``workspace.json`` file is created
+* If not already inside a Dylan workspace, a "workspace.json" file is created
   **in the current directory**.
 
 Unlike the ``make-dylan-app`` binary included with Open Dylan, this command
@@ -456,7 +556,7 @@ Options:
   directory.
 
 The ``new workspace`` subcommand creates a new workspace directory and
-initializes it with a ``workspace.json`` file. The workspace name is the only
+initializes it with a "workspace.json" file. The workspace name is the only
 required argument. Example::
 
   $ dylan new workspace my-app
@@ -505,7 +605,7 @@ you're satisfied that you're ready to release a new version of your package
     ``"0.5.0"`` the GitHub release should be tagged ``v0.5.0``.
 
 #.  Clone https://github.com/dylan-lang/pacman-catalog in the same Dylan
-    workspace, so that it is an active package and make a new git branch in it.
+    workspace, so that it is an active package and make a new Git branch in it.
     In the next step the ``dylan publish`` command will make changes there for
     you.
 
@@ -586,8 +686,8 @@ and performs two actions:
     active packages or their dependencies.
 
     The ``registry`` directory is created at the same level as the
-    ``workspace.json`` file and all registry files are written to a
-    subdirectory named after the local platform.
+    "workspace.json" file and all registry files are written to a subdirectory
+    named after the local platform.
 
     If a dependency is also an active package in this workspace, the active
     package is preferred over the specific version listed as a dependency.
