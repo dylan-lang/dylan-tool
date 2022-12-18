@@ -81,7 +81,8 @@ define test test-source-file-map--included-lid ()
       let full-locator
         = merge-locators(as(<file-locator>, filename), directory);
       let full-path = as(<string>, full-locator);
-      assert-equal(libraries, element(file-map, full-path, default: #f),
+      assert-equal(sort(libraries),
+                   sort(element(file-map, full-path, default: #())),
                    format-to-string("source mapping for %=", full-path));
     end;
   end;
