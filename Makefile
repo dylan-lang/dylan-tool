@@ -42,9 +42,7 @@ build-with-version:
 	dylan-compiler -build dylan-tool; \
 	cp -p $${orig} $${file}
 
-# After the next OD release this should install a static exe built with the
-# -unify flag.
-install: build-with-version
+really-install:
 	mkdir -p $(install_bin)
 	mkdir -p $(install_lib)
 	cp _build/bin/dylan-tool $(install_bin)/
@@ -53,6 +51,13 @@ install: build-with-version
 	@if [ ! -L "$(link_source)" ]; then \
 	  ln -s $$(realpath $(link_target)) $$(realpath $(link_source)); \
 	fi;
+
+# After the next OD release this should install a static exe built with the
+# -unify flag.
+install: build-with-version really-install
+
+# Build and install without the version hacking above.
+install-debug: build really-install
 
 # dylan-tool needs to be buildable with submodules so that it can be built on
 # new platforms without having to manually install deps.
