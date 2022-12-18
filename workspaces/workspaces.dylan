@@ -31,6 +31,9 @@ end function;
 
 define constant $workspace-file-name = "workspace.json";
 define constant $dylan-package-file-name = "dylan-package.json";
+// TODO: remove support for deprecated pkg.json file in the 1.0 version or once
+// all catalog packages are converted, whichever comes first.
+define constant $pkg-file-name = "pkg.json";
 define constant $default-library-key = "default-library";
 
 // Create a new workspace named `name` under `parent-directory`. If `parent-directory` is
@@ -64,9 +67,10 @@ define function new
 end function;
 
 // Update the workspace based on the workspace.json file or signal an error.
-define function update () => ()
-  let ws = load-workspace();
-  note("Workspace directory is %s.", ws.workspace-directory);
+define function update
+    (#key directory :: <directory-locator> = fs/working-directory())
+ => ()
+  let ws = load-workspace(directory: directory);
   let cat = pm/catalog();
   let (releases, actives) = update-deps(ws, cat);
   let registry = update-registry(ws, cat, releases, actives);
@@ -86,13 +90,7 @@ define function update () => ()
   end;
 end function;
 
-// <workspace> holds the parsed workspace configuration, and is the one object
-// that knows the layout of the workspace directory:
-//       workspace/
-//         _build
-//         active-package-1/dylan-package.json
-//         active-package-2/dylan-package.json
-//         registry/
+// See the section "Workspaces" in the documentation.
 define class <workspace> (<object>)
   constant slot workspace-directory :: <directory-locator>,
     required-init-keyword: directory:;
@@ -102,89 +100,152 @@ define class <workspace> (<object>)
     init-keyword: active-packages:;
   constant slot workspace-default-library-name :: false-or(<string>) = #f,
     init-keyword: default-library-name:;
+  constant slot multi-package-workspace? :: <bool> = #f,
+    init-keyword: multi-package?:;
 end class;
 
-// Finds the workspace file somewhere in or above `directory` and creates a
-// `<workspace>` from it. `directory` defaults to the current working
-// directory.  Signals `<workspace-error>` if the file isn't found.
+// Loads the workspace definition by looking up from `directory` to find the
+// workspace root and loading the workspace.json file. If no workspace.json
+// file exists, the workspace is created using the dylan-package.json file (if
+// any) and default values. As a last resort `directory` is used as the
+// workspace root. Signals `<workspace-error>` if either JSON file is found but
+// is invalid.
 define function load-workspace
-    (#key directory :: <directory-locator> = fs/working-directory()) => (w :: <workspace>)
-  let path = find-workspace-file(directory)
-    | workspace-error("Workspace file not found for %s", directory);
-  fs/with-open-file(stream = path, if-does-not-exist: #"signal")
-    let object = json/parse(stream, strict?: #f, table-class: <istring-table>);
-    if (~instance?(object, <table>))
-      workspace-error("Invalid workspace file %s, must be a single JSON object", path);
-    end;
-    let ws-dir = locator-directory(path);
-    let registry = make(<registry>, root-directory: ws-dir);
-    let active-packages = find-active-packages(ws-dir);
-    let default-library = element(object, $default-library-key, default: #f);
-    if (~default-library & active-packages.size = 1)
-      // TODO: this isn't right. Should find the actual libraries, from the LID
-      // files, and if there's only one "*-test*" library, choose that.
-      for (pkg in active-packages)
-        default-library := pm/package-name(pkg);
+    (#key directory :: <directory-locator> = fs/working-directory())
+ => (workspace :: <workspace>)
+  let ws-dir = find-workspace-directory(directory);
+  let registry = make(<registry>, root-directory: ws-dir);
+  let active-packages = find-active-packages(ws-dir);
+  let ws-json = load-workspace-file(directory);
+  let default-library
+    = ws-json & element(ws-json, $default-library-key, default: #f);
+  if (~default-library & active-packages.size = 1)
+    // TODO: this isn't right. Should find the actual libraries, from the LID
+    // files, and if there's only one "*-test*" library, choose that.
+    default-library := pm/package-name(active-packages[0]);
+  end;
+  make(<workspace>,
+       active-packages: active-packages,
+       directory: ws-dir,
+       registry: registry,
+       default-library-name: default-library,
+       multi-package?: begin
+                         let ws-file = find-workspace-file(directory);
+                         let dp-file = find-dylan-package-file(directory);
+                         ws-file
+                           & dp-file
+                           & (ws-file.locator-directory ~= dp-file.locator-directory)
+                       end)
+end function;
+
+define function load-workspace-file (directory) => (config :: false-or(<table>))
+  let ws-file = find-workspace-file(directory);
+  if (ws-file)
+    fs/with-open-file(stream = ws-file, if-does-not-exist: #f)
+      let object = json/parse(stream, strict?: #f, table-class: <istring-table>);
+      if (~instance?(object, <table>))
+        workspace-error("Invalid workspace file %s, must contain at least {}", ws-file);
       end;
-    end;
-    make(<workspace>,
-         active-packages: active-packages,
-         directory: locator-directory(path),
-         registry: registry,
-         default-library-name: default-library)
-  end
-end function;
-
-// Search up from `directory` to find the workspace file.
-define function find-workspace-file
-    (directory :: <directory-locator>) => (file :: false-or(<file-locator>))
-  find-file-in(directory, $workspace-file-name)
-end function;
-
-define function find-dylan-package-file
-    (directory :: <directory-locator>) => (file :: false-or(<file-locator>))
-  find-file-in(directory, $dylan-package-file-name)
-end function;
-
-define function find-file-in
-    (directory :: <directory-locator>, name :: <string>)
- => (file :: false-or(<file-locator>))
-  let loc = as(<file-locator>, name);
-  iterate loop (dir = simplify-locator(directory))
-    if (dir)
-      let file = merge-locators(loc, dir);
-      if (fs/file-exists?(file))
-        file
-      else
-        loop(dir.locator-directory)
-      end
+      object
     end
   end
 end function;
 
-// Find `directory`/*/dylan-package.json and turn them into a sequence of
-// package <release>s.
+// Find the workspace directory. The highest directory containing
+// workspace.json always takes precedence. Otherwise the highest directory
+// containing either dylan-package.json or registry/.
+define function find-workspace-directory
+    (start :: <directory-locator>) => (dir :: <directory-locator>)
+  let ws-file = find-workspace-file(start);
+  (ws-file & ws-file.locator-directory)
+    | begin
+        let pkg-file = find-dylan-package-file(start);
+        let dir = pkg-file & pkg-file.locator-directory;
+        let reg-dir = find-registry-directory(start);
+        if (reg-dir)
+          let d = reg-dir.locator-directory;
+          if (d & (~dir | (d.locator-path.size < dir.locator-path.size)))
+            dir := d
+          end;
+        end;
+        dir | start
+      end
+end function;
+
+define function find-workspace-file
+    (directory :: <directory-locator>) => (file :: false-or(<file-locator>))
+  find-file-in-or-above(directory, as(<file-locator>, $workspace-file-name))
+end function;
+
+define function find-dylan-package-file
+    (directory :: <directory-locator>) => (file :: false-or(<file-locator>))
+  find-file-in-or-above(directory, as(<file-locator>, $dylan-package-file-name))
+    | find-file-in-or-above(directory, as(<file-locator>, $pkg-file-name))
+end function;
+
+define function find-registry-directory
+    (directory :: <directory-locator>) => (dir :: false-or(<directory-locator>))
+  find-file-in-or-above(directory, as(<directory-locator>, "registry"))
+end function;
+
+// Return the top-most file or directory with the given `suffix` in or above
+// `directory`. The path is searched up to the root directory and the one
+// nearest the root is returned.
+define function find-file-in-or-above
+    (directory :: <directory-locator>, suffix :: <locator>)
+ => (file :: false-or(<locator>))
+  iterate loop (dir = simplify-locator(directory), candidate = #f)
+    if (~dir)
+      candidate
+    else
+      let file = merge-locators(suffix, dir);
+      loop(dir.locator-directory,
+           if (fs/file-exists?(file)
+                 & begin
+                     let type = fs/file-type(file);
+                     (type == #"directory" & instance?(suffix, <directory-locator>))
+                       | (type == #"file" & instance?(suffix, <file-locator>))
+                   end)
+             file
+           else
+             candidate
+           end)
+    end
+  end
+end function;
+
+// Find `directory`/*/dylan-package.json or `directory`/dylan-package.json and
+// turn them/it into a sequence of package `<release>` objects. In other words,
+// `directory` is expected to be the workspace root directory.
 define function find-active-packages
     (directory :: <directory-locator>) => (pkgs :: <seq>)
-  let packages = make(<stretchy-vector>);
-  for (locator in fs/directory-contents(directory))
-    if (instance?(locator, <directory-locator>))
-      let loc = merge-locators(as(<file-locator>, $dylan-package-file-name), locator);
-      let loc2 = merge-locators(as(<file-locator>, "pkg.json"), locator);
-      if (fs/file-exists?(loc))
-        let pkg = pm/load-dylan-package-file(loc);
-        add!(packages, pkg);
-      elseif (fs/file-exists?(loc2))
-        // TODO: remove support for deprecated pkg.json file in the 1.0 version
-        // or once they're all converted, whichever comes first.
-        warn("Please rename %s to %s; support for 'pkg.json' will be"
-               " removed soon.", loc2, $dylan-package-file-name);
-        let pkg = pm/load-dylan-package-file(loc2);
-        add!(packages, pkg);
+  let dpkg-file = merge-locators(as(<file-locator>, $dylan-package-file-name),
+                                 directory);
+  let pkg-file = merge-locators(as(<file-locator>, $pkg-file-name),
+                                directory);
+  if (fs/file-exists?(dpkg-file))
+    vector(pm/load-dylan-package-file(dpkg-file))
+  elseif (fs/file-exists?(pkg-file))
+    vector(pm/load-dylan-package-file(pkg-file))
+  else
+    let packages = make(<stretchy-vector>);
+    for (locator in fs/directory-contents(directory))
+      if (instance?(locator, <directory-locator>))
+        let loc = merge-locators(as(<file-locator>, $dylan-package-file-name), locator);
+        let loc2 = merge-locators(as(<file-locator>, $pkg-file-name), locator);
+        if (fs/file-exists?(loc))
+          let pkg = pm/load-dylan-package-file(loc);
+          add!(packages, pkg);
+        elseif (fs/file-exists?(loc2))
+          warn("Please rename %s to %s; support for %= will be"
+                 " removed soon.", loc2, $dylan-package-file-name, $pkg-file-name);
+          let pkg = pm/load-dylan-package-file(loc2);
+          add!(packages, pkg);
+        end;
       end;
     end;
-  end;
-  packages
+    packages
+  end
 end function;
 
 define function active-package-names
@@ -195,16 +256,18 @@ end function;
 // These next three should probably have methods on (<workspace>, <package>) too.
 define function active-package-directory
     (ws :: <workspace>, pkg-name :: <string>) => (d :: <directory-locator>)
-  subdirectory-locator(ws.workspace-directory, pkg-name)
+  if (ws.multi-package-workspace?)
+    subdirectory-locator(ws.workspace-directory, pkg-name)
+  else
+    ws.workspace-directory
+  end
 end function;
 
 define function active-package-file
     (ws :: <workspace>, pkg-name :: <string>) => (f :: <file-locator>)
-  // TODO: remove support for deprecated pkg.json file in the 1.0 version
-  // or once they're all converted, whichever comes first.
   let dir = active-package-directory(ws, pkg-name);
   let loc = merge-locators(as(<file-locator>, $dylan-package-file-name), dir);
-  let loc2 = merge-locators(as(<file-locator>, "pkg.json"), dir);
+  let loc2 = merge-locators(as(<file-locator>, $pkg-file-name), dir);
   if (fs/file-exists?(loc2) & ~fs/file-exists?(loc))
     loc2
   else
