@@ -262,8 +262,7 @@ end function;
 
 // Write files for libraries named `name`, `name`-test-suite and (if `exe?` is
 // true) `name`-app in directory `dir`. `deps` is a sequence of `<dep>`
-// objects. If `dir` is not part of a workspace already then a workspace file
-// is created in `dir`/../workspace.json.
+// objects.
 define function make-dylan-library
     (name :: <string>, dir :: <directory-locator>, exe? :: <bool>, deps :: <seq>,
      force-package? :: <bool>)
@@ -345,22 +344,6 @@ define function make-dylan-library
                   format-string: $dylan-package-file-template,
                   format-arguments: list(deps-string, name)));
   end;
-  let workspace-file = ws/find-workspace-file(dir);
-  if (workspace-file)
-    note("Current workspace: %s", workspace-file);
-  else
-    // Workspace file is created in the PARENT directory, not the library
-    // directory. The expectation is that each library will have its own
-    // subdirectory as a child of the workspace dir. If that doesn't fit, then
-    // create a workspace before calling this function.
-    let ws-file = merge-locators(as(<file-locator>, ws/$workspace-file-name),
-                                 locator-directory(dir));
-    write-template(make(<template>,
-                        output-file: ws-file,
-                        format-string: #:string:'{ "default-library": %= }',
-                        format-arguments: list(name)));
-    note("Created new workspace %s.", ws-file);
-  end;
   for (template in templates)
     write-template(template);
     let name = template.library-name;
@@ -368,7 +351,7 @@ define function make-dylan-library
       note("Created library %s.", name)
     end;
   end;
-  ws/update();
+  ws/update(directory: dir);
 end function;
 
 // Parse dependency specs like lib, lib@latest, or lib@1.2. Deps are always

@@ -57,7 +57,8 @@ define method execute-subcommand
   if (empty?(library-names))
     library-names
       := list(ws/workspace-default-library-name(workspace)
-                | error("No default libraries configured."));
+                | error("No libraries found in workspace and no"
+                          " default libraries configured."));
   end;
   let dylan-compiler = locate-dylan-compiler();
   for (name in library-names)
