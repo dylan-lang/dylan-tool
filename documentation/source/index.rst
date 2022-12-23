@@ -4,11 +4,11 @@
 The ``dylan`` Command-line Tool
 *******************************
 
-The ``dylan`` command-line tool provides a number of subcommands to simplify
-the management of Dylan workspaces and package dependencies, eliminates the
-need to manually maintain the "registry" (which enables the compiler to locate
-libraries) by hand, and eliminates the need to use Git submodules to track
-dependencies.
+The :program:`dylan` command-line tool provides a number of subcommands to
+simplify the management of Dylan workspaces and package dependencies,
+eliminates the need to manually maintain the "registry" (which enables the
+compiler to locate libraries) by hand, and eliminates the need to use Git
+submodules to track dependencies.
 
 .. toctree::
    :hidden:
@@ -24,21 +24,21 @@ Terminology
 
 package
   A blob of files that can be unpacked into a directory and which has a
-  ``dylan-package.json`` file in the top-level directory. A package currently
-  corresponds to a single Git repository. A package has a set of versioned
-  releases. A package may contain zero or more Dylan libraries.
+  :file:`dylan-package.json` file in the top-level directory. A package
+  currently corresponds to a single Git repository. A package has a set of
+  versioned releases. A package may contain zero or more Dylan libraries.
 
 workspace
-  The directory in which the ``dylan`` tool operates. Effectively this means a
-  workspace is where the "_build" and "registry" directories are generated. In
-  most cases, a workspace is the directory containing the dylan-package.json
-  file, but the ultimate arbiter is the workspace.json file, if it exists. See
-  `workspaces`_ for details.
+  The directory in which the :program:`dylan` tool operates. Effectively this
+  means a workspace is where the :file:`_build` and :file:`registry`
+  directories are generated. In most cases, a workspace is the directory
+  containing the :file:`dylan-package.json` file, but the ultimate arbiter is
+  the workspace.json file, if it exists. See `workspaces`_ for details.
 
 active package
   A package checked out into the top-level of a workspace. In most cases a
   workspace is the same as a package directory so there is only one active
-  package. See `workspaces`_ for discussion of multi-package
+  package. See `Workspaces`_ for discussion of multi-package
   workspaces. Example: the `dylan update`_ subcommand scans active packages
   when creating the registry.
 
@@ -50,17 +50,18 @@ release
 Requirements
 ============
 
-To find and install packages on the local file system many of the ``dylan``
-subcommands use the :envvar:`DYLAN` environment variable. If :envvar:`DYLAN` is
-not set, ``$HOME/dylan`` is used instead. (Much of this documentation is written
-to assume that :envvar:`DYLAN` is set, but it is not required.)
+To find and install packages on the local file system many of the
+:program:`dylan` subcommands use the :envvar:`DYLAN` environment variable. If
+:envvar:`DYLAN` is not set, ``$HOME/dylan`` is used instead. (Much of this
+documentation is written to assume that :envvar:`DYLAN` is set, but it is not
+required.)
 
-Make sure ``git`` is on your :envvar:`PATH` so it can be found by the package
-manager, which currently exec's ``git clone`` to install packages. (This
-dependency will be removed in a future release.)
+Make sure :program:`git` is on your :envvar:`PATH` so it can be found by the
+package manager, which currently exec's ``git clone`` to install
+packages. (This dependency will be removed in a future release.)
 
-The ``dylan`` tool installs packages, including the `pacman-catalog`_ package
-(which describes where to find other packages), under ``$DYLAN/pkg/``.
+The :program:`dylan` tool installs packages, including the `pacman-catalog`_
+package (which describes where to find other packages), under ``$DYLAN/pkg/``.
 
 .. warning::
 
@@ -72,20 +73,22 @@ The ``dylan`` tool installs packages, including the `pacman-catalog`_ package
 Building From Source
 ====================
 
-If you have **Open Dylan 2022.1 or later**, ``dylan`` is already installed as
-part of that release. But if you're looking to run the latest version, follow
-these steps to build and install.
+If you have **Open Dylan 2022.1 or later**, :program:`dylan` is already
+installed as part of that release. But if you're looking to run the latest
+version, follow these steps to build and install.
 
 .. note:: Because an executable named "dylan" conflicts with the base Dylan
-   library during the build process, this library is named ``dylan-tool`` and
-   then the executable is installed as ``dylan`` by the ``Makefile``. The
-   examples in this document use the name ``dylan`` instead of ``dylan-tool``.
+   library during the build process, this library is named "dylan-tool" and
+   then the executable is installed as :program:`dylan` by the
+   :file:`Makefile`. The examples in this document use the name
+   :program:`dylan` instead of "dylan-tool".
 
 #.  Read the `Requirements`_ section, above.
 
-#.  Make sure you have ``git``, ``make``, and Open Dylan installed.
+#.  Make sure you have :program:`git`, :program:`make`, and Open Dylan
+    installed.
 
-#.  Clone and build the ``dylan-tool`` project::
+#.  Clone and build the "dylan-tool" project::
 
         $ git clone --recursive https://github.com/dylan-lang/dylan-tool.git
         $ cd dylan-tool
@@ -96,7 +99,7 @@ these steps to build and install.
 #.  Make sure that ``$DYLAN/bin`` is on your ``$PATH``. If you prefer not to
     set ``$DYLAN``, make sure that ``$HOME/dylan/bin`` is on your ``$PATH``.
 
-You should now be able to run ``dylan help`` and go through the Hello World
+You should now be able to run `dylan help`_ and go through the Hello World
 example below.
 
 
@@ -131,8 +134,8 @@ dependencies::
     Updated 18 files in /tmp/workspaces/hello-world/registry/.
 
 If you're new to Dylan, take a look at the generated files in the "hello-world"
-subdirectory. In particular, "hello-world/dylan-package.json" describes a Dylan
-package, which you could eventually publish for others to use.
+subdirectory. In particular, :file:`hello-world/dylan-package.json` describes a
+Dylan package, which you could eventually publish for others to use.
 
 It is possible to build hello-world now because it has no dependencies, but for
 most libraries with complex dependencies we first have to create a "registry"
@@ -154,7 +157,7 @@ Now let's build! ::
     $ _build/bin/hello-world
     Hello world!
 
-On the initial build there are compiler warnings for the ``dylan`` library.
+On the initial build there are compiler warnings for the "dylan" library.
 These are due to a known (harmless) bug and can be ignored. Subsequent builds
 will not show them, and will go much faster since they will use cached build
 products.
@@ -172,10 +175,10 @@ and ``hello-world-test-suite`` were built. Run the test suite::
     PASSED in 0.000065 seconds
 
 Now let's add a new dependency to our library. Let's say we want to ``use
-base64`` in our ``library.dylan`` file. The compiler finds libraries via the
-registry, but there is no "base64" registry file so the compiler won't find
-it. To fix this, edit "hello-world/dylan-package.json" to add the dependency.
-Change this::
+base64`` in our :file:`library.dylan` file. The compiler finds libraries via
+the registry, but there is no "base64" registry file so the compiler won't find
+it. To fix this, edit :file:`hello-world/dylan-package.json` to add the
+dependency.  Change this::
 
     "dependencies": [  ],
 
@@ -197,8 +200,8 @@ was installed.
 We also haven't actually changed the hello-world code to use base64. That is
 left as an exercise.
 
-Now that you've got a working project, try some other ``dylan`` subcommands,
-the most useful ones are:
+Now that you've got a working project, try some other :program:`dylan`
+subcommands, the most useful ones are:
 
 * `dylan status`_ tells you the status of the active packages. It will find the
   ``hello-world`` package but will complain that it's not a Git repository. Run
@@ -217,14 +220,15 @@ Workspaces
 ==========
 
 A workspace is a directory in which you work on a Dylan package, or multiple
-interrelated packages. The ``dylan`` tool often needs to find the root of the
-workspace, for example to decide where to write the "registry" directory or to
-invoke ``dylan-compiler``.  It does this by looking for one of the following
-files, in the order shown, and by using the directory containing the file:
+interrelated packages. The :program:`dylan` tool often needs to find the root
+of the workspace, for example to decide where to write the "registry" directory
+or to invoke :program:`dylan-compiler`.  It does this by looking for one of the
+following files, in the order shown, and by using the directory containing the
+file:
 
 1. workspace.json -- A place to put workspace configuration settings.
-2. dylan-package.json -- The package definition file, required for projects
-   that will be published to the package catalog.
+2. :file:`dylan-package.json` -- The package definition file, required for
+   projects that will be published to the package catalog.
 3. registry -- A directory containing files that tell the compiler where to
    find the sources of other Dylan libraries.
 
@@ -232,10 +236,10 @@ The workspace root is the **highest level** directory in which one of the above
 files is found.
 
 Usually, the workspace root is just the package directory (i.e., the directory
-containing dylan-package.json), because most of the time you will be working on
-one package at a time. In this case there is no need for a workspace.json file
-unless you need to provide workspace settings not contained in the package
-file.
+containing :file:`dylan-package.json`), because most of the time you will be
+working on one package at a time. In this case there is no need for a
+workspace.json file unless you need to provide workspace settings not contained
+in the package file.
 
 In the less common case of working on multiple, interrelated Dylan packages at
 the same time, the workspace.json file is necessary in order to put the
@@ -252,11 +256,12 @@ multi-package workspace might look like this::
     my-workspace/registry             // created by dylan tool
     my-workspace/workspace.json       // created by you
 
-Most ``dylan`` subcommands need to be run inside a workspace so that they can
+Most :program:`dylan` subcommands need to be run inside a workspace so that
+they can
 
 * find the "registry" directory,
-* invoke ``dylan-compiler`` in the workspace root directory, so that compiler
-  always uses the same "_build" subdirectory,
+* invoke :program:`dylan-compiler` in the workspace root directory, so that
+  compiler always uses the same :file:`_build` subdirectory,
 * find the "active packages" in the workspace, and
 * find settings in the "workspace.json" file.
 
@@ -288,10 +293,10 @@ installs package dependencies for you.
 ..note:: If you use the same workspace directory on multiple platforms (e.g., a
          network mounted directory or shared by a virtual machine) you will
          need to run `dylan update`_ on **each** platform so that the correct
-         platform-specific registry entries are created.  The ``dylan`` tool
-         makes no attempt to figure out which packages are "generic" and which
-         are platform-specific, so it always writes registry files specifically
-         for the current platform.
+         platform-specific registry entries are created.  The :program:`dylan`
+         tool makes no attempt to figure out which packages are "generic" and
+         which are platform-specific, so it always writes registry files
+         specifically for the current platform.
 
 Platform-specific Libraries
 ---------------------------
@@ -331,8 +336,8 @@ platform for that library, or you must use the ``Platforms`` header in the
 **included** LID file to specify all platforms that *don't* have a
 platform-specific LID file.
 
-For example, the base ``dylan`` library itself (not to be confused with the
-``dylan`` tool) has a `dylan-win32.lid
+For example, the base "dylan" library itself (not to be confused with the
+:program:`dylan` tool) has a `dylan-win32.lid
 <https://github.com/dylan-lang/opendylan/blob/master/sources/dylan/dylan-win32.lid>`_
 file so that it can specify some Windows resource files. "dylan-win32.lid"
 includes "dylan.lid" and has ``Platforms: x86-win32``. Since there's nothing
@@ -348,7 +353,7 @@ platforms it explicitly applies to by adding this::
 Package Manager
 ===============
 
-The ``dylan`` tool relies on :doc:`pacman`, the Dylan package manager
+The :program:`dylan` tool relies on :doc:`pacman`, the Dylan package manager
 (unrelated to the Arch Linux tool by the same name), to install dependencies.
 See :doc:`the pacman documentation <pacman>` for information on how to define a
 package, version syntax, and how dependency resolution works.
@@ -406,28 +411,29 @@ Build the configured default library or the specified libraries.
 Synopsis:
   ``dylan build [options] [--all | lib1 lib2 ...]``
 
-The ``dylan build`` command is essentially a wrapper around ``dylan-compiler``
-that has a few advantages:
+The `dylan build`_ command is essentially a wrapper around
+:program:`dylan-compiler` that has a few advantages:
 
 #. Invoke it from any directory inside your workspace and it will run the build
-   in the top-level workspace directory so that the ``_build`` and ``registry``
-   directories are used.
+   in the top-level workspace directory so that the :file:`_build` and
+   :file:`registry` directories are used.
 
-#. Configure a set of libraries to build by default, in ``dylan-package.json``.
+#. Configure a set of libraries to build by default, in
+   :file:`dylan-package.json`.
 
 #. Use the ``--all`` flag to build all libraries in the workspace. For example,
    normally this builds both the main library and the test suite.
 
 #. Specify multiple libraries on one command line, unlike with
-   ``dylan-compiler``.
+   :program:`dylan-compiler`.
 
-``dylan build`` exits after the first library that generates serious compiler
-warnings, i.e., if ``dylan-compiler`` exits with an error status. (Requires an
-Open Dylan release later than 2020.1.)
+`dylan build`_ exits after the first library that generates serious compiler
+warnings, i.e., if :program:`dylan-compiler` exits with an error
+status. (Requires an Open Dylan release later than 2020.1.)
 
 .. note:: This subcommand is purely a convenience; it is perfectly valid to run
-          ``dylan-compiler`` directly instead, after changing to the workspace
-          top-level directory.
+          :program:`dylan-compiler` directly instead, after changing to the
+          workspace top-level directory.
 
 Options:
 ~~~~~~~~
@@ -446,8 +452,8 @@ Options:
 
 ``--unify``
   Combine all used libraries into a single executable. Note that
-  ``dylan-compiler`` puts the generated executable in ``_build/sbin`` instead
-  of ``_build/bin`` when this flag is used.
+  :program:`dylan-compiler` puts the generated executable in
+  :file:`_build/sbin` instead of :file:`_build/bin` when this flag is used.
 
 
 .. index::
@@ -541,25 +547,25 @@ This command is the same as `dylan new application`_ except that it doesn't
 generate the corresponding ``<name>-app`` executable library.
 
 Specifying dependencies is optional. They should be in the same form as
-specified in the ``dylan-package.json`` file. For example, "strings\@1.0".
+specified in the :file:`dylan-package.json` file. For example, "strings\@1.0".
 
 This command generates the following code:
 
 * A main library and module definition and initial source files.
 * A corresponding test suite library and initial source files.
-* A ``dylan-package.json`` file (unless this new library is being added to an
-  existing package).
+* A :file:`dylan-package.json` file (unless this new library is being added to
+  an existing package).
 
-Unlike the ``make-dylan-app`` binary included with Open Dylan, this command
-does not generate a "registry" directory. Instead, it is expected that you will
-run ``dylan update`` to generate the registry whenever dependencies are
+Unlike the :program:`make-dylan-app` binary included with Open Dylan, this
+command does not generate a "registry" directory. Instead, it is expected that
+you will run `dylan update`_ to generate the registry whenever dependencies are
 changed.
 
 Options:
 ~~~~~~~~
 
 ``--force-package``, ``-p``
-  Create ``dylan-package.json`` even if already inside a package. This is
+  Create :file:`dylan-package.json` even if already inside a package. This is
   intended for testing and continuous integration use.
 
 Here's an example of creating a library named "http" which depends on "strings"
@@ -570,7 +576,7 @@ version 1.0 and the latest version of "logging". ::
   $ dylan build --all
   $ _build/bin/killer-app-test-suite
 
-Edit the generated ``dylan-package.json`` file to set the repository URL,
+Edit the generated :file:`dylan-package.json` file to set the repository URL,
 description, and other attributes for your package.
 
 **See also:** `dylan new application`_
@@ -588,10 +594,11 @@ Create a new workspace.
 Synopsis: ``dylan new workspace [options] <name>``
 
 .. note:: In most cases there is no need to explicitly create a workspace since
-          the package directory (the directory containing dylan-package.json)
-          will be used as the workspace by ``dylan`` subcommands if no
-          workspace.json file is found. Explicit workspaces are mainly needed
-          when working on multiple interrelated packages at the same time.
+          the package directory (the directory containing
+          :file:`dylan-package.json`) will be used as the workspace by
+          :program:`dylan` subcommands if no workspace.json file is
+          found. Explicit workspaces are mainly needed when working on multiple
+          interrelated packages at the same time.
 
 Options:
 ~~~~~~~~
@@ -600,9 +607,9 @@ Options:
   Create the workspace under this directory instead of in the current working
   directory.
 
-The ``new workspace`` subcommand creates a new workspace directory and
-initializes it with a "workspace.json" file. The workspace name is the only
-required argument. Example::
+The `dylan new workspace`_ subcommand creates a new workspace directory and
+initializes it with a :file:`workspace.json` file. The workspace name is the
+only required argument. Example::
 
   $ dylan new workspace my-app
   $ cd my-app
@@ -624,7 +631,7 @@ application`_), then run `dylan update`_.
 dylan publish
 -------------
 
-The ``publish`` subcommand adds a new release of a package to the package
+The "publish" subcommand adds a new release of a package to the package
 catalog.
 
 Synopsis: ``dylan publish <package-name>``
@@ -638,22 +645,22 @@ This command may (as usual) be run from anywhere inside a workspace. Once
 you're satisfied that you're ready to release a new version of your package
 (tests pass, doc updated, etc.) follow these steps:
 
-#.  Update the ``"version"`` attribute in ``dylan-package.json`` to be the new
-    release's version, commit the change, and push it to your main branch.
+#.  Update the ``"version"`` attribute in :file:`dylan-package.json` to be the
+    new release's version, commit the change, and push it to your main branch.
 
-#.  Update any dependencies in ``dylan-package.json`` as needed. Normally this
-    will happen naturally during development as you discover you need newer
-    package versions, but this is a good time to review deps and update get bug
-    fixes.  **Remember to `dylan update`_ and re-run your tests if you change
-    deps!**
+#.  Update any dependencies in :file:`dylan-package.json` as needed. Normally
+    this will happen naturally during development as you discover you need
+    newer package versions, but this is a good time to review deps and update
+    get bug fixes.  **Remember to `dylan update`_ and re-run your tests if you
+    change deps!**
 
 #.  Make a new release on GitHub with a tag that matches the release version.
-    For example, if the ``"version"`` attribute in ``dylan-package.json`` is
-    ``"0.5.0"`` the GitHub release should be tagged ``v0.5.0``.
+    For example, if the ``"version"`` attribute in :file:`dylan-package.json`
+    is ``"0.5.0"`` the GitHub release should be tagged ``v0.5.0``.
 
 #.  Clone https://github.com/dylan-lang/pacman-catalog in the same Dylan
     workspace, so that it is an active package and make a new Git branch in it.
-    In the next step the ``dylan publish`` command will make changes there for
+    In the next step the `dylan publish`_ command will make changes there for
     you.
 
     If you already had pacman-catalog as an active packgae, **make sure to pull
@@ -722,19 +729,19 @@ Update the workspace based on the current set of active packages.
 
 Synopsis: ``dylan update``
 
-The ``update`` command may be run from anywhere inside a workspace directory
-and performs two actions:
+The "update" command may be run from anywhere inside a workspace directory and
+performs two actions:
 
 #.  Installs all active package dependencies, as specified in their
-    ``dylan-package.json`` files. Any time these dependencies are changed you
-    should run ``dylan update`` again.
+    :file:`dylan-package.json` files. Any time these dependencies are changed
+    you should run `dylan update`_ again.
 
 #.  Updates the registry to have an entry for each library in the workspace's
     active packages or their dependencies.
 
-    The ``registry`` directory is created at the same level as the
-    "workspace.json" file and all registry files are written to a subdirectory
-    named after the local platform.
+    The :file:`registry` directory is created at the same level as the
+    :file:`workspace.json` file and all registry files are written to a
+    subdirectory named after the local platform.
 
     If a dependency is also an active package in this workspace, the active
     package is preferred over the specific version listed as a dependency.
@@ -747,8 +754,8 @@ and performs two actions:
 Example:
 ~~~~~~~~
 
-Create a workspace named ``dt``, with one active package, ``dylan-tool``,
-update it, and build the test suite::
+Create a workspace named ``dt``, with one active package, "dylan-tool", update
+it, and build the test suite::
 
    $ dylan new workspace dt
    $ cd dt
@@ -764,9 +771,9 @@ update it, and build the test suite::
 dylan version
 -------------
 
-Show the version of the ``dylan`` command you are using. This is the Git
-version from which `dylan-tool <https://github.com/dylan-lang/dylan-tool>`_
-was compiled.
+Show the version of the :program:`dylan` command you are using. This is the Git
+version from which `dylan-tool <https://github.com/dylan-lang/dylan-tool>`_ was
+compiled.
 
 Synopsis: ``dylan version``
 
