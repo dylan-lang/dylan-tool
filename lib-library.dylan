@@ -253,6 +253,7 @@ define module %workspaces
   // Exports for the test suite.
   export
     $lid-key,
+    find-workspace-directory,
     lid-data,
     lid-value,
     lid-values,
