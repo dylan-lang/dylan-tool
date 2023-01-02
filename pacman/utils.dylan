@@ -26,12 +26,12 @@ define constant $dylan-env-var = "DYLAN";
 // TODO: Dylan implementations should export this.
 define function dylan-directory
     () => (dir :: <directory-locator>)
-  let dylan = os/getenv($dylan-env-var);
+  let dylan = os/environment-variable($dylan-env-var);
   if (dylan)
     as(<directory-locator>, dylan)
   else
     // TODO: use %APPDATA% on Windows
-    let home = os/getenv("HOME");
+    let home = os/environment-variable("HOME");
     if (home)
       subdirectory-locator(as(<directory-locator>, home), $dylan-dir-name)
     else

@@ -71,9 +71,9 @@ define method execute-subcommand
                          #f);
     debug("Running command %=", command);
     let exit-status
-      = os/run(command,
-               under-shell?: #f,
-               working-directory: ws/workspace-directory(workspace));
+      = os/run-application(command,
+                           under-shell?: #f,
+                           working-directory: ws/workspace-directory(workspace));
     if (exit-status ~== 0)
       error("Build of %= failed with exit status %=.", name, exit-status);
     end;

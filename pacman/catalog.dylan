@@ -80,7 +80,7 @@ define function catalog
   if (*catalog*)
     *catalog*
   else
-    let override = os/getenv($catalog-env-var);
+    let override = os/environment-variable($catalog-env-var);
     let directory
       = if (override)
           if (~*override-logged?*)
@@ -125,14 +125,14 @@ define function load-all-catalog-packages
     method load-one (dir, name, type)
       select (type)
         #"directory" =>
-          do-directory(load-one, subdirectory-locator(dir, name));
+          fs/do-directory(load-one, subdirectory-locator(dir, name));
         #"file" =>
           // TODO: in release after 2020.1 use file-locator here.
           let file = merge-locators(as(<file-locator>, name), dir);
           add!(packages, load-catalog-package-file(cat, name, file));
       end;
     end method;
-  do-directory(load-one, cat.catalog-directory);
+  fs/do-directory(load-one, cat.catalog-directory);
   packages
 end function;
 
@@ -142,10 +142,10 @@ define constant $catalog-freshness :: <duration> = make(<duration>, minutes: 10)
 define function too-old?
     (path :: <locator>) => (old? :: <bool>)
   block ()
-    let mod-time = file-property(path, #"modification-date");
+    let mod-time = fs/file-property(path, #"modification-date");
     let now = current-date();
     now - mod-time > $catalog-freshness
-  exception (<file-system-error>)
+  exception (fs/<file-system-error>)
     // TODO: catch <file-does-not-exist-error> instead
     // https://github.com/dylan-lang/opendylan/issues/1147
     #t
@@ -226,9 +226,9 @@ end function;
 define function write-package-file
     (cat :: <catalog>, package :: <package>) => ()
   let file = package-locator(cat.catalog-directory, package);
-  ensure-directories-exist(file);
-  with-open-file (stream = file, direction: #"output", if-exists: #"replace")
-    json/print(package, stream, indent: 2, sort-keys?: #t);
+  fs/ensure-directories-exist(file);
+  fs/with-open-file (stream = file, direction: #"output", if-exists: #"replace")
+    print-json(package, stream, indent: 2, sort-keys?: #t);
   end;
 end function;
 
@@ -255,33 +255,33 @@ define method package-locator
   merge-locators(as(<file-locator>, name), dir)
 end method;
 
-// The JSON printer calls json/do-print. We convert most objects to tables,
+// The JSON printer calls do-print-json. We convert most objects to tables,
 // which the JSON printer knows how to print.
 
-define method json/do-print
+define method do-print-json
     (package :: <package>, stream :: <stream>)
   // TODO: Once https://github.com/dylan-lang/json/pull/12 is in a release,
   // update to use that json release and remove the keyword args in the three
   // calls to json/print below.
-  json/print(to-table(package), stream, indent: 2, sort-keys?: #t);
+  print-json(to-table(package), stream, indent: 2, sort-keys?: #t);
 end method;
 
-define method json/do-print
+define method do-print-json
     (release :: <release>, stream :: <stream>)
-  json/print(to-table(release), stream, indent: 2, sort-keys?: #t);
+  print-json(to-table(release), stream, indent: 2, sort-keys?: #t);
 end method;
 
-define method json/do-print
+define method do-print-json
     (dep :: <dep>, stream :: <stream>)
   let t = make(<istring-table>);
   t["name"]    := dep.package-name;
   t["version"] := dep.dep-version;
-  json/print(t, stream, indent: 2, sort-keys?: #t);
+  print-json(t, stream, indent: 2, sort-keys?: #t);
 end method;
 
-define method json/do-print
+define method do-print-json
     (version :: <version>, stream :: <stream>)
-  json/print(version-to-string(version), stream, indent: 2, sort-keys?: #t);
+  print-json(version-to-string(version), stream, indent: 2, sort-keys?: #t);
 end method;
 
 define function load-catalog-package
@@ -301,10 +301,10 @@ define method load-catalog-package-file
   // We need the block here because if-does-not-exist: #f doesn't work.
   // https://github.com/dylan-lang/opendylan/issues/1358
   block ()
-    with-open-file (stream = file, direction: #"input")
+    fs/with-open-file (stream = file, direction: #"input")
       load-catalog-package-file(cat, name, stream)
     end
-  exception (<file-does-not-exist-error>)
+  exception (fs/<file-does-not-exist-error>)
     #f
   end
 end method;
@@ -312,11 +312,11 @@ end method;
 define method load-catalog-package-file
     (cat :: <catalog>, name :: <string>, stream :: <stream>)
  => (package :: false-or(<package>))
-  let json = json/parse(stream);
+  let json = parse-json(stream);
   let stored-name = json["name"];
   if (stored-name ~= name)
     warn("%s: loaded package name is %=, expected %=",
-         stream-locator(stream), stored-name, name);
+         fs/stream-locator(stream), stored-name, name);
   end;
   let package = make(<package>,
                      name: name,

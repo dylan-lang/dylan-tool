@@ -73,16 +73,16 @@ end method;
 // While technically any Dylan name is valid, we prefer to restrict the names
 // to the style that is in common use since this tool is most likely to be used
 // by beginners.
-define constant $library-name-regex = re/compile("^[a-z][a-z0-9-]*$");
+define constant $library-name-regex = compile-regex("^[a-z][a-z0-9-]*$");
 
 define function new-library
     (name :: <string>, dir :: <directory-locator>, dep-specs :: <seq>, exe? :: <bool>,
      force-package? :: <bool>)
-  if (~re/search($library-name-regex, name))
+  if (~regex-search($library-name-regex, name))
     error("%= is not a valid Dylan library name."
             " Names are one or more words separated by hyphens, for example"
             " 'cool-stuff'. Names must match the regular expression %=.",
-          name, re/pattern($library-name-regex));
+          name, regex-pattern($library-name-regex));
   end;
   let lib-dir = subdirectory-locator(dir, name);
   if (fs/file-exists?(lib-dir))

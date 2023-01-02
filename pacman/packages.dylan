@@ -97,7 +97,7 @@ define constant $pkg-name-regex = #:regex:{^[A-Za-z][A-Za-z0-9._-]*$};
 
 define function validate-package-name
     (name :: <string>) => ()
-  re/search-strings($pkg-name-regex, name)
+  regex-search-strings($pkg-name-regex, name)
     | package-error("invalid package name: %=", name);
 end function;
 
@@ -159,10 +159,10 @@ end function;
 define function load-dylan-package-file
     (file :: <file-locator>) => (release :: <release>)
   debug("Reading package file %s", file);
-  with-open-file (stream = file)
+  fs/with-open-file (stream = file)
     let json = block ()
-                 json/parse(stream, table-class: <istring-table>, strict?: #f)
-               exception (ex :: json/<error>)
+                 parse-json(stream, table-class: <istring-table>, strict?: #f)
+               exception (ex :: <json-error>)
                  package-error("%s %s", file, ex);
                end;
     if (~instance?(json, <table>))

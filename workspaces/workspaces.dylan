@@ -142,7 +142,7 @@ define function load-workspace-file (directory) => (config :: false-or(<table>))
   let ws-file = find-workspace-file(directory);
   if (ws-file)
     fs/with-open-file(stream = ws-file, if-does-not-exist: #f)
-      let object = json/parse(stream, strict?: #f, table-class: <istring-table>);
+      let object = parse-json(stream, strict?: #f, table-class: <istring-table>);
       if (~instance?(object, <table>))
         workspace-error("Invalid workspace file %s, must contain at least {}", ws-file);
       end;

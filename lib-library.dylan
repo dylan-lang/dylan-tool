@@ -29,8 +29,7 @@ end library dylan-tool-lib;
 // Definitions used by all the other modules.
 define module shared
   use format-out;
-  use operating-system,
-    prefix: "os/";
+  use operating-system, prefix: "os/";
   use streams;
   use strings;
   use uncommon-dylan;
@@ -47,9 +46,9 @@ end module;
 
 define module pacman
   export
+    <catalog-error>,
     catalog,
     dylan-directory,            // $DYLAN or $HOME/dylan or /opt/dylan
-    <catalog-error>,
 
     <catalog>,
     catalog-directory,
@@ -59,13 +58,13 @@ define module pacman
     write-package-file,
 
     <package>,
-    package-name,
-    package-releases,
-    package-description,
-    package-contact,
     package-category,
+    package-contact,
+    package-description,
     package-keywords,
     package-locator,
+    package-name,
+    package-releases,
 
     <package-error>,
     download,
@@ -73,94 +72,56 @@ define module pacman
     install-deps,
     installed-versions,
     installed?,
+    load-all-catalog-packages,
+    load-catalog-package,
+    load-dylan-package-file,
     package-directory,
     release-directory,
     source-directory,
-    load-dylan-package-file,
-    load-all-catalog-packages,
-    load-catalog-package,
 
     <release>,
+    publish-release,
     release-dependencies,
     release-dev-dependencies,
     release-license,
-    // TODO:
-    // release-license-url,
-    release-url,
     release-to-string,
+    release-url,
     release-version,
-    publish-release,
 
-    <dep>,
     <dep-vector>,
+    <dep>,
     dep-to-string, string-to-dep,
     dep-version,
     resolve-deps,
     resolve-release-deps,
 
-    <version>,
     $latest,
+    <branch-version>,
     <semantic-version>,
+    <version>,
+    version-branch,
     version-major,
     version-minor,
-    version-patch,
-    <branch-version>,
-    version-branch;
+    version-patch;
 end module pacman;
 
 define module %pacman
   use date,
     import: { current-date, <duration> };
-  use file-system,
-    import: { delete-directory,
-              directory-contents,
-              directory-empty?,
-              do-directory,
-              ensure-directories-exist,
-              file-property,
-              <file-system-error>,
-              <file-does-not-exist-error>,
-              <file-system-file-locator>,
-              <pathname>,
-              stream-locator,
-              with-open-file };
-  use format,
-    import: { format,
-              format-to-string };
+  use file-system, prefix: "fs/";
+  use format;
   use format-out;
-  use json,
-    import: { parse-json => json/parse,
-              encode-json => json/encode,
-              print-json => json/print,
-              do-print-json => json/do-print,
-              <json-error> => json/<error> };
-  use locators,
-    import: { <directory-locator>,
-              <file-locator>,
-              <locator>,
-              locator-name,
-              merge-locators,
-              subdirectory-locator };
-  use operating-system,
-    import: { environment-variable => os/getenv,
-              run-application => os/run };
-  use print,
-    import: { print, print-object, printing-object, *print-escape?* };
-  use regular-expressions,
-    prefix: "re/",
-    rename: { <regex> => <regex>,
-              regex-parser => regex-parser,  // #:regex:".*"
-              compile-regex => re/compile,
-              regex-pattern => re/pattern,
-              regex-search => re/search,
-              regex-search-strings => re/search-strings,
-              match-group => re/group };
+  use json;
+  use locators;
+  use operating-system, prefix: "os/";
+  use print;
+  use regular-expressions;
   use shared;
-  use streams,
-    import: { read-to-end, <stream>, with-output-to-string, write };
+  use streams;
   use strings;
   use uncommon-dylan,
     exclude: { format-out, format-to-string };
+  // Do we need this?
   use uncommon-utils,
     import: { elt, iff, <singleton-object>, value-sequence };
 
@@ -186,64 +147,41 @@ define module workspaces
   create
     $dylan-package-file-name,
     $workspace-file-name,
-    load-workspace,
-    <workspace>,
-      active-package-directory,
-      active-package-file,
-      active-package?,
-      workspace-active-packages,
-      workspace-directory,
-      find-dylan-package-file,
-      find-workspace-directory,
-      find-workspace-file,
-      workspace-default-library-name,
-    new,
-    update,
     <workspace-error>,
+    <workspace>,
+    active-package-directory,
+    active-package-file,
+    active-package?,
     find-active-package-library-names,
+    find-dylan-package-file,
     find-library-names,
-    source-file-map;
+    find-workspace-directory,
+    find-workspace-file,
+    load-workspace,
+    new,
+    source-file-map,
+    update,
+    workspace-active-packages,
+    workspace-default-library-name,
+    workspace-directory;
 end module workspaces;
 
 define module %workspaces
   use dylan-extensions,
     import: { address-of };
-  use file-system,
-    prefix: "fs/";
-  use format,
-    import: { format, format-to-string };
+  use file-system, prefix: "fs/";
+  use format;
   use format-out;
-  use json,
-    import: { parse-json => json/parse };
-  use locators,
-    import: { <directory-locator>,
-              <file-locator>,
-              <locator>,
-              locator-as-string,
-              locator-base,
-              locator-directory,
-              locator-extension,
-              locator-path,
-              merge-locators,
-              simplify-locator,
-              subdirectory-locator };
+  use json;
+  use locators;
   use operating-system, prefix: "os/";
   use pacman, prefix: "pm/";
-  use print,
-    import: { print-object };
-  use regular-expressions,
-    import: { regex-parser },      // #:regex:"..."
-    rename: { regex-search-strings => re/search-strings };
+  use print;
+  use regular-expressions;
   use shared;
   use file-source-records, prefix: "sr/";
-  use standard-io,
-    import: { *standard-output* => *stdout*,
-              *standard-error* => *stderr* };
-  use streams,
-    import: { force-output => flush,
-              read-line,
-              read-to-end,
-              write };
+  use standard-io;
+  use streams;
   use strings;
   use uncommon-dylan,
     exclude: { format-to-string };
@@ -263,54 +201,23 @@ end module %workspaces;
 
 define module dylan-tool-lib
   use command-line-parser;
-  use file-system,
-    prefix: "fs/";
-  use format,
-    import: { format, format-to-string };
+  use file-system, prefix: "fs/";
+  use format;
   use format-out;
-  use json,
-    import: { parse-json => json/parse };
-  use locators,
-    import: { <directory-locator>,
-              <file-locator>,
-              <locator>,
-              locator-as-string,
-              locator-directory,
-              locator-name,
-              locator-path,
-              merge-locators,
-              relative-locator,
-              simplify-locator,
-              subdirectory-locator };
-  use operating-system,
-    prefix: "os/",
-    rename: { run-application => os/run };
-  use pacman,
-    prefix: "pm/";
-  use regular-expressions,
-    import: { regex-parser },      // #regex:"..."
-    rename: { compile-regex => re/compile,
-              regex-pattern => re/pattern,
-              regex-search => re/search,
-              regex-search-strings => re/search-strings };
+  use json;
+  use locators;
+  use operating-system, prefix: "os/";
+  use pacman, prefix: "pm/";
+  use regular-expressions;
   use shared;
-  use standard-io,
-    import: { *standard-output* => *stdout*,
-              *standard-error* => *stderr* };
-  use streams,
-    import: { <string-stream>,
-              force-output => flush,
-              read-line,
-              read-to-end,
-              stream-contents,
-              write };
+  use standard-io;
+  use streams;
   use strings;
   use uncommon-dylan,
     exclude: { format-to-string };
   use uncommon-utils,
     import: { err, iff, inc!, slice };
-  use workspaces,
-    prefix: "ws/";
+  use workspaces, prefix: "ws/";
 
   export
     dylan-tool-command-line;
