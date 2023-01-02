@@ -194,6 +194,7 @@ define module workspaces
       workspace-active-packages,
       workspace-directory,
       find-dylan-package-file,
+      find-workspace-directory,
       find-workspace-file,
       workspace-default-library-name,
     new,
@@ -253,7 +254,6 @@ define module %workspaces
   // Exports for the test suite.
   export
     $lid-key,
-    find-workspace-directory,
     lid-data,
     lid-value,
     lid-values,
