@@ -1,6 +1,6 @@
 Module: dylan-user
 
-define library dylan-tool-lib
+define library dylan-tool
   use collections,
     import: { table-extensions };
   use command-line-parser;
@@ -18,13 +18,13 @@ define library dylan-tool-lib
     import: { uncommon-dylan, uncommon-utils };
 
   export
-    dylan-tool-lib,
+    dylan-tool,
     pacman,
     %pacman,
     shared,
     workspaces,
     %workspaces;
-end library dylan-tool-lib;
+end library;
 
 // Definitions used by all the other modules.
 define module shared
@@ -103,7 +103,7 @@ define module pacman
     version-major,
     version-minor,
     version-patch;
-end module pacman;
+end module;
 
 define module %pacman
   use date,
@@ -141,7 +141,7 @@ define module %pacman
     max-release,
     string-parser,                 // #string:...
     string-to-version, version-to-string;
-end module %pacman;
+end module;
 
 define module workspaces
   create
@@ -164,7 +164,7 @@ define module workspaces
     workspace-active-packages,
     workspace-default-library-name,
     workspace-directory;
-end module workspaces;
+end module;
 
 define module %workspaces
   use dylan-extensions,
@@ -197,9 +197,9 @@ define module %workspaces
     lid-values,
     parse-lid-file,
     <registry>;
-end module %workspaces;
+end module;
 
-define module dylan-tool-lib
+define module dylan-tool
   use command-line-parser;
   use file-system, prefix: "fs/";
   use format;
@@ -221,4 +221,4 @@ define module dylan-tool-lib
 
   export
     dylan-tool-command-line;
-end module dylan-tool-lib;
+end module;

@@ -1,4 +1,4 @@
-Module: dylan-tool-lib
+Module: dylan-tool
 Synopsis: Create the initial boilerplate for new Dylan libraries and applications
 
 

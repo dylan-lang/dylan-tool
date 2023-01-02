@@ -1,4 +1,4 @@
-Module: dylan-tool-lib
+Module: dylan-tool
 Synopsis: Utilities for use by dylan-tool commands
 
 
