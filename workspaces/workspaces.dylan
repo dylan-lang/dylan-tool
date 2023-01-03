@@ -194,6 +194,7 @@ end function;
 define function find-file-in-or-above
     (directory :: <directory-locator>, suffix :: <locator>)
  => (file :: false-or(<locator>))
+  let want-dir? = instance?(suffix, <directory-locator>);
   iterate loop (dir = simplify-locator(directory), candidate = #f)
     if (~dir)
       candidate
@@ -203,8 +204,8 @@ define function find-file-in-or-above
            if (fs/file-exists?(file)
                  & begin
                      let type = fs/file-type(file);
-                     (type == #"directory" & instance?(suffix, <directory-locator>))
-                       | (type == #"file" & instance?(suffix, <file-locator>))
+                     (type == #"directory" & want-dir?)
+                       | (type == #"file" & ~want-dir?)
                    end)
              file
            else
