@@ -1,5 +1,5 @@
-Module: dylan-tool
-Synopsis: dylan-tool main function
+Module: dylan-tool-app
+Synopsis: dylan-tool-app main function
 
 
 define function main () => (status :: false-or(<integer>))

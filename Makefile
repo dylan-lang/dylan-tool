@@ -19,7 +19,7 @@ DYLAN		?= $${HOME}/dylan
 install_dir     = $(DYLAN)/install/dylan-tool
 install_bin     = $(install_dir)/bin
 install_lib     = $(install_dir)/lib
-link_target     = $(install_bin)/dylan-tool
+link_target     = $(install_bin)/dylan-tool-app
 link_source     = $(DYLAN)/bin/dylan
 
 # Make sure the local registry is preferred.
@@ -28,7 +28,7 @@ OPEN_DYLAN_USER_REGISTRIES = .:$${OPEN_DYLAN_USER_REGISTRIES}
 .PHONY: build clean install test dist distclean
 
 build:
-	dylan-compiler -build dylan-tool
+	dylan-compiler -build dylan-tool-app
 
 # Hack to add the version to the binary with git tag info. Don't want this to
 # be the normal build because it causes unnecessary rebuilds.
@@ -39,13 +39,13 @@ build-with-version:
 	cp -p $${file} $${orig}; \
 	cat $${file} | sed "s,/.__./.*/.__./,/*__*/ \"$$(git describe --tags)\" /*__*/,g" > $${temp}; \
 	mv $${temp} $${file}; \
-	dylan-compiler -build dylan-tool; \
+	dylan-compiler -build dylan-tool-app; \
 	cp -p $${orig} $${file}
 
 really-install:
 	mkdir -p $(install_bin)
 	mkdir -p $(install_lib)
-	cp _build/bin/dylan-tool $(install_bin)/
+	cp _build/bin/dylan-tool-app $(install_bin)/
 	cp -r _build/lib/lib* $(install_lib)/
 	mkdir -p $(DYLAN)/bin
 	@if [ ! -L "$(link_source)" ]; then \

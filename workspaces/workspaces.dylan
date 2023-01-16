@@ -142,7 +142,7 @@ define function load-workspace-file (directory) => (config :: false-or(<table>))
   let ws-file = find-workspace-file(directory);
   if (ws-file)
     fs/with-open-file(stream = ws-file, if-does-not-exist: #f)
-      let object = json/parse(stream, strict?: #f, table-class: <istring-table>);
+      let object = parse-json(stream, strict?: #f, table-class: <istring-table>);
       if (~instance?(object, <table>))
         workspace-error("Invalid workspace file %s, must contain at least {}", ws-file);
       end;
@@ -151,24 +151,17 @@ define function load-workspace-file (directory) => (config :: false-or(<table>))
   end
 end function;
 
-// Find the workspace directory. The highest directory containing
-// workspace.json always takes precedence. Otherwise the highest directory
-// containing either dylan-package.json or registry/.
+// Find the workspace directory. The nearest directory containing
+// workspace.json always takes precedence. Otherwise the nearest directory
+// containing dylan-package.json.
 define function find-workspace-directory
     (start :: <directory-locator>) => (dir :: <directory-locator>)
   let ws-file = find-workspace-file(start);
   (ws-file & ws-file.locator-directory)
     | begin
         let pkg-file = find-dylan-package-file(start);
-        let dir = pkg-file & pkg-file.locator-directory;
-        let reg-dir = find-registry-directory(start);
-        if (reg-dir)
-          let d = reg-dir.locator-directory;
-          if (d & (~dir | (d.locator-path.size < dir.locator-path.size)))
-            dir := d
-          end;
-        end;
-        dir | start
+        (pkg-file & pkg-file.locator-directory)
+          | start
       end
 end function;
 
@@ -183,33 +176,26 @@ define function find-dylan-package-file
     | find-file-in-or-above(directory, as(<file-locator>, $pkg-file-name))
 end function;
 
-define function find-registry-directory
-    (directory :: <directory-locator>) => (dir :: false-or(<directory-locator>))
-  find-file-in-or-above(directory, as(<directory-locator>, "registry"))
-end function;
-
-// Return the top-most file or directory with the given `suffix` in or above
-// `directory`. The path is searched up to the root directory and the one
-// nearest the root is returned.
+// Return the nearest file or directory with the given `name` in or above
+// `directory`. `name` is expected to be a locator with an empty path
+// component.
 define function find-file-in-or-above
-    (directory :: <directory-locator>, suffix :: <locator>)
+    (directory :: <directory-locator>, name :: <locator>)
  => (file :: false-or(<locator>))
-  iterate loop (dir = simplify-locator(directory), candidate = #f)
-    if (~dir)
-      candidate
-    else
-      let file = merge-locators(suffix, dir);
-      loop(dir.locator-directory,
-           if (fs/file-exists?(file)
-                 & begin
-                     let type = fs/file-type(file);
-                     (type == #"directory" & instance?(suffix, <directory-locator>))
-                       | (type == #"file" & instance?(suffix, <file-locator>))
-                   end)
-             file
-           else
-             candidate
-           end)
+  let want-dir? = instance?(name, <directory-locator>);
+  iterate loop (dir = simplify-locator(directory))
+    if (dir)
+      let file = merge-locators(name, dir);
+      if (fs/file-exists?(file)
+            & begin
+                let type = fs/file-type(file);
+                (type == #"directory" & want-dir?)
+                  | (type == #"file" & ~want-dir?)
+              end)
+        file
+      else
+        loop(dir.locator-directory)
+      end
     end
   end
 end function;

@@ -135,22 +135,22 @@ define function has-key-value?
 end function;
 
 // Return the transitive (via files included with the "LID" header) contents of
-// the "Files" LID header. Files are resolved to absolute pathname strings.
+// the "Files" LID header.
 define function dylan-source-files (lid :: <lid>) => (files :: <seq>)
   let files = #();
-  local method dylan-source-files (lid)
+  local method source-files (lid)
           map(method (filename)
                 if (~ends-with?(lowercase(filename), ".dylan"))
                   filename := concat(filename, ".dylan");
                 end;
-                as(<string>,
-                   merge-locators(as(<file-locator>, filename),
-                                  lid.lid-locator.locator-directory))
+                let merged = merge-locators(as(<file-locator>, filename),
+                                            lid.lid-locator.locator-directory);
+                as(<string>, simplify-locator(merged))
               end,
               lid-values(lid, $files-key) | #());
         end;
   local method do-lid (lid)
-          files := concat(files, dylan-source-files(lid));
+          files := concat(files, source-files(lid));
           for (child in lid-values(lid, $lid-key) | #())
             do-lid(child)
           end;
@@ -439,11 +439,11 @@ end function;
 // .dylan files (i.e., the Files: header) since this is designed for use by the
 // lsp-dylan library and that's what it cares about.
 define function source-file-map
-    (dir :: <directory-locator>) => (map :: <string-table>)
+    (dir :: <directory-locator>) => (map :: <table>)
   let registry = make(<registry>, root-directory: dir);
   let file-map
     // This wouldn't be necessary if we had an <equal-table> implementation.
-    // Then I'd just use locators as the keys, which is cross-platform.
+    // Then I'd use locators as the keys, which is cross-platform.
     = make(if (os/$os-name == #"win32") <istring-table> else <string-table> end);
   for (lid in find-lids(registry, dir))
     let library = lid-value(lid, $library-key);

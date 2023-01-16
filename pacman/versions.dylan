@@ -134,7 +134,7 @@ define function string-to-version
     (original-input :: <string>) => (_ :: <version>)
   let input = strip(original-input);
   let (match?, maj, min, pat, pre-release)
-    = re/search-strings($semantic-version-regex, input);
+    = regex-search-strings($semantic-version-regex, input);
   if (match?)
     if (pre-release)
       package-error("pre-release version specs are not yet supported: %=",

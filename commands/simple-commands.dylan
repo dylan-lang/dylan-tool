@@ -1,4 +1,4 @@
-Module: dylan-tool-lib
+Module: dylan-tool
 Synopsis: Various command implementations not big enough to warrant their own file
 
 

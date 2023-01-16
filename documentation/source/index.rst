@@ -226,23 +226,21 @@ or to invoke :program:`dylan-compiler`.  It does this by looking for one of the
 following files, in the order shown, and by using the directory containing the
 file:
 
-1. workspace.json -- A place to put workspace configuration settings.
+1. :file:`workspace.json` -- A place to put workspace configuration
+   settings. If this file exists, it takes precedence over the following two
+   options in determining the workspace root.
 2. :file:`dylan-package.json` -- The package definition file, required for
    projects that will be published to the package catalog.
-3. registry -- A directory containing files that tell the compiler where to
-   find the sources of other Dylan libraries.
-
-The workspace root is the **highest level** directory in which one of the above
-files is found.
+3. The current working directory is used if neither of the above are found.
 
 Usually, the workspace root is just the package directory (i.e., the directory
 containing :file:`dylan-package.json`), because most of the time you will be
 working on one package at a time. In this case there is no need for a
-workspace.json file unless you need to provide workspace settings not contained
-in the package file.
+:file:`workspace.json` file unless you need to provide workspace settings not
+contained in the package file.
 
 In the less common case of working on multiple, interrelated Dylan packages at
-the same time, the workspace.json file is necessary in order to put the
+the same time, the :file:`workspace.json` file is necessary in order to put the
 workspace root above the level of the package directories. For example, your
 multi-package workspace might look like this::
 
@@ -259,13 +257,14 @@ multi-package workspace might look like this::
 Most :program:`dylan` subcommands need to be run inside a workspace so that
 they can
 
-* find the "registry" directory,
+* find or create the "registry" directory,
 * invoke :program:`dylan-compiler` in the workspace root directory, so that
   compiler always uses the same :file:`_build` subdirectory,
 * find the "active packages" in the workspace, and
-* find settings in the "workspace.json" file.
+* find settings in the :file:`workspace.json` file.
 
-The "workspace.json" file must contain at least an empty dictionary, ``{}``.
+If you create a :file:`workspace.json` file it must contain at least an empty
+dictionary, ``{}``.
 
 .. code-block:: json
 

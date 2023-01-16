@@ -1,4 +1,4 @@
-Module: dylan-tool-lib
+Module: dylan-tool
 Synopsis: Utilities for use by dylan-tool commands
 
 
@@ -18,11 +18,12 @@ define function run
     (command :: <seq>, #key working-directory :: false-or(<directory-locator>))
  => (status :: <int>, output :: <string>)
   let stream = make(<string-stream>, direction: #"output");
-  let status = os/run(command,
-                      under-shell?: instance?(command, <string>),
-                      working-directory: working-directory,
-                      outputter: method (string, #rest ignore)
-                                   write(stream, string)
-                                 end);
+  let status
+    = os/run-application(command,
+                         under-shell?: instance?(command, <string>),
+                         working-directory: working-directory,
+                         outputter: method (string, #rest ignore)
+                                      write(stream, string)
+                                    end);
   values(status, stream.stream-contents)
 end function;

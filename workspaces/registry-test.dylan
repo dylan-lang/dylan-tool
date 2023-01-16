@@ -1,25 +1,5 @@
 Module: dylan-tool-test-suite
 
-// Create a file in the current test's temp directory with the given contents.
-// If the file already exists an error is signaled. `filename` is assumed to be
-// a relative pathname; if it contains directory structure, subdirectories are
-// created. Returns the full, absolute file path as a `<file-locator>`.
-//
-// TODO(cgay): Wrote this here with the intention to make it part of Testworks
-// eventually (possibly under a different name).
-define function write-test-file
-    (filename :: <pathname>, #key contents :: <string> = "")
- => (full-pathname :: <file-locator>)
-  let locator = merge-locators(as(<file-locator>, filename),
-                               test-temp-directory());
-  ensure-directories-exist(locator);
-  with-open-file (stream = locator,
-                  direction: #"output", if-exists: #"signal")
-    write(stream, contents);
-  end;
-  locator
-end function;
-
 // The low-level LID parsing is done by the file-source-records library so this
 // test is mainly concerned with whether parsing the LID: header works.
 define test test-parse-lid-file--lid-header ()

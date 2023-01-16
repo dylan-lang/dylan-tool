@@ -1,4 +1,4 @@
-Module: dylan-tool-lib
+Module: dylan-tool
 Synopsis: The `dylan publish` command publishes a package to the catalog.
 
 

@@ -36,7 +36,7 @@ end function;
 
 define function installed?
     (release :: <release>) => (_ :: <bool>)
-  ~directory-empty?(source-directory(release))
+  ~fs/directory-empty?(source-directory(release))
 end function;
 
 // Download and unpack `release` into `dest-dir` or signal <package-error>
@@ -67,7 +67,7 @@ define method %download
                        (update-submodules? & " --recurse-submodules") | "",
                        branch, release.release-url, dest-dir);
   let (exit-code, signal-code /* , process, #rest streams */)
-    = os/run(command, output: #"null", error: #"null");
+    = os/run-application(command, output: #"null", error: #"null");
   if (exit-code = 0)
     note("Downloaded %s to %s", release, dest-dir);
   else
@@ -101,7 +101,7 @@ define method install
   end;
   if (force? & installed?(release))
     debug("Deleting package %s for forced install.", release);
-    delete-directory(release-directory(release), recursive?: #t);
+    fs/delete-directory(release-directory(release), recursive?: #t);
   end;
   if (installed?(release))
     debug("Package %s is already installed.", release);
@@ -131,8 +131,8 @@ define function installed-versions
     = subdirectory-locator(package-manager-directory(),
                            lowercase(package-name));
   let files = block ()
-                directory-contents(package-directory)
-              exception (<file-system-error>)
+                fs/directory-contents(package-directory)
+              exception (fs/<file-system-error>)
                 #[]
               end;
   let versions = make(<stretchy-vector>);

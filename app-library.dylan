@@ -1,22 +1,21 @@
 Module: dylan-user
-Synopsis: dylan-tool executable
 
 
-define library dylan-tool
+define library dylan-tool-app
   use common-dylan;
   use command-line-parser;
-  use dylan-tool-lib;
+  use dylan-tool;
   use io;
   use logging;
   use system;
-end;
+end library;
 
-define module dylan-tool
+define module dylan-tool-app
   use common-dylan;
   use command-line-parser;
-  use dylan-tool-lib;
+  use dylan-tool;
   use format-out;
   use logging;
   use operating-system, prefix: "os/";
   use shared;
-end;
+end module;
