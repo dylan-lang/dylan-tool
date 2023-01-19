@@ -28,11 +28,17 @@ define constant $new-application-subcommand
          options:
            list(make(<flag-option>,
                      names: #("force-package", "p"),
-                     help: "If true, create dylan-package.json even if already in a package",
+                     help: "Create dylan-package.json even if"
+                       " already in a package",
                      default: #f),
                 make(<positional-option>,
                      names: #("name"),
                      help: "Name of the application"),
+                make(<flag-option>,
+                     names: #("simple"),
+                     help: "Create only an executable library, without"
+                       " a corresponding shared library or test suite.",
+                     default: #f),
                 $deps-option));
 
 // dylan new library foo http json ...
@@ -41,7 +47,8 @@ define constant $new-library-subcommand
          options:
            list(make(<flag-option>,
                      names: #("force-package", "p"),
-                     help: "If true, create dylan-package.json even if already in a package",
+                     help: "Create dylan-package.json even if"
+                       " already in a package",
                      default: #f),
                 make(<positional-option>,
                      names: #("name"),
@@ -54,8 +61,11 @@ define method execute-subcommand
   let name = get-option-value(subcmd, "name");
   let dep-specs = get-option-value(subcmd, "deps") | #[];
   let force-package? = get-option-value(subcmd, "force-package");
-  let exe? = #t;
-  new-library(name, fs/working-directory(), dep-specs, exe?, force-package?);
+  new-library(name,
+              dependencies: dep-specs,
+              executable?: #t,
+              force-package?: force-package?,
+              simple?: get-option-value(subcmd, "simple"));
   0
 end method;
 
@@ -65,8 +75,10 @@ define method execute-subcommand
   let name = get-option-value(subcmd, "name");
   let dep-specs = get-option-value(subcmd, "deps") | #[];
   let force-package? = get-option-value(subcmd, "force-package");
-  let exe? = #f;
-  new-library(name, fs/working-directory(), dep-specs, exe?, force-package?);
+  new-library(name,
+              dependencies: dep-specs,
+              executable?: #f,
+              force-package?: force-package?);
   0
 end method;
 
@@ -76,20 +88,24 @@ end method;
 define constant $library-name-regex = compile-regex("^[a-z][a-z0-9-]*$");
 
 define function new-library
-    (name :: <string>, dir :: <directory-locator>, dep-specs :: <seq>, exe? :: <bool>,
-     force-package? :: <bool>)
+    (name :: <string>,
+     #key directory :: <directory-locator> = fs/working-directory(),
+          dependencies :: <seq> = #[], executable? :: <bool>,
+          force-package? :: <bool>, simple? :: <bool>)
   if (~regex-search($library-name-regex, name))
     error("%= is not a valid Dylan library name."
             " Names are one or more words separated by hyphens, for example"
             " 'cool-stuff'. Names must match the regular expression %=.",
           name, regex-pattern($library-name-regex));
   end;
-  let lib-dir = subdirectory-locator(dir, name);
+  let lib-dir = subdirectory-locator(directory, name);
   if (fs/file-exists?(lib-dir))
     error("Directory %s already exists.", lib-dir);
   end;
   // Parse dep specs before writing any files, in case of errors.
-  make-dylan-library(name, lib-dir, exe?, parse-dep-specs(dep-specs), force-package?);
+  let deps = parse-dep-specs(dependencies);
+  make-dylan-library(name, lib-dir, executable?,
+                     deps, force-package?, simple?);
 end function;
 
 // Creates source files for a new library (app or shared lib), its
@@ -98,59 +114,57 @@ end function;
 // Define #:string: syntax.
 define function string-parser (s) s end;
 
+
+//// Templates for a "simple" executable app with no shared library or test
+//// suite. For this one we don't add "-app" to the name of the library. The
+//// idea is that this is for quick, one-off apps like benchmarks and such.
+
+define constant $simple-exe-lid-template
+  = #:string:"Library: %s
+Files: library.dylan
+       %s.dylan
+Target-Type: executable
+";
+
+// library.dylan file for an simple executable library.
+define constant $simple-exe-library-definition-template
+  = #:string:"Module: dylan-user
+Synopsis: Module and library definition for simple executable application
+
+define library %s
+  use common-dylan;
+  use io, import: { format-out };
+end library;
+
+define module %s
+  use common-dylan;
+  use format-out;
+end module;
+";
+
+define constant $simple-exe-main-template
+  = #:string:'Module: %s
+
+define function main
+    (name :: <string>, arguments :: <vector>)
+  format-out("Hello, world!\n");
+  exit-application(0);
+end function;
+
+// Calling our top-level function (which may have any name) is the last
+// thing we do.
+main(application-name(), application-arguments());
+';
+
+
+//// Shared library templates.
+
 define constant $lib-lid-template
   = #:string:"Library: %s
 Files: library.dylan
        %s.dylan
 Target-Type: dll
 ";
-
-define constant $exe-lid-template
-  = #:string:"Library: %s-app
-Files: %s-app-library.dylan
-       %s-app.dylan
-Target-Type: executable
-";
-
-define constant $test-lid-template
-  = #:string:"Library: %s-test-suite
-Files: library.dylan
-       %s-test-suite.dylan
-Target-Type: executable
-";
-
-// library.dylan file for an executable library.
-define constant $exe-library-definition-template
-  = #:string:"Module: dylan-user
-Synopsis: Module and library definition for executable application
-
-define library %s-app
-  use common-dylan;
-  use %s;
-  use io, import: { format-out };
-end library;
-
-define module %s-app
-  use common-dylan;
-  use format-out;
-  use %s;
-end module;
-";
-
-// Main program for the executable.
-define constant $exe-main-template
-  = #:string:'Module: %s-app
-
-define function main
-    (name :: <string>, arguments :: <vector>)
-  format-out("%%s\n", greeting());
-  exit-application(0);
-end function;
-
-// Calling our main function (which could have any name) should be the last
-// thing we do.
-main(application-name(), application-arguments());
-';
 
 define constant $lib-library-definition-template
   = #:string:'Module: dylan-user
@@ -195,6 +209,60 @@ define function greeting () => (s :: <string>)
   $greeting
 end function;
 ';
+
+
+//// Templates for a full executable library that is designed to use the base
+//// shared library.
+
+define constant $exe-lid-template
+  = #:string:"Library: %s-app
+Files: %s-app-library.dylan
+       %s-app.dylan
+Target-Type: executable
+";
+
+// library.dylan file for an non-simple executable library.
+define constant $exe-library-definition-template
+  = #:string:"Module: dylan-user
+Synopsis: Module and library definition for executable application
+
+define library %s-app
+  use common-dylan;
+  use %s;
+  use io, import: { format-out };
+end library;
+
+define module %s-app
+  use common-dylan;
+  use format-out;
+  use %s;
+end module;
+";
+
+// Main program for the executable.
+define constant $exe-main-template
+  = #:string:'Module: %s-app
+
+define function main
+    (name :: <string>, arguments :: <vector>)
+  format-out("%%s\n", greeting());
+  exit-application(0);
+end function;
+
+// Calling our main function (which could have any name) should be the last
+// thing we do.
+main(application-name(), application-arguments());
+';
+
+
+//// Templates for test suite library.
+
+define constant $test-lid-template
+  = #:string:"Library: %s-test-suite
+Files: library.dylan
+       %s-test-suite.dylan
+Target-Type: executable
+";
 
 define constant $test-library-definition-template
   = #:string:'Module: dylan-user
@@ -260,12 +328,10 @@ define function write-template
   end;
 end function;
 
-// Write files for libraries named `name`, `name`-test-suite and (if `exe?` is
-// true) `name`-app in directory `dir`. `deps` is a sequence of `<dep>`
-// objects.
+// Write files for various libraries based on the args.
 define function make-dylan-library
     (name :: <string>, dir :: <directory-locator>, exe? :: <bool>, deps :: <seq>,
-     force-package? :: <bool>)
+     force-package? :: <bool>, simple? :: <bool>)
   local
     method file (name)
       merge-locators(as(<file-locator>, name), dir)
@@ -279,9 +345,8 @@ define function make-dylan-library
     end;
   let test-name = concat(name, "-test-suite");
   let deps-string = join(map-as(<vector>, dep-string, deps), ", ");
-  let templates
-    = list(// Base library files...
-           make(<template>,
+  let base-library-templates
+    = list(make(<template>,
                 library-name: name,
                 output-file: file(concat(name, ".lid")),
                 format-string: $lib-lid-template,
@@ -308,23 +373,42 @@ define function make-dylan-library
                 output-file: test-file(concat(test-name, ".dylan")),
                 format-string: $test-main-code-template,
                 format-arguments: list(name, name)));
-  if (exe?)
-    // Executable app files...
-    let more = list(make(<template>,
-                         library-name: concat(name, "-app"),
-                         output-file: file(concat(name, "-app.lid")),
-                         format-string: $exe-lid-template,
-                         format-arguments: list(name, name, name)),
-                    make(<template>,
-                         output-file: file(concat(name, "-app-library.dylan")),
-                         format-string: $exe-library-definition-template,
-                         format-arguments: list(name, name, name, name, name, name)),
-                    make(<template>,
-                         output-file: file(concat(name, "-app.dylan")),
-                         format-string: $exe-main-template,
-                         format-arguments: list(name)));
-    templates := concat(templates, more);
-  end;
+  let app-templates
+    = list(make(<template>,
+                library-name: concat(name, "-app"),
+                output-file: file(concat(name, "-app.lid")),
+                format-string: $exe-lid-template,
+                format-arguments: list(name, name, name)),
+           make(<template>,
+                output-file: file(concat(name, "-app-library.dylan")),
+                format-string: $exe-library-definition-template,
+                format-arguments: list(name, name, name, name)),
+           make(<template>,
+                output-file: file(concat(name, "-app.dylan")),
+                format-string: $exe-main-template,
+                format-arguments: list(name)));
+  let simple-app-templates
+    = list(make(<template>,
+                library-name: name,
+                output-file: file(concat(name, ".lid")),
+                format-string: $simple-exe-lid-template,
+                format-arguments: list(name, name)),
+           make(<template>,
+                output-file: file("library.dylan"),
+                format-string: $simple-exe-library-definition-template,
+                format-arguments: list(name, name)),
+           make(<template>,
+                output-file: file(concat(name, ".dylan")),
+                format-string: $simple-exe-main-template,
+                format-arguments: list(name)));
+  let templates
+    = if (simple?)
+        simple-app-templates    // no test suite, no shared library
+      elseif (exe?)
+        concat(base-library-templates, app-templates)
+      else
+        base-library-templates
+      end;
   let pkg-file = ws/find-dylan-package-file(dir);
   let old-pkg-file = pkg-file & simplify-locator(pkg-file);
   let new-pkg-file = simplify-locator(file(ws/$dylan-package-file-name));
