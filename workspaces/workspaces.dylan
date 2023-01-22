@@ -102,6 +102,9 @@ define class <workspace> (<object>)
     init-keyword: default-library-name:;
   constant slot multi-package-workspace? :: <bool> = #f,
     init-keyword: multi-package?:;
+  // The <release> that was loaded from dylan-package.json, if any.
+  constant slot workspace-release :: false-or(pm/<release>) = #f,
+    init-keyword: release:;
 end class;
 
 define function workspace-registry-directory
@@ -119,10 +122,16 @@ end function;
 define function load-workspace
     (#key directory :: <directory-locator> = fs/working-directory())
  => (workspace :: <workspace>)
-  let ws-dir = find-workspace-directory(directory);
+  let ws-file = find-workspace-file(directory);
+  let dp-file = find-dylan-package-file(directory);
+  ws-file
+    | dp-file
+    | workspace-error("Can't find %s or %s. Not inside a workspace?",
+                      $workspace-file-name, $dylan-package-file-name);
+  let ws-dir = locator-directory(ws-file | dp-file);
   let registry = make(<registry>, root-directory: ws-dir);
   let active-packages = find-active-packages(ws-dir);
-  let ws-json = load-workspace-file(directory);
+  let ws-json = ws-file & load-json-file(ws-file);
   let default-library
     = ws-json & element(ws-json, $default-library-key, default: #f);
   if (~default-library & active-packages.size = 1)
@@ -134,26 +143,20 @@ define function load-workspace
        active-packages: active-packages,
        directory: ws-dir,
        registry: registry,
+       release: dp-file & pm/load-dylan-package-file(dp-file),
        default-library-name: default-library,
-       multi-package?: begin
-                         let ws-file = find-workspace-file(directory);
-                         let dp-file = find-dylan-package-file(directory);
-                         ws-file
-                           & dp-file
-                           & (ws-file.locator-directory ~= dp-file.locator-directory)
-                       end)
+       multi-package?: ws-file
+                         & dp-file
+                         & (ws-file.locator-directory ~= dp-file.locator-directory))
 end function;
 
-define function load-workspace-file (directory) => (config :: false-or(<table>))
-  let ws-file = find-workspace-file(directory);
-  if (ws-file)
-    fs/with-open-file(stream = ws-file, if-does-not-exist: #f)
-      let object = parse-json(stream, strict?: #f, table-class: <istring-table>);
-      if (~instance?(object, <table>))
-        workspace-error("Invalid workspace file %s, must contain at least {}", ws-file);
-      end;
-      object
-    end
+define function load-json-file (file :: <file-locator>) => (config :: false-or(<table>))
+  fs/with-open-file(stream = file, if-does-not-exist: #f)
+    let object = parse-json(stream, strict?: #f, table-class: <istring-table>);
+    if (~instance?(object, <table>))
+      workspace-error("Invalid JSON file %s, must contain at least {}", file);
+    end;
+    object
   end
 end function;
 
@@ -161,13 +164,12 @@ end function;
 // workspace.json always takes precedence. Otherwise the nearest directory
 // containing dylan-package.json.
 define function find-workspace-directory
-    (start :: <directory-locator>) => (dir :: <directory-locator>)
+    (start :: <directory-locator>) => (dir :: false-or(<directory-locator>))
   let ws-file = find-workspace-file(start);
   (ws-file & ws-file.locator-directory)
     | begin
         let pkg-file = find-dylan-package-file(start);
-        (pkg-file & pkg-file.locator-directory)
-          | start
+        pkg-file & pkg-file.locator-directory
       end
 end function;
 

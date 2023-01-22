@@ -76,11 +76,11 @@ define variable *override-logged?* = #f;
 // catalog's cache. If the DYLAN_CATALOG environment variable is set then that
 // directory is used and no attempt is made to download the latest catalog.
 define function catalog
-    () => (c :: <catalog>)
+    (#key directory) => (c :: <catalog>)
   if (*catalog*)
     *catalog*
   else
-    let override = os/environment-variable($catalog-env-var);
+    let override = directory | os/environment-variable($catalog-env-var);
     let directory
       = if (override)
           if (~*override-logged?*)
@@ -224,12 +224,13 @@ end function;
 
 // Write a package to the catalog in JSON format.
 define function write-package-file
-    (cat :: <catalog>, package :: <package>) => ()
+    (cat :: <catalog>, package :: <package>) => (file :: <file-locator>)
   let file = package-locator(cat.catalog-directory, package);
   fs/ensure-directories-exist(file);
   fs/with-open-file (stream = file, direction: #"output", if-exists: #"replace")
     print-json(package, stream, indent: 2, sort-keys?: #t);
   end;
+  file
 end function;
 
 // Generate a locator for the given package (or package name). `root` is the
@@ -352,7 +353,7 @@ end method;
 // given release. Signals <catalog-error> if the release is not newer than any
 // existing releases for the package.
 define function publish-release
-    (cat :: <catalog>, release :: <release>) => ()
+    (cat :: <catalog>, release :: <release>) => (file :: <file-locator>)
   let name = package-name(release);
   let old-package = find-package(cat, name);
   let new-package = release-package(release);
@@ -374,5 +375,5 @@ define function publish-release
   // package-level attributes from dylan-package.json (e.g., "description")
   // will overwrite the package-level attributes from the catalog, if they're
   // different.
-  write-package-file(cat, new-package);
+  write-package-file(cat, new-package)
 end function;

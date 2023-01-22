@@ -11,54 +11,50 @@ define constant $publish-subcommand
   = make(<publish-subcommand>,
          options:
            list(make(<positional-option>,
-                     names: #("package"),
-                     variable: "PKG",
-                     help: "Name of the package for which to publish a release.")));
+                     names: #("catalog-directory"),
+                     help: "Directory where you cloned pacman-catalog.")));
 
 define method execute-subcommand
     (parser :: <command-line-parser>, subcmd :: <publish-subcommand>)
  => (status :: false-or(<int>))
   let workspace = ws/load-workspace();
-  let name = get-option-value(subcmd, "package");
-  let active-packages = ws/workspace-active-packages(workspace);
-  let publish-release
-    = find-element(active-packages,
-                   method (rel)
-                     string-equal-ic?(pm/package-name(rel), name)
-                   end);
-  let catalog-release
-    = find-element(active-packages,
-                   method (rel)
-                     string-equal-ic?(pm/package-name(rel), "pacman-catalog")
-                   end);
-  if (~publish-release)
-    note("Package %= is not an active package.", name);
-    1
-  elseif (~catalog-release)
-    let ws-dir = ws/workspace-directory(ws/load-workspace());
-    note(#:string:'
-"pacman-catalog" is not an active package in this workspace.  For now, the way
-packages are published is by making a pull request to the "pacman-catalog"
-repository. This command will make the necessary changes for you, but you must
-clone pacman-catalog first, using these commands:
-
-  cd %s
-  git clone https://github.com/dylan-lang/pacman-catalog
-  cd pacman-catalog
-  git checkout -t -b publish
-
-Then re-run this command. Once the changes have been made, commit them and submit
-a pull request. The GitHub continuous integration will verify the changes for you.
-', ws-dir);
-    1
+  let release = ws/workspace-release(workspace);
+  let cat-dir = as(<directory-locator>,
+                   get-option-value($publish-subcommand, "catalog-directory"));
+  let cat = pm/catalog(directory: cat-dir);
+  let name = pm/package-name(release);
+  let latest = pm/find-package-release(cat, name, pm/$latest);
+  if (release <= latest)
+    // Have to use format-to-string here because error() uses simple-format
+    // which doesn't call print-object methods.
+    let message
+      = format-to-string(
+          "The latest published release of %= is %s. Increment the version"
+          " in %s (and commit it) in order to publish a new version.",
+          name, pm/release-version(release), ws/$dylan-package-file-name);
+    error(message);
+  end;
+  if (yes-or-no?(format-to-string("About to publish %s, ok? ", release)))
+    let file = pm/publish-release(cat, release);
+    note("Package file written to %s. Commit the changes and submit a"
+           " pull request.", file);
   else
-    // Looks good, let's publish...
-    let release = pm/load-dylan-package-file(ws/active-package-file(workspace, name));
-    os/environment-variable("DYLAN_CATALOG")
-      := as(<byte-string>,
-            ws/active-package-directory(workspace, pm/package-name(catalog-release)));
-    let catalog = pm/catalog();
-    pm/publish-release(catalog, release);
-    0
-  end
+    note("Aborted.");
+  end;
 end method;
+
+define function yes-or-no? (prompt :: <string>) => (yes? :: <bool>)
+  block (return)
+    while (#t)
+      format-out("\n%s", prompt);
+      force-out();
+      let answer = strip(read-line(*standard-input*));
+      if (~member?(answer, #["yes", "no", "ok"], test: string-equal-ic?))
+        format-out("Please enter yes or no.\n");
+        force-out();
+      else
+        return(member?(answer, #["yes", "ok"], test: string-equal-ic?))
+      end;
+    end while;
+  end
+end function;

@@ -633,14 +633,16 @@ dylan publish
 The "publish" subcommand adds a new release of a package to the package
 catalog.
 
-Synopsis: ``dylan publish <package-name>``
+Synopsis: ``dylan publish <pacman-catalog-directory>``
 
-.. note:: For now, until a fully automated solution is implemented, it works by
-   modifying the local copy of the catalog so that you can manually run the
-   `pacman-catalog`_ tests and submit a pull request. This eliminates a lot of
-   possibilities for making mistakes while editing the catalog by hand.
+.. note:: For now, until a fully automated solution is implemented, the publish
+   command works by modifying a local copy of the catalog so that you can
+   manually submit a pull request. This eliminates a lot of possibilities for
+   making mistakes while editing the catalog by hand.
 
-This command may (as usual) be run from anywhere inside a workspace. Once
+This command publishes a package associated with the current workspace. It
+searches up from the current directory to find :file:`dylan-package.json`. Note
+that this means you can't be in the root of a multi-package workspace. Once
 you're satisfied that you're ready to release a new version of your package
 (tests pass, doc updated, etc.) follow these steps:
 
@@ -650,31 +652,28 @@ you're satisfied that you're ready to release a new version of your package
 #.  Update any dependencies in :file:`dylan-package.json` as needed. Normally
     this will happen naturally during development as you discover you need
     newer package versions, but this is a good time to review deps and update
-    get bug fixes.  **Remember to `dylan update`_ and re-run your tests if you
-    change deps!**
+    to get bug fixes if desired.  **Remember to `dylan update`_ and re-run your
+    tests if you change deps!**
 
 #.  Make a new release on GitHub with a tag that matches the release version.
     For example, if the ``"version"`` attribute in :file:`dylan-package.json`
     is ``"0.5.0"`` the GitHub release should be tagged ``v0.5.0``.
 
-#.  Clone https://github.com/dylan-lang/pacman-catalog in the same Dylan
-    workspace, so that it is an active package and make a new Git branch in it.
-    In the next step the `dylan publish`_ command will make changes there for
-    you.
+#.  Clone https://github.com/dylan-lang/pacman-catalog somewhere.  In the next
+    step the `dylan publish`_ command will make changes there for you.
 
-    If you already had pacman-catalog as an active packgae, **make sure to pull
-    the latest changes.**
+    If you had already cloned pacman-catalog, **make sure to pull the latest
+    changes.**
 
-#.  Run ``dylan publish my-package``.  (If `pacman-catalog`_ isn't already an
-    active package in your workspace the command will abort and give you
-    instructions how to fix it.)
+#.  Run :command:`dylan publish /path/to/pacman-catalog`, pointing to where you
+    just cloned the pacman-catalog.
 
 #.  Commit the changes to `pacman-catalog`_ and submit a pull request.  The
     tests to verify the catalog will be run automatically by the GitHub CI.
 
 #.  Once your PR has been merged, verify that the package is available in the
-    catalog by running ``dylan install my-package@0.5.0``, substituting your
-    new release name and version.
+    catalog by running :command:`dylan install my-package@0.5.0`, substituting
+    your new package name and release version.
 
 #.  It's generally good practice to update the version immediately after
     publishing a release so that it reflects the *next* release's version

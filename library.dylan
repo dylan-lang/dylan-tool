@@ -164,7 +164,8 @@ define module workspaces
     workspace-active-packages,
     workspace-default-library-name,
     workspace-directory,
-    workspace-registry-directory;
+    workspace-registry-directory,
+    workspace-release;
 end module;
 
 define module %workspaces
