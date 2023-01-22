@@ -104,6 +104,12 @@ define class <workspace> (<object>)
     init-keyword: multi-package?:;
 end class;
 
+define function workspace-registry-directory
+    (ws :: <workspace>) => (dir :: <directory-locator>)
+  let registry = ws.workspace-registry;
+  subdirectory-locator(registry.root-directory, "registry")
+end function;
+
 // Loads the workspace definition by looking up from `directory` to find the
 // workspace root and loading the workspace.json file. If no workspace.json
 // file exists, the workspace is created using the dylan-package.json file (if

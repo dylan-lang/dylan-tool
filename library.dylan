@@ -163,7 +163,8 @@ define module workspaces
     update,
     workspace-active-packages,
     workspace-default-library-name,
-    workspace-directory;
+    workspace-directory,
+    workspace-registry-directory;
 end module;
 
 define module %workspaces
