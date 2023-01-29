@@ -652,8 +652,8 @@ you're satisfied that you're ready to release a new version of your package
 #.  Update any dependencies in :file:`dylan-package.json` as needed. Normally
     this will happen naturally during development as you discover you need
     newer package versions, but this is a good time to review deps and update
-    to get bug fixes if desired.  **Remember to `dylan update`_ and re-run your
-    tests if you change deps!**
+    to get bug fixes if desired.  **Remember to** `dylan update`_ **and re-run
+    your tests if you change deps!**
 
 #.  Make a new release on GitHub with a tag that matches the release version.
     For example, if the ``"version"`` attribute in :file:`dylan-package.json`
