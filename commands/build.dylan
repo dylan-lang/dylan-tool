@@ -35,11 +35,6 @@ define constant $build-subcommand
 define method execute-subcommand
     (parser :: <command-line-parser>, subcmd :: <build-subcommand>)
  => (status :: false-or(<int>))
-  // Blow up early if not in a workspace.
-
-  // TODO: Support lack of workspace.json by looking for _build/ or registry/
-  // instead? If no registry directory exists, need to pass the .lid file on
-  // the command line.
   let workspace = ws/load-workspace();
   let library-names = get-option-value(subcmd, "libraries") | #[];
   let all? = get-option-value(subcmd, "all");
@@ -70,8 +65,10 @@ define method execute-subcommand
                                 name),
                          #f);
     debug("Running command %=", command);
+    let env = make-compilation-environment(workspace);
     let exit-status
       = os/run-application(command,
+                           environment: env, // adds to the existing environment
                            under-shell?: #f,
                            working-directory: ws/workspace-directory(workspace));
     if (exit-status ~== 0)
@@ -79,3 +76,14 @@ define method execute-subcommand
     end;
   end for;
 end method;
+
+define function make-compilation-environment (ws :: ws/<workspace>) => (env :: <table>)
+  let val = as(<string>, ws/workspace-registry-directory(ws));
+  let var = "OPEN_DYLAN_USER_REGISTRIES";
+  let odur = os/environment-variable(var);
+  if (odur)
+    // TODO: export $environment-variable-delimiter from os/.
+    val := concat(val, iff(os/$os-name == #"win32", ";", ":"), odur);
+  end;
+  tabling(<string-table>, var => val)
+end function;

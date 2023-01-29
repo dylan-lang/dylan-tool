@@ -25,7 +25,7 @@ define test test-find-workspace-directory ()
   // On github this test runs inside the dylan-tool checkout, so there's
   // a dylan-package.json file outside the test-temp-directory(), hence
   // the prefix check. Succeed as long as the ws-dir is outside tmp.
-  assert-true(ws-dir = bottom
+  assert-true(~ws-dir
                 | begin
                     let wdir = as(<string>, ws-dir);
                     let tmps = as(<string>, tmp);
