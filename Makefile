@@ -22,12 +22,13 @@ install_lib     = $(install_dir)/lib
 link_target     = $(install_bin)/dylan-tool-app
 link_source     = $(DYLAN)/bin/dylan
 
-# Make sure the local registry is preferred.
-OPEN_DYLAN_USER_REGISTRIES = .:$${OPEN_DYLAN_USER_REGISTRIES}
-
 .PHONY: build clean install test dist distclean
 
+# Add the local registry to OPEN_DYLAN_USER_REGISTRIES because if the variable
+# is already set and does not include the local registry, the local registry is
+# ignored. We do not want to end up building ${OD}/sources/app/dylan-tool.
 build:
+	OPEN_DYLAN_USER_REGISTRIES=${PWD}/registry:${OPEN_DYLAN_USER_REGISTRIES} \
 	dylan-compiler -build dylan-tool-app
 
 # Hack to add the version to the binary with git tag info. Don't want this to
@@ -39,6 +40,7 @@ build-with-version:
 	cp -p $${file} $${orig}; \
 	cat $${file} | sed "s,/.__./.*/.__./,/*__*/ \"$$(git describe --tags)\" /*__*/,g" > $${temp}; \
 	mv $${temp} $${file}; \
+	OPEN_DYLAN_USER_REGISTRIES=${PWD}/registry:${OPEN_DYLAN_USER_REGISTRIES} \
 	dylan-compiler -build dylan-tool-app; \
 	cp -p $${orig} $${file}
 
@@ -62,6 +64,7 @@ install-debug: build really-install
 # dylan-tool needs to be buildable with submodules so that it can be built on
 # new platforms without having to manually install deps.
 test: build
+	OPEN_DYLAN_USER_REGISTRIES=${PWD}/registry:${OPEN_DYLAN_USER_REGISTRIES} \
 	dylan-compiler -build dylan-tool-test-suite \
 	  && DYLAN_CATALOG=ext/pacman-catalog _build/bin/dylan-tool-test-suite
 
