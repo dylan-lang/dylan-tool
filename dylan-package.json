@@ -13,6 +13,7 @@
         "uncommon-dylan@0.2"
     ],
     "dev-dependencies": [
+        "sphinx-extensions",
         "testworks@2.0"
     ],
     "url": "https://github.com/dylan-lang/dylan-tool"
