@@ -68,25 +68,32 @@ end function;
 
 // Update the workspace based on the workspace.json file or signal an error.
 define function update
-    (#key directory :: <directory-locator> = fs/working-directory())
+    (#key directory :: <directory-locator> = fs/working-directory(),
+          global? :: <bool>)
  => ()
   let ws = load-workspace(directory: directory);
   let cat = pm/catalog();
-  let (releases, actives) = update-deps(ws, cat);
-  let registry = update-registry(ws, cat, releases, actives);
+  dynamic-bind (*package-manager-directory*
+                  = if (global?)
+                      *package-manager-directory*
+                    else
+                      subdirectory-locator(workspace-directory(ws), "_packages")
+                    end)
+    let (releases, actives) = update-deps(ws, cat);
+    let registry = update-registry(ws, cat, releases, actives);
+    let no-lid = registry.libraries-with-no-lid;
+    if (~empty?(no-lid) & *verbose?*)
+      warn("These libraries had no LID file for platform %s:\n  %s",
+           os/$platform-name, join(sort!(no-lid), ", "));
+    end;
 
-  let no-lid = registry.libraries-with-no-lid;
-  if (~empty?(no-lid) & *verbose?*)
-    warn("These libraries had no LID file for platform %s:\n  %s",
-         os/$platform-name, join(sort!(no-lid), ", "));
-  end;
-
-  let reg-dir = subdirectory-locator(registry.root-directory, "registry");
-  let num-files = registry.num-files-written;
-  if (num-files == 0)
-    note("Registry %s is up-to-date.", reg-dir);
-  else
-    note("Updated %d files in %s.", registry.num-files-written, reg-dir);
+    let reg-dir = subdirectory-locator(registry.root-directory, "registry");
+    let num-files = registry.num-files-written;
+    if (num-files == 0)
+      note("Registry %s is up-to-date.", reg-dir);
+    else
+      note("Updated %d files in %s.", registry.num-files-written, reg-dir);
+    end;
   end;
 end function;
 

@@ -5,7 +5,7 @@ define library dylan-tool
     import: { table-extensions };
   use command-line-parser;
   use dylan,
-    import: { dylan-extensions };
+    import: { dylan-extensions, threads };
   use io,
     import: { format, format-out, print, standard-io, streams };
   use json;
@@ -49,6 +49,8 @@ define module pacman
     <catalog-error>,
     catalog,
     dylan-directory,            // $DYLAN or $HOME/dylan or /opt/dylan
+    package-manager-directory,
+    *package-manager-directory*,
 
     <catalog>,
     catalog-directory,
@@ -171,20 +173,24 @@ end module;
 define module %workspaces
   use dylan-extensions,
     import: { address-of };
+  use file-source-records, prefix: "sr/";
   use file-system, prefix: "fs/";
   use format;
   use format-out;
   use json;
   use locators;
   use operating-system, prefix: "os/";
-  use pacman, prefix: "pm/";
+  use pacman,
+    prefix: "pm/",
+    // Because / followed by * is seen as a comment by dylan-mode.
+    rename: { *package-manager-directory* => *package-manager-directory* };
   use print;
   use regular-expressions;
   use shared;
-  use file-source-records, prefix: "sr/";
   use standard-io;
   use streams;
   use strings;
+  use threads;
   use uncommon-dylan,
     exclude: { format-to-string };
   use uncommon-utils,

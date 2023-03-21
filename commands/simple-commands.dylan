@@ -150,12 +150,17 @@ define class <update-subcommand> (<subcommand>)
 end class;
 
 define constant $update-subcommand
-  = make(<update-subcommand>);
+  = make(<update-subcommand>,
+         options: list(make(<flag-option>,
+                            names: #("global"),
+                            help: "Install packages in ${DYLAN}/pkg instead of in the"
+                              " workspace.")));
 
 define method execute-subcommand
     (parser :: <command-line-parser>, subcmd :: <update-subcommand>)
  => (status :: false-or(<int>))
-  ws/update();
+  let global? = get-option-value(subcmd, "global");
+  ws/update(global?: global?);
 end method;
 
 
