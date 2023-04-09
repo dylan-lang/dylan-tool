@@ -1,4 +1,4 @@
-name: build-and-test
+name: test-suite
 
 on:
   push:
@@ -13,14 +13,16 @@ on:
 
 jobs:
   build-and-test:
-    runs-on: ubuntu-latest
-
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: recursive
 
-      - uses: dylan-lang/install-opendylan@v2
+      - uses: dylan-lang/install-opendylan@v3
 
       - name: test and install
         env:
@@ -28,8 +30,8 @@ jobs:
           DYLAN: dylan-root
         run: |
           mkdir -p ${DYLAN}
-          PATH=.:${PATH} make test
-          PATH=.:${PATH} make install
+          PATH=..:${PATH} make test
+          PATH=..:${PATH} make install
 
       - name: Exercise dylan-tool
         env:
@@ -38,11 +40,10 @@ jobs:
         run: |
           dylan_exe=$(realpath ${DYLAN}/bin/dylan)
           export DYLAN_CATALOG=$(realpath ${DYLAN_CATALOG})
-          ${dylan_exe} new workspace test-workspace
-          cd test-workspace
           ${dylan_exe} new library --force-package abc strings@1.1
+          cd abc
           ${dylan_exe} update
           ${dylan_exe} status
           ${dylan_exe} list
-          ../dylan-compiler -build abc-test-suite
+          PATH=${GITHUB_WORKSPACE}/..:$PATH ${dylan_exe} build abc-test-suite
           _build/bin/abc-test-suite
