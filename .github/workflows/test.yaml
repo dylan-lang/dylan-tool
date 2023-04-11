@@ -22,28 +22,36 @@ jobs:
         with:
           submodules: recursive
 
+      # Install dylan-compiler and dylan binaries in the current PATH.
       - uses: dylan-lang/install-opendylan@v3
 
-      - name: test and install
+      - name: Build and run test suite
         env:
           DYLAN_CATALOG: ext/pacman-catalog
           DYLAN: dylan-root
         run: |
           mkdir -p ${DYLAN}
-          PATH=..:${PATH} make test
-          PATH=..:${PATH} make install
+          make test
 
-      - name: Exercise dylan-tool
+      - name: Install
         env:
           DYLAN_CATALOG: ext/pacman-catalog
           DYLAN: dylan-root
         run: |
-          dylan_exe=$(realpath ${DYLAN}/bin/dylan)
-          export DYLAN_CATALOG=$(realpath ${DYLAN_CATALOG})
+          mkdir -p ${DYLAN}
+          make install
+
+      - name: Exercise installed dylan-tool
+        env:
+          DYLAN_CATALOG: ext/pacman-catalog
+          DYLAN: dylan-root
+        run: |
+          dylan_exe="$(realpath ${DYLAN}/bin/dylan)"
+          export DYLAN_CATALOG="$(realpath ${DYLAN_CATALOG})"
           ${dylan_exe} new library --force-package abc strings@1.1
           cd abc
           ${dylan_exe} update
           ${dylan_exe} status
           ${dylan_exe} list
-          PATH=${GITHUB_WORKSPACE}/..:$PATH ${dylan_exe} build abc-test-suite
+          ${dylan_exe} build abc-test-suite
           _build/bin/abc-test-suite
