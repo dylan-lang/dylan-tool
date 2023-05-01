@@ -647,26 +647,29 @@ you're satisfied that you're ready to release a new version of your package
 (tests pass, doc updated, etc.) follow these steps:
 
 #.  Update the ``"version"`` attribute in :file:`dylan-package.json` to be the
-    new release's version, commit the change, and push it to your main branch.
+    new release's version.
 
-#.  Update any dependencies in :file:`dylan-package.json` as needed. Normally
-    this will happen naturally during development as you discover you need
-    newer package versions, but this is a good time to review deps and update
-    to get bug fixes if desired.  **Remember to** `dylan update`_ **and re-run
-    your tests if you change deps!**
+    Also update any dependencies as needed. Normally this will happen naturally
+    during development as you discover you need newer package versions, but
+    this is a good time to review deps and update to get bug fixes if desired.
+    **Remember to** `dylan update`_ **and re-run your tests if you change
+    deps!**
+
+    Push the above changes (if any) to your main branch.
 
 #.  Make a new release on GitHub with a tag that matches the release version.
     For example, if the ``"version"`` attribute in :file:`dylan-package.json`
     is ``"0.5.0"`` the GitHub release should be tagged ``v0.5.0``.
 
-#.  Clone https://github.com/dylan-lang/pacman-catalog somewhere.  In the next
-    step the `dylan publish`_ command will make changes there for you.
+#.  Clone https://github.com/dylan-lang/pacman-catalog somewhere and create a
+    new branch named after your package.  In the next step the `dylan publish`_
+    command will make changes there for you.
 
     If you had already cloned pacman-catalog, **make sure to pull the latest
     changes.**
 
 #.  Run :command:`dylan publish /path/to/pacman-catalog`, pointing to where you
-    just cloned the pacman-catalog.
+    just cloned the pacman catalog.
 
 #.  Commit the changes to `pacman-catalog`_ and submit a pull request.  The
     tests to verify the catalog will be run automatically by the GitHub CI.
@@ -674,10 +677,6 @@ you're satisfied that you're ready to release a new version of your package
 #.  Once your PR has been merged, verify that the package is available in the
     catalog by running :command:`dylan install my-package@0.5.0`, substituting
     your new package name and release version.
-
-#.  It's generally good practice to update the version immediately after
-    publishing a release so that it reflects the *next* release's version
-    number. See :ref:`package-versions` for more on this.
 
 
 .. index::
@@ -744,10 +743,9 @@ performs two actions:
     If a dependency is also an active package in this workspace, the active
     package is preferred over the specific version listed as a dependency.
 
-    .. note:: Registry files are only created if they apply to the architecture
-       of the local machine. For example, on ``x86_64-linux`` LID files that
-       specify ``Platforms: win32`` will not cause a registry file to be
-       generated.
+.. note:: Registry files are only created if they apply to the platform of the
+   local machine. For example, on the ``x86_64-linux`` platform LID files that
+   specify ``Platforms: win32`` will not cause a registry file to be generated.
 
 Example:
 ~~~~~~~~
