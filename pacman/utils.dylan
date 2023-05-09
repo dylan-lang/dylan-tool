@@ -3,15 +3,21 @@ Module: %pacman
 // This enables the #:string: prefix to "parse" raw string literals.
 define function string-parser (s :: <string>) => (s :: <string>) s end;
 
-// Name of the directory under $DYLAN where installed versions are stored.
+// Name of the subdirectory in which packages are to be installed.
 define constant $package-directory-name = "pkg";
 
-// Exported
+// This provides a way for dylan-tool commands to override the default package
+// installation directory without threading it through the entire call chain,
+// so that (for example) package installations can be local to a workspace
+// rather than global. (In the long run, do we even want global installations?)
+define thread variable *package-manager-directory* :: false-or(<directory-locator>) = #f;
+
 // The package manager will never modify anything outside this directory unless
 // explicitly requested (e.g., via a directory passed to download).
 define function package-manager-directory
     () => (dir :: <directory-locator>)
-  subdirectory-locator(dylan-directory(), $package-directory-name)
+  *package-manager-directory*
+    | subdirectory-locator(dylan-directory(), $package-directory-name)
 end function;
 
 // TODO: Windows

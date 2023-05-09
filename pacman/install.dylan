@@ -1,22 +1,24 @@
 Module: %pacman
 Synopsis: Package download and installation
 
-// TODO:
-//  * wrap libgit2 instead of shelling out to git.
-//  * ^^ or not. Perhaps it doesn't really make sense to use arbitrary
-//    URLs as the package location. That likely requires every user to
-//    have access credentials for all the servers those URLs point to.
-//    It's probably necessary to have a single location (with mirrors)
-//    into which we stuff a tarball or zip file. What do other package
-//    managers do?
 
 define constant $source-directory-name = "src";
 
-// Directory in which all versions of a package are installed.
-define not-inline function package-directory
-    (pkg-name :: <string>) => (_ :: <directory-locator>)
+// Directory in which to find or install packages. This depends on the value of
+// *package-manager-directory*, which may be dynamically bound.
+define generic package-directory
+    (package :: <object>) => (directory :: <directory-locator>);
+
+define method package-directory
+    (pkg-name :: <string>) => (directory :: <directory-locator>)
   subdirectory-locator(package-manager-directory(), lowercase(pkg-name))
-end function;
+end method;
+
+define method package-directory
+    (package :: type-union(<package>, <release>))
+ => (directory :: <directory-locator>)
+  package-directory(package-name(package))
+end method;
 
 // Directory in which a specific release is installed.
 define not-inline function release-directory
@@ -66,8 +68,7 @@ define method %download
     = format-to-string("git clone%s --quiet --branch=%s -- %s %s",
                        (update-submodules? & " --recurse-submodules") | "",
                        branch, release.release-url, dest-dir);
-  let (exit-code, signal-code /* , process, #rest streams */)
-    = os/run-application(command, output: #"null", error: #"null");
+  let exit-code = os/run-application(command, output: #"null", error: #"null");
   if (exit-code = 0)
     note("Downloaded %s to %s", release, dest-dir);
   else
@@ -75,6 +76,57 @@ define method %download
                   exit-code, command);
   end;
 end method;
+
+// Make sure the "current" link from `release`s package directory to
+// `target-dir` is up to date.
+define function ensure-current-link
+    (release :: <release>, target-dir :: <directory-locator>) => ()
+  let link-source = merge-locators(as(<file-locator>, "current"),
+                                   package-directory(release-package(release)));
+  // Use file-type instead of file-exists? because the latter would follow the link.
+  // After https://github.com/dylan-lang/opendylan/pull/1484 is in an OD release
+  // (i.e., post 2022.1) this can use file-exists?(link-source, follow-links?: #f).
+  let exists? = block ()
+                  fs/file-type(link-source)
+                exception (fs/<file-system-error>)
+                  #f
+                end;
+  let target = as(<string>, release-directory(release));
+  if (ends-with?(target, "/") | ends-with?(target, "\\"))
+    target := copy-sequence(target, end: target.size - 1);
+  end;
+  let existing-target = exists? & fs/link-target(link-source);
+  if (exists? & (target ~= as(<string>, existing-target)))
+    debug("Deleting %s", link-source);
+    fs/delete-file(link-source);
+    exists? := #f;
+  end;
+  if (~exists?)
+    debug("Creating symlink %s -> %s", link-source, target);
+    create-symbolic-link(target, link-source);
+  end;
+end function;
+
+// TODO(cgay): TEMPORARY -- Need to add create-symbolic-link to the system library
+// but for now this allows me to move forward.
+define function create-symbolic-link
+    (target :: fs/<pathname>, link-name :: fs/<pathname>)
+  let command
+    = if (os/$os-name == #"win32")
+        vector("mklink", "/D", link-name, target) // untested
+      else
+        vector("/bin/ln", "--symbolic",
+               as(<byte-string>, target),
+               as(<byte-string>, link-name))
+      end;
+  let exit-code
+    = os/run-application(command, under-shell?: #f, output: #"null", error: #"null");
+  if (exit-code ~= 0)
+    package-error("failed to create 'current' link for package."
+                    " Exit code %d. The command was: %s",
+                  exit-code, join(command, " "));
+  end;
+end function;
 
 // Download and install `release` into the standard location.
 //
@@ -103,12 +155,22 @@ define method install
     debug("Deleting package %s for forced install.", release);
     fs/delete-directory(release-directory(release), recursive?: #t);
   end;
-  if (installed?(release))
-    debug("Package %s is already installed.", release);
-  else
-    download(release, source-directory(release));
-    #t
-  end
+  let dest-dir = source-directory(release);
+  block ()
+    if (installed?(release))
+      debug("Package %s is already installed.", release);
+      #f
+    else
+      download(release, dest-dir);
+      #t
+    end
+  cleanup
+    // Update current link even if download not needed, in case user is
+    // updating to a previously installed version. (Might not want to update
+    // the link for global installations, but it shouldn't hurt, and I might do
+    // away with global installations altogether so ignoring it for now.)
+    ensure-current-link(release, dest-dir);
+  end block
 end method;
 
 // Install dependencies of `release`. If `force?` is true, remove and
