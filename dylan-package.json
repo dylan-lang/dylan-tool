@@ -1,6 +1,6 @@
 {
     "name": "dylan-tool",
-    "version": "0.8.0",
+    "version": "0.9.0",
     "category": "language-tools",
     "contact": "dylan-lang@googlegroups.com",
     "description": "Manage Dylan workspaces, packages, and registries",
