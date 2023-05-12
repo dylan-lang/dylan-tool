@@ -24,26 +24,23 @@ link_source     = $(DYLAN)/bin/dylan
 
 .PHONY: build clean install test dist distclean
 
-# Add the local registry to OPEN_DYLAN_USER_REGISTRIES because if the variable
-# is already set and does not include the local registry, the local registry is
-# ignored. We do not want to end up building ${OD}/sources/app/dylan-tool.
-build:
-	OPEN_DYLAN_USER_REGISTRIES=${PWD}/registry:${OPEN_DYLAN_USER_REGISTRIES} \
-	dylan-compiler -build dylan-tool-app
+build: remove-dylan-tool-artifacts
+	OPEN_DYLAN_USER_REGISTRIES=${PWD}/registry dylan-compiler -build dylan-tool-app
 
 # Hack to add the version to the binary with git tag info. Don't want this to
 # be the normal build because it causes unnecessary rebuilds.
-build-with-version:
+build-with-version: remove-dylan-tool-artifacts
 	file="commands/utils.dylan"; \
-	orig=$$(mktemp); \
-	temp=$$(mktemp); \
-	cp -p $${file} $${orig}; \
-	cat $${file} | sed "s,/.__./.*/.__./,/*__*/ \"$$(git describe --tags)\" /*__*/,g" > $${temp}; \
-	mv $${temp} $${file}; \
-	OPEN_DYLAN_USER_REGISTRIES=${PWD}/registry:${OPEN_DYLAN_USER_REGISTRIES} \
-	dylan-compiler -build dylan-tool-app; \
-	cp -p $${orig} $${file}
+	  orig=$$(mktemp); \
+	  temp=$$(mktemp); \
+	  cp -p $${file} $${orig}; \
+	  cat $${file} | sed "s,/.__./.*/.__./,/*__*/ \"$$(git describe --tags --always)\" /*__*/,g" > $${temp}; \
+	  mv $${temp} $${file}; \
+	  OPEN_DYLAN_USER_REGISTRIES=${PWD}/registry dylan-compiler -build dylan-tool-app; \
+	  cp -p $${orig} $${file}
 
+# After the next OD release (post 2022.1) this should install a static exe
+# built with the -unify flag.
 really-install:
 	mkdir -p $(install_bin)
 	mkdir -p $(install_lib)
@@ -54,8 +51,6 @@ really-install:
 	  ln -s $$(realpath $(link_target)) $$(realpath $(link_source)); \
 	fi;
 
-# After the next OD release this should install a static exe built with the
-# -unify flag.
 install: build-with-version really-install
 
 # Build and install without the version hacking above.
@@ -64,13 +59,19 @@ install-debug: build really-install
 # dylan-tool needs to be buildable with submodules so that it can be built on
 # new platforms without having to manually install deps.
 test: build
-	OPEN_DYLAN_USER_REGISTRIES=${PWD}/registry:${OPEN_DYLAN_USER_REGISTRIES} \
-	dylan-compiler -build dylan-tool-test-suite \
+	OPEN_DYLAN_USER_REGISTRIES=${PWD}/registry \
+	  dylan-compiler -build dylan-tool-test-suite \
 	  && DYLAN_CATALOG=ext/pacman-catalog _build/bin/dylan-tool-test-suite
 
 dist: distclean install
 
-clean:
+# Sometimes I use dylan-tool to develop dylan-tool, so this makes sure to clean
+# up its artifacts.
+remove-dylan-tool-artifacts:
+	rm -rf _packages
+	find registry -not -path '*/generic/*' -type f -exec rm {} \;
+
+clean: remove-dylan-tool-artifacts
 	rm -rf _build
 
 distclean: clean
