@@ -22,7 +22,7 @@ install_lib     = $(install_dir)/lib
 link_target     = $(install_bin)/dylan-tool-app
 link_source     = $(DYLAN)/bin/dylan
 
-.PHONY: build clean install test dist distclean
+.PHONY: build build-with-version clean install install-debug really-install remove-dylan-tool-artifacts test dist distclean
 
 build: remove-dylan-tool-artifacts
 	OPEN_DYLAN_USER_REGISTRIES=${PWD}/registry dylan-compiler -build dylan-tool-app
@@ -30,7 +30,7 @@ build: remove-dylan-tool-artifacts
 # Hack to add the version to the binary with git tag info. Don't want this to
 # be the normal build because it causes unnecessary rebuilds.
 build-with-version: remove-dylan-tool-artifacts
-	file="commands/utils.dylan"; \
+	file="sources/commands/utils.dylan"; \
 	  orig=$$(mktemp); \
 	  temp=$$(mktemp); \
 	  cp -p $${file} $${orig}; \
