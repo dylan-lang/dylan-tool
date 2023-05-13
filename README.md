@@ -1,6 +1,8 @@
 # Dylan Tool
 
-[![Gitter](https://badges.gitter.im/dylan-lang/general.svg)](https://gitter.im/dylan-lang/general?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge) [![tests](https://github.com/cgay/dylan-tool/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/cgay/dylan-tool/actions/workflows/build-and-test.yml)
+[![tests](https://github.com/dylan-lang/dylan-tool/actions/workflows/test.yaml/badge.svg)](https://github.com/dylan-lang/dylan-tool/actions/workflows/test.yaml)
+[![GitHub issues](https://img.shields.io/github/issues/dylan-lang/dylan-tool?color=blue)](https://github.com/dylan-lang/dylan-tool/issues)
+[![Matrix](https://img.shields.io/matrix/dylan-lang-general:matrix.org?color=blue&label=Chat%20on%20Matrix&server_fqdn=matrix.org)](https://app.element.io/#/room/#dylan-language:matrix.org)
 
 The `dylan` tool simplifies the management of Dylan workspaces and packages and
 provides a simplified interface to the Open Dylan compiler for building and
