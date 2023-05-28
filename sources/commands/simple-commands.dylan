@@ -153,8 +153,8 @@ define constant $update-subcommand
   = make(<update-subcommand>,
          options: list(make(<flag-option>,
                             names: #("global"),
-                            help: "Install packages in ${DYLAN}/pkg instead of in the"
-                              " workspace.")));
+                            help: "Install packages globally instead of in the"
+                              " workspace. [%default%]")));
 
 define method execute-subcommand
     (parser :: <command-line-parser>, subcmd :: <update-subcommand>)
