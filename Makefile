@@ -73,6 +73,7 @@ remove-dylan-tool-artifacts:
 
 clean: remove-dylan-tool-artifacts
 	rm -rf _build
+	rm -rf _test
 
 distclean: clean
 	rm -rf $(install_dir)

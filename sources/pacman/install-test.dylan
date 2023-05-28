@@ -19,7 +19,9 @@ define test test-install ()
     assert-false(installed?(release));
     install(release);
     assert-true(installed?(release));
-    let file = as(<file-locator>, "pkg/json/1.0.0/src/json.lid");
+    let file = as(<file-locator>,
+                  format-to-string("%s/json/1.0.0/src/json.lid",
+                                   $package-directory-name));
     let lid-path = merge-locators(file, dir);
     assert-true(file-exists?(lid-path));
     let versions = installed-versions(release.package-name);

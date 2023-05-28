@@ -4,7 +4,7 @@ Module: %pacman
 define function string-parser (s :: <string>) => (s :: <string>) s end;
 
 // Name of the subdirectory in which packages are to be installed.
-define constant $package-directory-name = "pkg";
+define constant $package-directory-name = "_packages";
 
 // This provides a way for dylan-tool commands to override the default package
 // installation directory without threading it through the entire call chain,
@@ -20,29 +20,28 @@ define function package-manager-directory
     | subdirectory-locator(dylan-directory(), $package-directory-name)
 end function;
 
-// TODO: Windows
-define constant $default-dylan-directory = "/opt/dylan";
-define constant $dylan-dir-name = "dylan";
 define constant $dylan-env-var = "DYLAN";
 
-// The base directory for all things Dylan for a given user.
-//   1. ${DYLAN}
-//   2. ${HOME}/dylan or %APPDATA%\dylan
-//   3. /opt/dylan or ??? on Windows
-// TODO: Dylan implementations should export this.
 define function dylan-directory
     () => (dir :: <directory-locator>)
+  let basevar = select (os/$os-name)
+                  #"win32" => "CSIDL_LOCAL_APPDATA";
+                  otherwise => "XDG_STATE_HOME";
+                end;
+  let base = os/environment-variable(basevar);
+  let home = os/environment-variable("HOME");
   let dylan = os/environment-variable($dylan-env-var);
-  if (dylan)
-    as(<directory-locator>, dylan)
-  else
-    // TODO: use %APPDATA% on Windows
-    let home = os/environment-variable("HOME");
-    if (home)
-      subdirectory-locator(as(<directory-locator>, home), $dylan-dir-name)
-    else
-      as(<directory-locator>, $default-dylan-directory)
-    end
+  case
+    dylan =>
+      as(<directory-locator>, dylan);
+    base =>
+      subdirectory-locator(as(<directory-locator>, base), "dylan");
+    home =>
+      subdirectory-locator(as(<directory-locator>, home), ".local", "state", "dylan");
+    otherwise =>
+      package-error("Couldn't determine Dylan global package directory."
+                      " Set the %s, %s, or HOME environment variable.",
+                    $dylan-env-var, basevar);
   end
 end function;
 

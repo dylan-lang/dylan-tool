@@ -77,7 +77,8 @@ define function update
                   = if (global?)
                       *package-manager-directory*
                     else
-                      subdirectory-locator(workspace-directory(ws), "_packages")
+                      subdirectory-locator(workspace-directory(ws),
+                                           pm/$package-directory-name)
                     end)
     let (releases, actives) = update-deps(ws, cat);
     let registry = update-registry(ws, cat, releases, actives);

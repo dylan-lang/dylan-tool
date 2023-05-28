@@ -33,14 +33,15 @@ workspace
   means a workspace is where the :file:`_build` and :file:`registry`
   directories are generated. In most cases, a workspace is the directory
   containing the :file:`dylan-package.json` file, but the ultimate arbiter is
-  the workspace.json file, if it exists. See `workspaces`_ for details.
+  the :file:`workspace.json` file, if it exists. See `workspaces`_ for details.
 
 active package
   A package checked out into the top-level of a workspace. In most cases a
   workspace is the same as a package directory so there is only one active
-  package. See `Workspaces`_ for discussion of multi-package
-  workspaces. Example: the `dylan update`_ subcommand scans active packages
-  when creating the registry.
+  package. See `Workspaces`_ for discussion of multi-package workspaces.
+
+  The `dylan update`_ subcommand scans active packages when creating the
+  registry.
 
 release
   A specific version of a package. A release has a `Semantic Version`_ associated
@@ -50,24 +51,28 @@ release
 Requirements
 ============
 
-To find and install packages on the local file system many of the
-:program:`dylan` subcommands use the :envvar:`DYLAN` environment variable. If
-:envvar:`DYLAN` is not set, ``$HOME/dylan`` is used instead. (Much of this
-documentation is written to assume that :envvar:`DYLAN` is set, but it is not
-required.)
-
 Make sure :program:`git` is on your :envvar:`PATH` so it can be found by the
 package manager, which currently exec's ``git clone`` to install
 packages. (This dependency will be removed in a future release.)
 
-The :program:`dylan` tool installs packages, including the `pacman-catalog`_
-package (which describes where to find other packages), under ``$DYLAN/pkg/``.
 
-.. warning::
+Where are Packages Installed?
+=============================
 
-   Don't put files you want to keep in the ``$DYLAN/pkg/`` directory. The
-   expectation should be that anything in this directory may be deleted at any
-   time by the package manager.
+The :program:`dylan` tool installs package dependencies locally in the
+workspace directory by default.  However, you may choose to install them
+globally with :command:`dylan update --global`. Also, the package manager
+caches `its catalog <https://github.com/dylan-lang/pacman-catalog>`_ into a
+global location per user. This location is chosen based on environment
+variables, in this order:
+
+1. ``${DYLAN}/_packages`` if :envvar:`DYLAN` is set.
+
+2. ``${XDG_STATE_HOME}/dylan/_packages`` (Unix) if :envvar:`XDG_STATE_HOME` is
+   set, or ``${CSIDL_LOCAL_APPDATA}/dylan/_packages`` (Windows) if
+   :envvar:`CSIDL_LOCAL_APPDATA` is set.
+
+3. ``${HOME}/.local/state/dylan/_packages`` otherwise.
 
 
 Building From Source
@@ -85,8 +90,8 @@ version, follow these steps to build and install.
 
 #.  Read the `Requirements`_ section, above.
 
-#.  Make sure you have :program:`git`, :program:`make`, and Open Dylan
-    installed.
+#.  Make sure you have :program:`git`, :program:`make`, and
+    :program:`dylan-compiler` installed.
 
 #.  Clone and build the "dylan-tool" project::
 
@@ -97,7 +102,8 @@ version, follow these steps to build and install.
         $ make install
 
 #.  Make sure that ``$DYLAN/bin`` is on your ``$PATH``. If you prefer not to
-    set ``$DYLAN``, make sure that ``$HOME/dylan/bin`` is on your ``$PATH``.
+    set ``$DYLAN``, make sure that ``$HOME/dylan/bin`` is on your ``$PATH``, as
+    that is where the Makefile installs the executable.
 
 You should now be able to run `dylan help`_ and go through the Hello World
 example below.
@@ -462,13 +468,14 @@ Options:
 dylan install
 -------------
 
-Install a package into the package cache, ``${DYLAN}/pkg``.
+Install packages.
 
 Synopsis: ``dylan install <package> [<package> ...]``
 
 This command is primarily useful if you want to browse the source code in a
-package locally without having to worry about where to clone it from. The
-packages are installed into ``${DYLAN}/pkg/<package-name>/<version>/src/``.
+package locally without having to worry about where to clone it from. If you
+are in a workspace directory the packages are installed in the workspace's
+"_packages" subdirectory. Otherwise, see `Where are Packages Installed?`_.
 
 
 .. index::

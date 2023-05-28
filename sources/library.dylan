@@ -48,9 +48,10 @@ define module pacman
   export
     <catalog-error>,
     catalog,
-    dylan-directory,            // $DYLAN or $HOME/dylan or /opt/dylan
+    dylan-directory,
     package-manager-directory,
     *package-manager-directory*,
+    $package-directory-name,
 
     <catalog>,
     catalog-directory,
