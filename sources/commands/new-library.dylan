@@ -306,7 +306,11 @@ define constant $dylan-package-file-template
     "description": "YOUR DESCRIPTION HERE",
     "name": %=,
     "version": "0.1.0",
-    "url": "https://github.com/YOUR-ORG-HERE/YOUR-REPO-HERE"
+    "url": "https://github.com/YOUR-ORG-HERE/YOUR-REPO-HERE",
+    "keywords": [ ],
+    "contact": "",
+    "license": "",
+    "license-url": ""
 }
 ';
 
