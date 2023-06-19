@@ -103,7 +103,13 @@ define function ensure-current-link
   end;
   if (~exists?)
     debug("Creating symlink %s -> %s", link-source, target);
-    create-symbolic-link(target, link-source);
+    block ()
+      // TODO: handle <file-system-error> here instead of <package-error>
+      // once fs/create-symbolic-link exists.
+      create-symbolic-link(target, link-source)
+    exception (err :: <package-error>)
+      warn("%s", err);
+    end;
   end;
 end function;
 
@@ -113,18 +119,21 @@ define function create-symbolic-link
     (target :: fs/<pathname>, link-name :: fs/<pathname>)
   let command
     = if (os/$os-name == #"win32")
-        vector("mklink", "/D", link-name, target) // untested
+        // https://github.com/dylan-lang/opendylan/issues/1504
+        format-to-string("mklink /J %s %s", link-name, target)
       else
         vector("/bin/ln", "--symbolic",
                as(<byte-string>, target),
                as(<byte-string>, link-name))
       end;
   let exit-code
-    = os/run-application(command, under-shell?: #f, output: #"null", error: #"null");
+    = os/run-application(command,
+                         under-shell?: instance?(command, <string>),
+                         output: #"null", error: #"null");
   if (exit-code ~= 0)
-    package-error("failed to create 'current' link for package."
-                    " Exit code %d. The command was: %s",
-                  exit-code, join(command, " "));
+    package-error("Failed to create 'current' link."
+                    " Exit code %d, command: %s",
+                  exit-code, command);
   end;
 end function;
 
@@ -201,7 +210,8 @@ define function installed-versions
   for (file in files)
     if (instance?(file, <directory-locator>))
       let name = locator-name(file);
-      if (head? | lowercase(name) ~= $head-name)
+      if (lowercase(name) ~= "current"
+            & (head? | lowercase(name) ~= $head-name))
         block ()
           add!(versions, string-to-version(name))
         exception (<package-error>)
