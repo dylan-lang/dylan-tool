@@ -2,11 +2,10 @@ Module: dylan-tool-test-suite
 
 // This test does an actual install, which requires the git command and network
 // access.
-define test test-install ()
+define test test-install (tags: #["net"])
   // Set the DYLAN environment variable to the test temp directory so that
-  // packages will be installed there, in a "pkg" subdir. Because
-  // test-temp-directory() uses the DYLAN environment variable we need to save
-  // its value beforehand.
+  // packages will be installed there. Because test-temp-directory() uses the
+  // DYLAN environment variable we need to save its value beforehand.
   let dir = test-temp-directory();
   let cat = make(<catalog>, directory: dir);
   let package = make-test-package("json",
