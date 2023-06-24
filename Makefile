@@ -22,10 +22,12 @@ install_lib     = $(install_dir)/lib
 link_target     = $(install_bin)/dylan-tool-app
 link_source     = $(DYLAN)/bin/dylan
 
+git_version := "$(shell git describe --tags --always --match 'v*')"
+
 .PHONY: build build-with-version clean install install-debug really-install remove-dylan-tool-artifacts test dist distclean
 
 build: remove-dylan-tool-artifacts
-	OPEN_DYLAN_USER_REGISTRIES=${PWD}/registry dylan-compiler -build dylan-tool-app
+	OPEN_DYLAN_USER_REGISTRIES=${PWD}/registry dylan-compiler -build -unify dylan-tool-app
 
 # Hack to add the version to the binary with git tag info. Don't want this to
 # be the normal build because it causes unnecessary rebuilds.
@@ -34,22 +36,15 @@ build-with-version: remove-dylan-tool-artifacts
 	  orig=$$(mktemp); \
 	  temp=$$(mktemp); \
 	  cp -p $${file} $${orig}; \
-	  cat $${file} | sed "s,/.__./.*/.__./,/*__*/ \"$$(git describe --tags --always)\" /*__*/,g" > $${temp}; \
+	  cat $${file} | sed "s,/.__./.*/.__./,/*__*/ \"${git_version}\" /*__*/,g" > $${temp}; \
 	  mv $${temp} $${file}; \
-	  OPEN_DYLAN_USER_REGISTRIES=${PWD}/registry dylan-compiler -build dylan-tool-app; \
+	  OPEN_DYLAN_USER_REGISTRIES=${PWD}/registry \
+	    dylan-compiler -build -unify dylan-tool-app; \
 	  cp -p $${orig} $${file}
 
-# After the next OD release (post 2022.1) this should install a static exe
-# built with the -unify flag.
 really-install:
-	mkdir -p $(install_bin)
-	mkdir -p $(install_lib)
-	cp _build/bin/dylan-tool-app $(install_bin)/
-	cp -r _build/lib/lib* $(install_lib)/
 	mkdir -p $(DYLAN)/bin
-	@if [ ! -L "$(link_source)" ]; then \
-	  ln -s $$(realpath $(link_target)) $$(realpath $(link_source)); \
-	fi;
+	cp _build/sbin/dylan-tool-app $(DYLAN)/bin/
 
 install: build-with-version really-install
 
