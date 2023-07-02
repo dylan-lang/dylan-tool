@@ -2,7 +2,7 @@ name: test-suite
 
 on:
   push:
-    # all branches
+    paths-ignore: ['**.rst']
   pull_request:
     branches:
       - main
@@ -46,7 +46,7 @@ jobs:
           DYLAN_CATALOG: ext/pacman-catalog
           DYLAN: dylan-root
         run: |
-          dylan_exe="$(realpath ${DYLAN}/bin/dylan)"
+          dylan_exe="$(realpath ${DYLAN}/bin/dylan-tool-app)"
           export DYLAN_CATALOG="$(realpath ${DYLAN_CATALOG})"
           ${dylan_exe} new library --force-package abc strings@1.1
           cd abc

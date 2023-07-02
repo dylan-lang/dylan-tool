@@ -17,7 +17,8 @@ The :program:`dylan` command-line tool
    The pacman Package Manager <pacman>
 
 .. contents::
-   :depth: 3
+   :depth: 2
+   :local:
 
 
 Terminology
@@ -82,16 +83,18 @@ Building From Source
 ====================
 
 If you have **Open Dylan 2022.1 or later**, :program:`dylan` is already
-installed as part of that release. But the ``dylan`` tool is still under active
-development and tends to move faster than the pace of Open Dylan releases, so
-you you may want to build the latest version, follow these steps to build and
-install.
+installed as part of that release. But the :program:`dylan` tool is still under
+active development and tends to move faster than the pace of Open Dylan
+releases, so you may want to build the latest version. Here's how....
 
 .. note:: Because an executable named "dylan" conflicts with the base Dylan
-   library during the build process, this library is named "dylan-tool" and
-   then the executable is installed as :program:`dylan-tool-app` by the
-   :file:`Makefile`. The examples in this document use the name
-   :program:`dylan` instead of "dylan-tool".
+   library during the build process, this library is named "dylan-tool". In
+   Open Dylan the executable is installed as :program:`dylan`, but here it is
+   installed as :program:`dylan-tool-app`. This way both can be used at the
+   same time, which is useful during development.
+
+   This documentation usually uses the name :program:`dylan`. Keep this in mind
+   if you follow any examples below.
 
 #.  Read the `Requirements`_ section, above.
 
@@ -107,8 +110,8 @@ install.
     set ``$DYLAN``, make sure that ``$HOME/dylan/bin`` is on your ``$PATH``, as
     that is where the Makefile installs the executable.
 
-You should now be able to run `dylan help`_ and go through the Hello World
-example below.
+You should now be able to run `dylan-tool-app help`_ and go through the Hello
+World example below.
 
 
 Quick Start
@@ -399,6 +402,8 @@ Subcommands
 .. index::
    single: dylan help subcommand
    single: subcommand; dylan help
+
+.. _dylan-tool-app help:
 
 dylan help
 ----------
