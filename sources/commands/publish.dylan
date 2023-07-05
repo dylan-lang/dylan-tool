@@ -24,7 +24,10 @@ define method execute-subcommand
   let cat = pm/catalog(directory: cat-dir);
   let name = pm/package-name(release);
   let latest = pm/find-package-release(cat, name, pm/$latest);
-  if (release <= latest)
+  if (~latest)
+    note("*** This looks like the first release of %s. You will need to"
+           " 'git add' the new package file.", name);
+  elseif (release <= latest)
     // Have to use format-to-string here because error() uses simple-format
     // which doesn't call print-object methods.
     let message
