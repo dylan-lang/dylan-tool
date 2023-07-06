@@ -122,7 +122,7 @@ define function create-symbolic-link
         // https://github.com/dylan-lang/opendylan/issues/1504
         format-to-string("mklink /J %s %s", link-name, target)
       else
-        vector("/bin/ln", "--symbolic",
+        vector("/bin/ln", "-s",
                as(<byte-string>, target),
                as(<byte-string>, link-name))
       end;
