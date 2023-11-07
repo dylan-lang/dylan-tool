@@ -32,7 +32,8 @@ define module shared
   use operating-system, prefix: "os/";
   use streams;
   use strings;
-  use uncommon-dylan;
+  use uncommon-dylan,
+    exclude: { format-out };
   export
     *debug?*,
     *verbose?*,
@@ -193,7 +194,7 @@ define module %workspaces
   use strings;
   use threads;
   use uncommon-dylan,
-    exclude: { format-to-string };
+    exclude: { format-out, format-to-string };
   use uncommon-utils,
     import: { err, iff, inc!, slice };
   use workspaces;
@@ -223,7 +224,7 @@ define module dylan-tool
   use streams;
   use strings;
   use uncommon-dylan,
-    exclude: { format-to-string };
+    exclude: { format-out, format-to-string };
   use uncommon-utils,
     import: { err, iff, inc!, slice };
   use workspaces, prefix: "ws/";
