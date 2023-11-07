@@ -15,7 +15,7 @@
 	url = https://github.com/dylan-lang/regular-expressions
 [submodule "ext/uncommon-dylan"]
 	path = ext/uncommon-dylan
-	url = https://github.com/dylan-lang/uncommon-dylan
+	url = https://github.com/cgay/uncommon-dylan
 [submodule "ext/testworks"]
 	path = ext/testworks
 	url = https://github.com/dylan-lang/testworks
