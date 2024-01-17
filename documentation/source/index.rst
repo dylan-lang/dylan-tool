@@ -12,13 +12,9 @@ The :program:`dylan` command-line tool
 * publishes packages to the Dylan package catalog.
 
 .. toctree::
-   :hidden:
+   :maxdepth: 2
 
    The pacman Package Manager <pacman>
-
-.. contents::
-   :depth: 2
-   :local:
 
 
 Terminology
