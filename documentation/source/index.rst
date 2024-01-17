@@ -300,13 +300,15 @@ its dependencies for ".lid" files and writes a registry file for each one (but
 see below for platform-specific libraries), and it downloads and installs
 package dependencies for you.
 
-..note:: If you use the same workspace directory on multiple platforms (e.g., a
-         network mounted directory or shared by a virtual machine) you will
-         need to run `dylan update`_ on **each** platform so that the correct
-         platform-specific registry entries are created.  The :program:`dylan`
-         tool makes no attempt to figure out which packages are "generic" and
-         which are platform-specific, so it always writes registry files
-         specifically for the current platform, e.g., ``x86_64-linux``.
+.. note:: If you use the same workspace directory on multiple
+          platforms (e.g., a network mounted directory or shared by a
+          virtual machine) you will need to run `dylan update`_ on
+          **each** platform so that the correct platform-specific
+          registry entries are created.  The :program:`dylan` tool
+          makes no attempt to figure out which packages are "generic"
+          and which are platform-specific, so it always writes
+          registry files specifically for the current platform, e.g.,
+          ``x86_64-linux``.
 
 Platform-specific Libraries
 ---------------------------
