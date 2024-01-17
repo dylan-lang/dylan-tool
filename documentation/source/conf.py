@@ -12,7 +12,7 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../../ext/sphinx-extensions/sphinxcontrib'))
+sys.path.insert(0, os.path.abspath('../../_packages/sphinx-extensions/current/src/sphinxcontrib'))
 import dylan.themes as dylan_themes
 
 
