@@ -45,7 +45,7 @@ repository. For any package to be downloadable it must have an entry in the
 catalog.
 
 Full documentation is
-[here](https://docs.opendylan.org/packages/dylan-tool/documentation/source/index.html).
+[here](https://opendylan.org/package/dylan-tool).
 
 ## Bugs
 
