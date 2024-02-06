@@ -349,19 +349,19 @@ define method load-catalog-package-file
   cat.catalog-package-cache[name] := package
 end method;
 
-// Publish the given release by writing a new catalog file that contains the
-// given release. Signals <catalog-error> if the release is not newer than any
-// existing releases for the package.
+// Publish a new catalog file that contains the given release. Signals
+// <catalog-error> if the release is not newer than any existing releases for
+// the package.
 define function publish-release
     (cat :: <catalog>, release :: <release>) => (file :: <file-locator>)
   let name = package-name(release);
-  let old-package = find-package(cat, name);
+  let cat-package = find-package(cat, name);
   let new-package = release-package(release);
-  if (old-package)
+  if (cat-package)
     // Include the releases from the existing package when we write the file.
     // new-package was created by loading dylan-package.json, and doesn't have
-    // any of the existing releases in it. (Maybe that should be fixed though.)
-    for (rel in package-releases(old-package))
+    // any of the existing releases in it.
+    for (rel in package-releases(cat-package))
       add-release(new-package, rel);
     end;
   end;
@@ -371,9 +371,8 @@ define function publish-release
                     " latest release (%s)",
                   release-to-string(release), release-to-string(latest));
   end;
-  // Note that we write new-package rather than old-package, meaning that the
+  // Note that we write new-package rather than cat-package, meaning that the
   // package-level attributes from dylan-package.json (e.g., "description")
-  // will overwrite the package-level attributes from the catalog, if they're
-  // different.
+  // will replace the package-level attributes from the catalog.
   write-package-file(cat, new-package)
 end function;
