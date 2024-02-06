@@ -37,10 +37,10 @@ define method execute-subcommand
           name, pm/release-version(release), ws/$dylan-package-file-name);
     error(message);
   end;
-  if (yes-or-no?(format-to-string("About to publish %s, ok? [ok/yes/no]", release)))
+  if (yes-or-no?(format-to-string("About to publish %s, ok? [yes/no] ", release)))
     let file = pm/publish-release(cat, release);
-    note("Package file written to %s. Commit the changes and submit a"
-           " pull request.", file);
+    note("Package file written to %s.\n"
+           "Commit the changes and submit a pull request.", file);
   else
     note("Aborted.");
   end;

@@ -23,7 +23,7 @@ end function;
 // releases belongs in <package>.
 define class <release> (<object>)
   // Back pointer to package containing this release.
-  constant slot release-package :: <package>,
+  slot release-package :: <package>,
     required-init-keyword: package:;
 
   // Note that this may be a semantic version or a branch version even though technically
@@ -407,6 +407,7 @@ define function add-release
       if (v < version)
         add!(pkg.package-releases, release);
         sort!(pkg.package-releases, test: \>);
+        release.release-package := pkg;
         done();
       elseif (v = version)
         if (rel ~= release)
@@ -417,6 +418,7 @@ define function add-release
     end for;
     add!(pkg.package-releases, release);
     sort!(pkg.package-releases, test: \>);
+    release.release-package := pkg;
   end block;
   release
 end function;
