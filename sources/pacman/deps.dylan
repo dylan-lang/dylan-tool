@@ -97,13 +97,12 @@ define function resolve-release-deps
   resolve-deps(cat, deps, dev-deps, actives, cache: cache)
 end function;
 
-// Resolve `release` to a set of releases it depends on, using `cat` as the world of
-// potential releases. `release` itself is not included in the result. `active` maps
-// package names to releases that are "active" in the current workspace and therefore
-// should be treated specially. If any package encountered during resolution has a
-// dependency on one of the active packages, that dependency is ignored since the active
-// package will be used during the build process anyway. The returned deps do not include
-// the active releases.
+// Resolve a set of dependencies to a set of specific releases, using `cat` as the world
+// of potential releases. `actives` maps package names to releases that are active in the
+// current workspace and therefore should be treated specially. If any package
+// encountered during resolution has a dependency on one of the active packages, that
+// dependency is ignored since the active package will be used during the build process
+// anyway. The set of returned releases does not include the active releases.
 //
 // Signal <dep-error> if dependencies can't be resolved due to circularities,
 // conflicting constraints, or if they are simply missing from the catalog.
@@ -113,13 +112,13 @@ end function;
 // "providing repeatable builds by preferring the lowest possible specified version of
 // any package".
 //
-// We are given a release that needs to be built. This is the root of a graph. Its deps
-// form the second layer of a graph. The releases that match those deps form the third
-// level of the graph, and the deps of those releases form the fourth, etc. So we have a
-// graph in which the layers alternate between potential releases and their deps. This
-// tree gets big fast. The result for any given release is memoized.
+// We are given the deps of a release that needs to be built. That release is the root of
+// a graph. Its deps form the second layer of a graph. The releases that match those deps
+// form the third level of the graph, and the deps of those releases form the fourth,
+// etc. So we have a graph in which the layers alternate between potential releases and
+// their deps. This tree gets big fast. The result for any given release is memoized.
 //
-// Each dep specifies only its minimum required version, e.g., P 1.2.3.  These are
+// Each dep specifies only its minimum required version, e.g., P@1.2.3.  These are
 // semantic versions so if two dependencies on P specify different major versions it is
 // an error.
 //
@@ -127,12 +126,9 @@ end function;
 // they are combined with other results to keep only the maximum minimum version for each
 // package.
 //
-// (Note: We could support per-library dependencies (i.e., build deps). Test dependencies
-// should not be included in the graph for the main library. For example, to build pacman
-// testworks should not be a dependency. It's also possible to want to require D 1.0 for
-// one library in a package and D 2.0 for a different library in the same package. I'm
-// ignoring these issues for now to avoid unnecessary complexity. For now deps only work
-// at the package level.)
+// Note: The assumption is that deps are per package, not per library. That is, it's not
+// possible for two independent libraries in one package to depend on different versions
+// of a package. For that case, make two packages.
 define function resolve-deps
     (cat :: <catalog>, deps :: <dep-vector>, dev-deps :: <dep-vector>,
      actives :: false-or(<istring-table>), #key cache)

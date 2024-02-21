@@ -102,13 +102,15 @@ define test test-dev-dependencies-not-transitive ()
 end test;
 
 define test test-dev-dependency-conflict ()
-  // Dev dependency on an incompatible version of another package.
-  assert-signals(<dep-error>,
-                 make-test-catalog(#("testworks@1.0", #("strings@1.0"), #()),
-                                   // ok
-                                   #("strings@1.0", #(), #("testworks@1.0")),
-                                   // Should err because testworks wants strings@1.0.
-                                   #("strings@2.0", #(), #("testworks@1.0"))));
+  assert-no-errors
+    (make-test-catalog(#("testworks@1.0", #("strings@1.0"), #()),
+                       #("strings@1.0", #(), #("testworks@1.0")),
+                       // For main dependencies, strings@2.0 requiring testworks@1.0
+                       // would cause a dependency conflict because testworks@1.0 depends
+                       // on strings@1.0. However, dev dependencies for the strings
+                       // package are only used during ... development! So strings is one
+                       // of the active packages, and validate-catalog doesn't check it.
+                       #("strings@2.0", #(), #("testworks@1.0"))));
   // The two dev dependencies, bbb and ddd, have conflicting dependencies.
   assert-signals(<dep-error>,
                  make-test-catalog(#("aaa@1.0", #(), #("bbb@2.0", "ddd@4.0")),

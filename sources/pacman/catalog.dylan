@@ -217,7 +217,11 @@ define function validate-catalog
   end;
   for (package in packages)
     for (release in package.package-releases)
-      resolve-release-deps(cat, release, dev?: #t, cache: cache);
+      // We pass `dev?: #f` here because it is valid for a package to have a dependency
+      // on itself if it is an active package _during development_. Since that catalog
+      // can't know what the active packages are we can't validate the dev dependencies
+      // and expect no errors. https://github.com/dylan-lang/pacman-catalog/issues/40
+      resolve-release-deps(cat, release, dev?: #f, cache: cache);
     end;
   end;
 end function;
