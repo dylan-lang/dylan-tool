@@ -1,21 +1,23 @@
 .. highlight:: shell
 
-************
-`dylan` Tool
-************
+**************
+``dylan`` Tool
+**************
 
-The :program:`dylan` command-line tool
+The :program:`dylan` command-line tool is intended to make Dylan development
+easier by taking care of some of the drudgery for you, including:
 
-* manages Dylan workspaces and package dependencies,
-* generates the "registry" files for you,
-* eliminates the need to use Git submodules to track dependencies, and
-* publishes packages to the Dylan package catalog.
+* managing Dylan workspaces and package dependencies
+* creating boilerplate for new projects
+* downloading and installing dependencies (no need for git submodules)
+* generating "registry" files
+* publishing packages to the Dylan package catalog
 
 .. toctree::
    :maxdepth: 2
+   :hidden:
 
    The pacman Package Manager <pacman>
-
 
 Terminology
 ===========
@@ -452,8 +454,7 @@ status. (Requires an Open Dylan release later than 2020.1.)
           :program:`dylan-compiler` directly instead, after changing to the
           workspace top-level directory.
 
-Options:
-~~~~~~~~
+**Options:**
 
 ``--all``
   Build all libraries found in the active packages of the current workspace.
@@ -576,8 +577,7 @@ the new dependencies and update the registry files.
 
 **See also:** `dylan new application`_
 
-Options:
-~~~~~~~~
+**Options:**
 
 ``--force-package``, ``-p``
   Create :file:`dylan-package.json` even if already inside a package. This is
@@ -612,8 +612,7 @@ Synopsis: ``dylan new workspace [options] <name>``
           found. Explicit workspaces are mainly needed when working on multiple
           interrelated packages at the same time.
 
-Options:
-~~~~~~~~
+**Options:**
 
 ``--directory``
   Create the workspace under this directory instead of in the current working
@@ -707,15 +706,13 @@ Display the status of the current workspace.
 
 Synopsis: ``dylan status``
 
-Options:
-~~~~~~~~
+**Options:**
 
 ``--directory``
   Only show the workspace directory and skip showing the active packages.
   This is intended for use by tooling.
 
-Example:
-~~~~~~~~
+**Example:**
 
 ::
 
@@ -765,8 +762,7 @@ performs two actions:
           files that specify ``Platforms: win32`` will not cause a registry
           file to be generated.
 
-Example:
-~~~~~~~~
+**Example:**
 
 Create a workspace named ``dt``, with one active package, "dylan-tool", update
 it, and build the test suite::
