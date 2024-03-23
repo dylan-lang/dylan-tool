@@ -4,18 +4,20 @@
 ``dylan`` Tool
 **************
 
-The :program:`dylan` command-line tool
+The :program:`dylan` command-line tool is intended to make Dylan development
+easier by taking care of some of the drudgery for you, including:
 
-* manages Dylan workspaces and package dependencies,
-* generates the "registry" files for you,
-* eliminates the need to use Git submodules to track dependencies, and
-* publishes packages to the Dylan package catalog.
+* managing Dylan workspaces and package dependencies
+* creating boilerplate for new projects
+* downloading and installing dependencies (no need for git submodules)
+* generating "registry" files
+* publishing packages to the Dylan package catalog
 
 .. toctree::
    :maxdepth: 2
+   :hidden:
 
    The pacman Package Manager <pacman>
-
 
 Terminology
 ===========
