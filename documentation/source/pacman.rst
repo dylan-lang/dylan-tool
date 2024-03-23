@@ -11,9 +11,6 @@ This documentation describes the package model and how versioned dependencies
 are resolved. Users generally manage workspaces and packages via `the dylan
 command`_.
 
-.. contents::
-   :depth: 2
-
 
 Packages
 ========
