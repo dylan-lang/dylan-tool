@@ -142,10 +142,19 @@ define function load-workspace
   let ws-json = ws-file & load-json-file(ws-file);
   let default-library
     = ws-json & element(ws-json, $default-library-key, default: #f);
-  if (~default-library & active-packages.size = 1)
-    // TODO: this isn't right. Should find the actual libraries, from the LID
-    // files, and if there's only one "*-test*" library, choose that.
-    default-library := pm/package-name(active-packages[0]);
+  if (~default-library)
+    let libs = find-library-names(registry);
+    if (~empty?(libs))
+      local method match (suffix, lib)
+              ends-with?(lib, suffix) & lib
+            end;
+      // The assumption here is that (for small projects) there's usually one
+      // test library that you want to run.
+      default-library := (any?(curry(match, "-test-suite-app"), libs)
+                            | any?(curry(match, "-test-suite"), libs)
+                            | any?(curry(match, "-tests"), libs)
+                            | libs[0]);
+    end;
   end;
   make(<workspace>,
        active-packages: active-packages,
