@@ -48,7 +48,7 @@ exclude_patterns = []
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'alabaster'
+html_theme = 'furo'
 # html_theme = dylan_themes.get_html_theme_default()
 
 # Add any paths that contain custom static files (such as style sheets) here,
