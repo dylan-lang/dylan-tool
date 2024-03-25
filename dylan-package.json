@@ -14,7 +14,7 @@
     ],
     "dev-dependencies": [
         "sphinx-extensions",
-        "testworks@2.0"
+        "testworks"
     ],
     "url": "https://github.com/dylan-lang/dylan-tool"
 }

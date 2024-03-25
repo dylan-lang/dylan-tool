@@ -8,7 +8,6 @@ end;
 //// REGISTRY
 
 // Keys used to lookup values in a parsed LID file.
-// TODO: use 'define enum' in uncommon-dylan
 define constant $platforms-key = #"platforms";
 define constant $files-key = #"files";
 define constant $library-key = #"library";
@@ -425,14 +424,23 @@ define function parse-lid-file
   lid
 end function;
 
-define function find-library-names
+
+// Find the names of all libraries defined in `dir`, a directory or registry.
+define generic find-library-names (dir) => (names :: <seq>);
+
+define method find-library-names
     (dir :: <directory-locator>) => (names :: <seq>)
-  let registry = make(<registry>, root-directory: dir);
+  find-library-names(make(<registry>, root-directory: dir))
+end method;
+
+define method find-library-names
+    (registry :: <registry>) => (names :: <seq>)
   // It's possible for a LID included via the LID: keyword to not have a library.
   remove(map(rcurry(lid-value, $library-key),
-             find-lids(registry, dir)),
+             find-lids(registry, registry.root-directory)),
          #f)
-end function;
+end method;
+
 
 // Build a map from source file names (absolute pathname strings) to the names
 // of libraries they belong to (a sequence of strings). For now we only look at
